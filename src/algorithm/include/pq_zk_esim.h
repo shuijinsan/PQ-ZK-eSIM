@@ -56,13 +56,14 @@ typedef struct {
 
 /**
  * @brief 物理上下文结构体
- * @note 【强制规范】必须使用 __attribute__((packed)) 修饰，严禁编译器隐式填充内存，
- * 确保各端生成的哈希 H_ctx 首尾完全一致。
+ * @note 【安全红线】__attribute__((packed)) 仅用于内存紧凑。
+ * 严禁直接对本结构体指针执行 Hash！生成 H_ctx 前，必须强行调用 
+ * PQC_SerializeContext 进行小端序按位序列化，否则跨端必死。
  */
 typedef struct __attribute__((packed)) {
     uint64_t timestamp;                 // 采集时间戳
-    double latitude;                    // 纬度
-    double longitude;                   // 经度
+    int32_t latitude;                   // 纬度 (实际经纬度 * 10^6 存储，规避浮点数端序差异)
+    int32_t longitude;                  // 经度 (实际经纬度 * 10^6 存储)
     char desc[64];                      // 会话描述字符串
 } ContextData;
 
@@ -76,7 +77,15 @@ typedef struct __attribute__((packed)) {
  * @param sk_s [out] eUICC 内部存储的长期私钥 S
  */
 void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s);
-
+/**
+ * @brief [阶段零] eUICC 状态初始化
+ * @note 将设备标识、私钥、对称密钥等写入 eUICC 模拟器的非易失存储。
+ */
+void PQC_eUICC_Init(const uint8_t* eid, size_t eid_len,
+                    const poly_vec_t* sk_s,
+                    const uint8_t* k_sym, size_t k_sym_len,
+                    uint64_t initial_ctr,
+                    const uint8_t* k_tee, size_t k_tee_len);
 /**
  * @brief [通用标准] 多项式序列化
  * @note 强制采用小端序 (Little-Endian) 和固定位宽对齐，供后端 FFI 调用以验证完整性。
@@ -84,7 +93,13 @@ void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s);
  * @param out_bytes [out] 输出的扁平化字节流
  */
 void PQC_EncodePolyVec(const poly_vec_t *in_poly, uint8_t *out_bytes);
-
+/**
+ * @brief [通用标准] 上下文确定性序列化
+ * @note 必须通过硬编码位移映射为小端序字节流，严禁直接哈希结构体指针。
+ * @param ctx [in] 物理上下文结构体
+ * @param ctx_bytes [out] 输出的确定性字节流 (供后续 Hash 生成 H_ctx)
+ */
+void PQC_SerializeContext(const ContextData *ctx, uint8_t *ctx_bytes);
 /**
  * @brief [阶段一] LPA 外部盲化因子预计算
  * @param W_pub [out] LPA 外部承诺 W_pub = A * y_pub (mod q)
@@ -100,15 +115,12 @@ void PQC_PreCompute(poly_vec_t *W_pub, uint8_t seed_y[PQ_ZK_SEED_BYTES]);
 void PQC_RegenerateYpub(const uint8_t seed_y[PQ_ZK_SEED_BYTES], poly_vec_t *y_pub);
 
 /**
- * @brief [阶段一] eUICC 内部承诺生成
- * @param K_sym [in] 预共享长期对称密钥
- * @param ctr_current [in] 当前物理计数器
+ * @brief [阶段一] eUICC 内部承诺生成 (安全修正版)
+ * @note y_sec 必须安全存储在内部，绝不输出。K_sym 与 ctr 由底层内部读取。
  * @param W_sec [out] 内部承诺 W_sec = A * y_sec (mod q)
- * @param y_sec [out] 局部三进制盲化因子
  * @param MAC_W [out] 内部防篡改认证码 MAC(K_sym, W_sec || ctr_current)
  */
-void PQC_eUICC_Commit(const uint8_t K_sym[PQ_ZK_SEED_BYTES], uint32_t ctr_current, 
-                      poly_vec_t *W_sec, poly_vec_t *y_sec, uint8_t MAC_W[PQ_ZK_MAC_BYTES]);
+void PQC_eUICC_Commit(poly_vec_t *W_sec, uint8_t MAC_W[PQ_ZK_MAC_BYTES]);
 
 /**
  * @brief [阶段二] 挑战生成 (LPA 多维挑战展开)
@@ -122,20 +134,17 @@ void PQC_GenChallenge(const poly_vec_t *comm_W, const uint8_t nonce[PQ_ZK_SEED_B
 
 /**
  * @brief [阶段四] 掩码协同计算 (eUICC 极速盲化 - 核心安全禁区)
- * @note 内部必须严格校验 c_agg 且直接生成 M_mask，严禁明文暴露 z_sec。全过程恒定时间。
- * @param sk_s [in] eUICC 长期私钥 S
- * @param y_sec [in] 内部局部盲化因子
+ * @note JNI 层纯净透传，私钥 S、计数器 ctr、局部盲化因子 y_sec 等必须在底层内部读取，严禁外部传入。
  * @param c_agg [in] 扩展挑战多项式
- * @param K_sym [in] 预共享长期对称密钥
  * @param c_seed [in] 服务器轻量级挑战种子
- * @param ctr_session [in] 门控校验通过后锁存的本次会话计数器常量
  * @param H_ctx [in] 物理上下文哈希
- * @param z_sec_masked [out] 掩码保护后的端到端响应 z_sec_masked
+ * @param hash_M2 [in] 哈希树路径的 Hash 值
+ * @param AuthToken [in] TEE 签发的授权令牌
+ * @param z_sec_masked [out] 掩码保护后的端到端响应
  */
-void PQC_ComputeZ_and_Mask(const poly_vec_t *sk_s, const poly_vec_t *y_sec, 
-                           const poly_vec_t *c_agg, const uint8_t K_sym[PQ_ZK_SEED_BYTES], 
-                           const uint8_t c_seed[PQ_ZK_SEED_BYTES], uint32_t ctr_session, 
-                           const uint8_t H_ctx[PQ_ZK_SEED_BYTES], poly_vec_t *z_sec_masked);
+void PQC_ComputeZ_and_Mask(const poly_vec_t *c_agg, const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
+                           const uint8_t H_ctx[PQ_ZK_SEED_BYTES], const uint8_t hash_M2[PQ_ZK_MAC_BYTES], 
+                           const uint8_t AuthToken[PQ_ZK_MAC_BYTES], poly_vec_t *z_sec_masked);
 
 /**
  * @brief [阶段五] LPA 大噪声聚合
@@ -156,7 +165,7 @@ void PQC_LPA_Aggregate(const poly_vec_t *z_sec_masked, const poly_vec_t *y_pub,
  * @param M_mask [out] 生成的伪随机掩码多项式
  */
 void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES], const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
-                      uint32_t ctr_session, const uint8_t H_ctx[PQ_ZK_SEED_BYTES], poly_vec_t *M_mask);
+                      uint64_t ctr_session, const uint8_t H_ctx[PQ_ZK_SEED_BYTES], poly_vec_t *M_mask);
 
 /**
  * @brief [阶段六] 服务器验证引擎
