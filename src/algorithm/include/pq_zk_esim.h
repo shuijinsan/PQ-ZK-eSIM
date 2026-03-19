@@ -26,8 +26,16 @@ extern "C" {
 #define PQ_ZK_K 3                       // Kyber-768 对应的模块维度
 #define PQ_ZK_SEED_BYTES 32             // 强制 256-bit 种子长度 (SHA-256 / AES-256)
 #define PQ_ZK_MAC_BYTES 32              // HMAC-SHA256 输出长度
-#define PQ_ZK_CHALLENGE_WEIGHT 39       // 稀疏挑战多项式非零系数个数 (kappa)
+#define PQ_ZK_CHALLENGE_WEIGHT 26       // 稀疏挑战多项式非零系数个数 (kappa)
+// [新增] 大噪声淹没实验参数 (算法师需据此编写测试桩)
+#define PQ_ZK_ETA_S 2              // Kyber-768 私钥无穷范数边界
+#define PQ_ZK_RENYI_GAMMA 2        // Rényi 散度安全系数
+// sigma_pub >= gamma * eta_s * kappa = 2 * 2 * 26 = 104
+#define PQ_ZK_SIGMA_PUB 104.0      // 外部盲化因子高斯标准差
 
+// beta_final 必须小于 q/2 (1664)，设定截断参数 tau = 12 
+// beta_pub = 12 * 104 = 1248。最大理论边界 = 1248 + 1(y_sec) + 52(S*c) = 1301 < 1664
+#define PQ_ZK_BETA_FINAL 1301      // 服务器防溢出无穷范数上界阈值
 // 完整公钥序列化长度 (32字节种子 + 3*256*12bit系数)
 #define PQ_ZK_PUBLICKEY_BYTES 1184
 // [新增] 内存安全红线：跨端 FFI/JNI 调用时强制约束的 Buffer 长度
