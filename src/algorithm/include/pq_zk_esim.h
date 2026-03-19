@@ -1,6 +1,6 @@
 /**
  * @file pq_zk_esim.h
- * @brief PQ-ZK-eSIM 全栈工程核心接口与代数标准 (2.0 最终版)
+ * @brief PQ-ZK-eSIM 全栈工程核心接口与代数标准 (3.0)
  * @note 本文件为跨端一致性最高准则，严禁私自修改参数定义或内存对齐方式。
  * * 编译环境约束：
  * - 依赖：liboqs (Kyber-768 最新版 clone)
