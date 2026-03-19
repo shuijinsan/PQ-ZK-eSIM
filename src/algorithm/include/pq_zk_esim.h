@@ -47,11 +47,19 @@ typedef enum {
 /* ========================================================================= */
 
 /**
- * @brief 多项式向量抽象结构 (实际底层映射至 liboqs 内部结构)
- * JNI 传递时必须展平为一维 uint8_t* / byte[]
+ * @brief [新增] 单个多项式结构 (映射至环 R_q)
+ * @note 专用于标量多项式，如扩展挑战 c_agg。强制采用小端序存储。
  */
 typedef struct {
-    int16_t coeffs[PQ_ZK_K * PQ_ZK_N];  // 强制采用小端序存储多项式系数
+    int16_t coeffs[PQ_ZK_N];  
+} poly_t;
+
+/**
+ * @brief 多项式向量抽象结构 (映射至环 R_q^m)
+ * @note 用于私钥 S、响应 z、盲化因子 y 等。JNI 传递时必须展平为一维 byte[]。
+ */
+typedef struct {
+    int16_t coeffs[PQ_ZK_K * PQ_ZK_N];  
 } poly_vec_t;
 
 /**
@@ -77,11 +85,13 @@ typedef struct __attribute__((packed)) {
  * @param sk_s [out] eUICC 内部存储的长期私钥 S
  */
 void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s);
+
 /**
  * @brief [阶段零] eUICC 状态初始化
- * @note 将设备标识、私钥、对称密钥等写入 eUICC 模拟器的非易失存储。
+ * @note 将设备标识、私钥、对称密钥等安全写入指定的工作目录。
+ * @param nvram_dir [in] [新增] eUICC 安全存储的挂载目录路径 (绝对路径)
  */
-void PQC_eUICC_Init(const uint8_t* eid, size_t eid_len,
+void PQC_eUICC_Init(const char* nvram_dir, const uint8_t* eid, size_t eid_len,
                     const poly_vec_t* sk_s,
                     const uint8_t* k_sym, size_t k_sym_len,
                     uint64_t initial_ctr,
@@ -127,25 +137,20 @@ void PQC_eUICC_Commit(poly_vec_t *W_sec, uint8_t MAC_W[PQ_ZK_MAC_BYTES]);
  * @param comm_W [in] 聚合后的总承诺 W
  * @param nonce [in] 服务器下发的轻量级挑战种子 c_seed
  * @param H_ctx [in] 物理上下文哈希
- * @param c_agg [out] 扩展的高维稀疏挑战多项式 (汉明权重严格限制)
+ * @param c_agg [out] [修正类型] 扩展的高维稀疏挑战标量多项式
  */
 void PQC_GenChallenge(const poly_vec_t *comm_W, const uint8_t nonce[PQ_ZK_SEED_BYTES], 
-                      const uint8_t H_ctx[PQ_ZK_SEED_BYTES], poly_vec_t *c_agg);
+                      const uint8_t H_ctx[PQ_ZK_SEED_BYTES], poly_t *c_agg);
 
 /**
  * @brief [阶段四] 掩码协同计算 (eUICC 极速盲化 - 核心安全禁区)
- * @note JNI 层纯净透传，私钥 S、计数器 ctr、局部盲化因子 y_sec 等必须在底层内部读取，严禁外部传入。
- * @param c_agg [in] 扩展挑战多项式
- * @param c_seed [in] 服务器轻量级挑战种子
- * @param H_ctx [in] 物理上下文哈希
- * @param hash_M2 [in] 哈希树路径的 Hash 值
- * @param AuthToken [in] TEE 签发的授权令牌
- * @param z_sec_masked [out] 掩码保护后的端到端响应
+ * @note JNI 层必须传入挂载目录，底层据此执行文件级的原子性 rename 更新。
+ * @param nvram_dir [in] [新增] eUICC 安全存储的挂载目录路径 (用于读取 y_sec 并原子步进状态)
+ * @param c_agg [in] [修正类型] 扩展挑战标量多项式
  */
-void PQC_ComputeZ_and_Mask(const poly_vec_t *c_agg, const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
+void PQC_ComputeZ_and_Mask(const char* nvram_dir, const poly_t *c_agg, const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
                            const uint8_t H_ctx[PQ_ZK_SEED_BYTES], const uint8_t hash_M2[PQ_ZK_MAC_BYTES], 
                            const uint8_t AuthToken[PQ_ZK_MAC_BYTES], poly_vec_t *z_sec_masked);
-
 /**
  * @brief [阶段五] LPA 大噪声聚合
  * @param z_sec_masked [in] eUICC 输出的掩码响应
