@@ -25,6 +25,7 @@ extern "C" {
 #define PQ_ZK_N 256                     // 多项式环阶数
 #define PQ_ZK_K 3                       // Kyber-768 对应的模块维度
 #define PQ_ZK_SEED_BYTES 32             // 强制 256-bit 种子长度 (SHA-256 / AES-256)
+#define PQ_ZK_TEE_KEY_BYTES 32          // TEE 密钥的长度约束,规范 JNI 层的传参长度
 #define PQ_ZK_MAC_BYTES 32              // HMAC-SHA256 输出长度
 #define PQ_ZK_CHALLENGE_WEIGHT 26       // 稀疏挑战多项式非零系数个数 (kappa)
 // [新增] 大噪声淹没实验参数 (算法师需据此编写测试桩)
@@ -42,7 +43,7 @@ extern "C" {
 // 假设采用最直接的 16-bit 小端序扁平化: 3(k) * 256(N) * 2(bytes) = 1536 字节
 #define PQ_ZK_POLYVEC_BYTES 1536
 #define PQ_ZK_CONTEXT_BYTES 80          // 8(timestamp) + 4(lat) + 4(lon) + 64(desc)
-
+#define PQ_ZK_POLY_BYTES 512 // 256(N) * 2(bytes)
 /* ========================================================================= */
 /* 错误码枚举                                                                */
 /* ========================================================================= */
@@ -97,6 +98,12 @@ typedef struct __attribute__((packed)) {
  * @param sk_s [out] eUICC 内部存储的长期私钥 S
  */
 void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s);
+
+// [补充] 单多项式序列化（供 TEE 计算 AuthToken 使用）
+void PQC_EncodePoly(const poly_t *in_poly, uint8_t *out_bytes);
+
+// [补充] 单多项式反序列化（供 JNI 层重构 c_agg 使用）
+void PQC_DecodePoly(const uint8_t *in_bytes, poly_t *out_poly);
 
 /**
  * @brief [阶段零] eUICC 状态初始化
@@ -168,7 +175,7 @@ void PQC_GenChallenge(const poly_vec_t *comm_W, const uint8_t nonce[PQ_ZK_SEED_B
  * @param nvram_dir [in] [新增] eUICC 安全存储的挂载目录路径 (用于读取 y_sec 并原子步进状态)
  * @param c_agg [in] [修正类型] 扩展挑战标量多项式
  */
-void PQC_ComputeZ_and_Mask(const char* nvram_dir, const poly_t *c_agg, const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
+PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(const char* nvram_dir, const poly_t *c_agg, const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
                            const uint8_t H_ctx[PQ_ZK_SEED_BYTES], const uint8_t hash_M2[PQ_ZK_MAC_BYTES], 
                            const uint8_t AuthToken[PQ_ZK_MAC_BYTES], poly_vec_t *z_sec_masked);
 /**
