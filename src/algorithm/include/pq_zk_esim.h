@@ -130,7 +130,7 @@ void PQC_RegenerateYpub(const uint8_t seed_y[PQ_ZK_SEED_BYTES], poly_vec_t *y_pu
  * @param W_sec [out] 内部承诺 W_sec = A * y_sec (mod q)
  * @param MAC_W [out] 内部防篡改认证码 MAC(K_sym, W_sec || ctr_current)
  */
-void PQC_eUICC_Commit(poly_vec_t *W_sec, uint8_t MAC_W[PQ_ZK_MAC_BYTES]);
+void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec, uint8_t MAC_W[PQ_ZK_MAC_BYTES]);
 
 /**
  * @brief [阶段二] 挑战生成 (LPA 多维挑战展开)
