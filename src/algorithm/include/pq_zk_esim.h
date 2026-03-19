@@ -28,6 +28,7 @@ extern "C" {
 #define PQ_ZK_TEE_KEY_BYTES 32          // TEE 密钥的长度约束,规范 JNI 层的传参长度
 #define PQ_ZK_MAC_BYTES 32              // HMAC-SHA256 输出长度
 #define PQ_ZK_CHALLENGE_WEIGHT 26       // 稀疏挑战多项式非零系数个数 (kappa)
+
 // [新增] 大噪声淹没实验参数 (算法师需据此编写测试桩)
 #define PQ_ZK_ETA_S 2              // Kyber-768 私钥无穷范数边界
 #define PQ_ZK_RENYI_GAMMA 2        // Rényi 散度安全系数
@@ -66,6 +67,11 @@ typedef enum {
 typedef struct {
     int16_t coeffs[PQ_ZK_N];  
 } poly_t;
+
+typedef struct {
+    uint16_t beta_final;   // 无穷范数上界
+    uint16_t beta_min;     // 欧几里得范数下界
+} beta_params_t;
 
 /**
  * @brief 多项式向量抽象结构 (映射至环 R_q^m)
@@ -211,12 +217,13 @@ void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES], const uint8_t c_see
  * @param beta_params [in] 动态传入的边界检查参数配置结构 (防溢出及裸露阈值)
  * @return PQ_ZK_ErrorCode 验证结果
  */
-PQ_ZK_ErrorCode PQC_VerifyEngine(const uint8_t mat_A_seed[PQ_ZK_SEED_BYTES], 
+PQ_ZK_ErrorCode PQC_VerifyEngine(const uint8_t mat_A_seed[32], 
                                  const uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], 
                                  const poly_vec_t *comm_W, const poly_vec_t *resp_z, 
-                                 const uint8_t nonce_s[PQ_ZK_SEED_BYTES], 
-                                 const uint8_t H_ctx[PQ_ZK_SEED_BYTES], 
-                                 const poly_vec_t *M_mask, const void *beta_params);
+                                 const uint8_t nonce_s[32], 
+                                 const uint8_t H_ctx[32], 
+                                 const poly_vec_t *M_mask, 
+                                 const beta_params_t *beta_params);
 
 #ifdef __cplusplus
 }
