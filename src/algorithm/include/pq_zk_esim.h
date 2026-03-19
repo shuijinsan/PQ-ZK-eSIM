@@ -28,8 +28,12 @@ extern "C" {
 #define PQ_ZK_MAC_BYTES 32              // HMAC-SHA256 输出长度
 #define PQ_ZK_CHALLENGE_WEIGHT 39       // 稀疏挑战多项式非零系数个数 (kappa)
 
-// [修正] 完整公钥序列化长度 (32字节种子 + 3*256*12bit系数)
+// 完整公钥序列化长度 (32字节种子 + 3*256*12bit系数)
 #define PQ_ZK_PUBLICKEY_BYTES 1184
+// [新增] 内存安全红线：跨端 FFI/JNI 调用时强制约束的 Buffer 长度
+// 假设采用最直接的 16-bit 小端序扁平化: 3(k) * 256(N) * 2(bytes) = 1536 字节
+#define PQ_ZK_POLYVEC_BYTES 1536
+#define PQ_ZK_CONTEXT_BYTES 80          // 8(timestamp) + 4(lat) + 4(lon) + 64(desc)
 
 /* ========================================================================= */
 /* 错误码枚举                                                                */
@@ -103,6 +107,14 @@ void PQC_eUICC_Init(const char* nvram_dir, const uint8_t* eid, size_t eid_len,
  * @param out_bytes [out] 输出的扁平化字节流
  */
 void PQC_EncodePolyVec(const poly_vec_t *in_poly, uint8_t *out_bytes);
+
+/**
+ * @brief [新增] [通用标准] 多项式向量反序列化 (Decode)
+ * @note 跨端联调的生命线。用于将后端 Python 或 JNI 传入的字节流重构为代数对象。
+ * @param in_bytes [in] 长度必须为 PQ_ZK_POLYVEC_BYTES
+ */
+void PQC_DecodePolyVec(const uint8_t *in_bytes, poly_vec_t *out_poly);
+
 /**
  * @brief [通用标准] 上下文确定性序列化
  * @note 必须通过硬编码位移映射为小端序字节流，严禁直接哈希结构体指针。
