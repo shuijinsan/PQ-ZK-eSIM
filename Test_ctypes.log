@@ -1,0 +1,44 @@
+========================================================
+  PQ-ZK-eSIM Python ctypes 对接测试 v3.0
+  .so: /home/ubuntu/pq_zk_project/build/libpqzkesim_verify.so
+========================================================
+[OK] 库加载成功
+
+=== Python KAT 1: EncodePolyVec / DecodePolyVec ===
+[PASS] EncodePolyVec coeffs[0:3]
+[PASS] DecodePolyVec roundtrip
+  encoded[0:8] = 0000010002000300
+
+=== Python KAT 2: SerializeContext + H_ctx ===
+[PASS] SerializeContext header[0:16]
+  H_ctx = fb61b4c3a14b2a2dcaec455d26447dab8e9f3f14796b921de8ffa3c50a557c6d
+[PASS] H_ctx matches C-layer KAT
+
+=== Python KAT 3: GenerateMask (PRF) 确定性 ===
+[PASS] GenerateMask deterministic
+[PASS] GenerateMask ctr sensitivity
+[PASS] GenerateMask coeffs in [0, q-1]
+
+=== Python KAT 4: GenChallenge 稀疏性 ===
+[PASS] c_agg Hamming weight = κ=26
+[PASS] c_agg coeffs ∈ {-1,0,1}
+[PASS] GenChallenge deterministic
+
+=== Python KAT 6: MAC_W 格式验证（后端对齐关键）===
+  Python MAC_W (W=all-1, ctr=0) = d274e084547a6a7271ff2b723713673b1a19dd0f11a2318feeffe97dace5a5d0
+  EncodePolyVec(W_sec)[0:8] = 0100010001000100
+[PASS] EncodePolyVec all-1 coeffs
+  [INFO] 后端计算 MAC_W' 时必须用 PQC_EncodePolyVec 序列化 W_sec
+         然后拼接 ctr 的 8 字节小端序，再做 HMAC-SHA256
+
+=== Python KAT 5: 协议端到端 ===
+[PASS] eUICC_Init
+  MAC_W = 1b75482f6e5a3e2cce814a586da75c60ea8ba856b17ea7588a9832d4f9aa7b60
+[PASS] MAC_W non-zero
+  AuthToken = 3abbca18ab7e2877fa3c966145d42612cf24995a53ed1066f3dd125768383b35
+[PASS] ComputeZ_and_Mask rc=0
+[PASS] VerifyEngine rc=0
+
+========================================================
+  结果：15 通过，0 失败
+========================================================
