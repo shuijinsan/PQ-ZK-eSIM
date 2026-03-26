@@ -1,0 +1,51 @@
+========================================
+  PQ-ZK-eSIM KAT 测试向量 v3.0
+  供前端 JNI 和后端 Python 基准校验
+========================================
+
+=== KAT 1: PQC_SerializeContext ===
+ctx_bytes[0:16]               : 20b345670000000010e8d612701c5848
+[PASS] SerializeContext header
+H_ctx (SHA256)                : fb61b4c3a14b2a2dcaec455d26447dab8e9f3f14796b921de8ffa3c50a557c6d
+
+=== KAT 2: PQC_EncodePolyVec / PQC_DecodePolyVec ===
+[PASS] EncodePolyVec first 3 coeffs
+encoded[0:8]                  : 0000010002000300
+[PASS] DecodePolyVec roundtrip
+
+=== KAT 3: PQC_EncodePoly / PQC_DecodePoly ===
+[PASS] EncodePoly {1,-1,0,1}
+[PASS] DecodePoly roundtrip
+
+=== KAT 4: SHA-256 / HMAC-SHA256 ===
+[PASS] SHA256 empty string
+[PASS] SHA256 'abc'
+SHA256('abc')                 : ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+[PASS] HMAC-SHA256
+HMAC-SHA256                   : f7bc83f430538424b13298e6aa6fb143ef4d59a14946175997479dbc2d1a3cd8
+
+=== KAT 5: PRF (AES-256-CTR) ===
+PRF output[0:32]              : 79eb3304ad916d9792000ca8f7397e2731477b0cb7ace3f19c551d48c47d8d41
+PRF output[32:64]             : 2f27b9c5521ac7c693b978d2275b334fcc5bd49a0cd115780be5cd94af040133
+[PASS] PRF deterministic
+[PASS] PRF ctr sensitivity
+
+=== KAT 6: SampleInBall_κ ===
+c_agg[0:8]                    : 000000000000000000000000ffff0100
+Hamming weight: 26 (expected 26)
+Bad coeffs: 0
+[PASS] SampleInBall weight & domain
+[PASS] SampleInBall deterministic
+
+=== KAT 7: 协议端到端流程 ===
+[INFO] GenKeyPair done. pk_t[0:8]: 50515a4b4553494d
+[PASS] eUICC_Init done
+MAC_W                         : ee81d4de1ec8412bebdba4f33936f80eff23a6abd7e987bec205e54139c8ad52
+[PASS] GenChallenge c_agg weight=26
+AuthToken                     : b800a6677d5cd4042de98b980526ec2cad4509bfc6e3ddb2f2aa92c8bf9901fc
+[PASS] ComputeZ_and_Mask rc=0
+[PASS] VerifyEngine
+
+========================================
+  结果：16 通过，0 失败
+========================================
