@@ -77,21 +77,3 @@ int nvram_write_atomic(const char *nvram_dir, const nvram_state_t *state)
 
     return 0;
 }
-
-/* ================================================================
- * nvram_update_ctr_and_key
- * 原子更新计数器 + K_sym（两者必须同时生效）
- * 这是阶段四前向安全的核心约束
- * ================================================================ */
-
-int nvram_update_ctr_and_key(const char *nvram_dir, uint64_t new_ctr,
-                              const uint8_t new_k_sym[32])
-{
-    nvram_state_t state;
-    if (nvram_read(nvram_dir, &state) != 0) return -1;
-
-    state.ctr_local = new_ctr;
-    memcpy(state.k_sym, new_k_sym, 32);
-
-    return nvram_write_atomic(nvram_dir, &state);
-}

@@ -95,9 +95,10 @@ int pqzk_shake256(const uint8_t *in, size_t in_len,
 int pqzk_aes256_ctr(const uint8_t key[32], const uint8_t iv[16],
                     uint8_t *out, size_t out_len);
 
-/* 协议 PRF：PRF(K_sym, c_seed || ctr_le8 || H_ctx) → out_len 字节 */
+/* 协议 PRF (v4.0)：PRF(K_sym, c_seed || Serialize(ctr) || R_dynamic) → out_len 字节
+ * 注意：第三个参数在 4.0 中语义为 R_dynamic（动态验证根），接口名保持不变 */
 int pqzk_prf(const uint8_t K_sym[32], const uint8_t c_seed[32],
-             uint64_t ctr, const uint8_t H_ctx[32],
+             uint64_t ctr, const uint8_t R_dynamic[32],
              uint8_t *out, size_t out_len);
 
 /* KDF：HMAC-SHA256(K_sym, d_seed || EID) → new_key[32] */
@@ -184,9 +185,11 @@ typedef struct __attribute__((packed)) {
     uint8_t  k_sym[NVRAM_SYM_LEN];     /* 对称密钥 K_sym */
     uint8_t  k_tee[NVRAM_TEE_LEN];     /* TEE-eUICC 总线密钥 */
     uint8_t  d_seed[NVRAM_DSEED_LEN];  /* KDF 派生种子 */
-    uint64_t ctr_local;                 /* 物理计数器 */
+    uint64_t ctr_local;                /* 物理计数器 */
     uint8_t  y_sec[NVRAM_YSEC_LEN];    /* 会话盲化因子（严禁外泄） */
     uint8_t  y_sec_valid;              /* y_sec 有效标志 */
+    uint8_t salt[32];                  /* 生物特征盐，由 TEE 传入 */
+    uint8_t cred_kyc[64];              /* KYC 凭证，注册时注入 */
     uint8_t  _pad[7];
 } nvram_state_t;
 

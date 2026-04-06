@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.22)
-project(pq_zk_esim VERSION 3.0 LANGUAGES C)
+project(pq_zk_esim VERSION 5.0 LANGUAGES C)
 
 # ============================================================
 # 编译器基线
@@ -34,17 +34,9 @@ else()
 endif()
 
 # ============================================================
-# liboqs 依赖（数学底层：大数运算、NTT 等）
-# 协议逻辑（阶段一/四/六）由算法师用 C 实现，不用 liboqs API
+# liboqs 依赖（仅作为底层数学库）
 # ============================================================
-find_package(liboqs QUIET)
-if(liboqs_FOUND)
-    message(STATUS "liboqs found: ${liboqs_DIR}")
-else()
-    message(WARNING "liboqs not found via find_package. "
-                    "请确保 liboqs 已编译并设置 CMAKE_PREFIX_PATH。"
-                    "继续构建（仅核心协议逻辑，不依赖 liboqs 的高层 API）。")
-endif()
+find_package(liboqs REQUIRED)
 
 # ============================================================
 # OpenSSL（Linux）/ BoringSSL（Android NDK 自带）
@@ -65,6 +57,7 @@ set(PQZK_SOURCES
     src/crypto/pq-zk-crypto.c
     src/algebra/pq_zk_poly.c
     src/platform/pq_zk_nvram.c
+    src/tee/pqzk_merkle.c
 )
 
 set(PQZK_INCLUDES
@@ -73,35 +66,35 @@ set(PQZK_INCLUDES
     ${CMAKE_CURRENT_SOURCE_DIR}/src/internal   # 增加这一行，专门对付那个 internal 里的头文件
 )
 
+
+
 # ============================================================
 # 目标 1：核心共享库（Linux .so / Android .so）
 # ============================================================
 add_library(pqzkesim SHARED ${PQZK_SOURCES})
 target_include_directories(pqzkesim PUBLIC ${PQZK_INCLUDES})
-target_link_libraries(pqzkesim PRIVATE ${CRYPTO_LIBS} m)
+target_link_libraries(pqzkesim PRIVATE OQS::oqs ${CRYPTO_LIBS} m)
+
 
 # 导出符号（供后端 Python ctypes 加载）
 set_target_properties(pqzkesim PROPERTIES
     OUTPUT_NAME "pqzkesim"
     C_VISIBILITY_PRESET default
-    VERSION 3.0
-    SOVERSION 3
+    VERSION 4.0
+    SOVERSION 4
+    C_VISIBILITY_PRESET default   # 导出所有符号，供 Python ctypes 直接加载
 )
-
-if(liboqs_FOUND)
-    target_link_libraries(pqzkesim PRIVATE OQS::oqs)
-endif()
 
 # ============================================================
 # 目标 2：验证专用共享库（供后端直接加载）
 # ============================================================
 add_library(pqzkesim_verify SHARED ${PQZK_SOURCES})
 target_include_directories(pqzkesim_verify PUBLIC ${PQZK_INCLUDES})
-target_link_libraries(pqzkesim_verify PRIVATE ${CRYPTO_LIBS} m)
-set_target_properties(pqzkesim_verify PROPERTIES OUTPUT_NAME "pqzkesim_verify")
-if(liboqs_FOUND)
-    target_link_libraries(pqzkesim_verify PRIVATE OQS::oqs)
-endif()
+target_link_libraries(pqzkesim_verify PRIVATE OQS::oqs ${CRYPTO_LIBS} m)
+set_target_properties(pqzkesim_verify PROPERTIES OUTPUT_NAME "pqzkesim_verify"
+    VERSION     4.0
+    SOVERSION   4)
+
 
 # ============================================================
 # 目标 3：测试可执行文件（仅 Linux）
@@ -109,11 +102,14 @@ endif()
 if(NOT ANDROID)
     add_executable(test_vectors test/kat/test_vectors.c ${PQZK_SOURCES})
     target_include_directories(test_vectors PRIVATE ${PQZK_INCLUDES})
-    target_link_libraries(test_vectors PRIVATE ${CRYPTO_LIBS} m)
-    if(liboqs_FOUND)
-        target_link_libraries(test_vectors PRIVATE OQS::oqs)
-    endif()
+    target_link_libraries(test_vectors PRIVATE OQS::oqs ${CRYPTO_LIBS} m)
+  
 
+     add_executable(bench_pqzkesim experiments/benchmarks/bench_pqzkesim.c ${PQZK_SOURCES})
+    target_include_directories(bench_pqzkesim PRIVATE ${PQZK_INCLUDES})
+    target_link_libraries(bench_pqzkesim PRIVATE OQS::oqs ${CRYPTO_LIBS} m)
+
+  
     # 注册 CTest
     enable_testing()
     add_test(NAME KAT COMMAND test_vectors)
@@ -121,13 +117,16 @@ if(NOT ANDROID)
 endif()
 
 # ============================================================
-# 安装规则（可选，用于系统级安装）
+# 安装规则
 # ============================================================
 install(TARGETS pqzkesim pqzkesim_verify
     LIBRARY DESTINATION lib
     ARCHIVE DESTINATION lib
 )
-install(FILES include/pq_zk_esim.h DESTINATION include)
+install(FILES 
+            include/pq_zk_esim.h
+            include/pqzk_merkle.h  
+            DESTINATION include)
 
 # ============================================================
 # 打印构建摘要
@@ -137,6 +136,7 @@ message(STATUS "  项目    : PQ-ZK-eSIM v3.0")
 message(STATUS "  平台    : ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "  类型    : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  liboqs  : ${liboqs_FOUND}")
+message(STATUS "  OpenSSL : ${OPENSSL_VERSION}")
 message(STATUS "----------------------------------------")
 message(STATUS "Android 交叉编译命令示例：")
 message(STATUS "  cmake -DCMAKE_TOOLCHAIN_FILE=\$NDK/build/cmake/android.toolchain.cmake \\")

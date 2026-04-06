@@ -195,11 +195,10 @@ _Static_assert(
  * 用法（bench_pqzkesim.c）：
  *   beta_params_t p = PQZK_MAKE_BETA_PARAMS(30, 120.0);
  */
-#define PQZK_MAKE_BETA_PARAMS(kappa_, sigma_)  {                       \
-    (uint16_t)((int32_t)((kappa_) * PQZK_TAU * (int32_t)(sigma_)      \
-               / (kappa_))                                              \
-               + 1 + (kappa_) * PQ_ZK_ETA_S),  /* beta_final */       \
-    (uint16_t)(2735)                             /* beta_min 固定 */   \
+#define PQZK_MAKE_BETA_PARAMS(kappa_, sigma_)  {                            \
+    (uint16_t)((int32_t)(PQZK_TAU * (int32_t)(sigma_))                     \
+               + 1 + (kappa_) * PQ_ZK_ETA_S),   /* beta_final */           \
+    (uint16_t)(2735)                              /* beta_min 固定 */       \
 }
 
 #endif /* PQZK_PARAMS_H */
