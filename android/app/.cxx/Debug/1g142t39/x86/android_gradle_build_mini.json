@@ -1,0 +1,29 @@
+{
+  "buildFiles": [
+    "D:\\programa\\app\\src\\main\\cpp\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "D:\\Androidstudio\\SDK\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "D:\\programa\\app\\.cxx\\Debug\\1g142t39\\x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "D:\\Androidstudio\\SDK\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "D:\\programa\\app\\.cxx\\Debug\\1g142t39\\x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "native-lib::@6890427a1f51a3e7e1df": {
+      "artifactName": "native-lib",
+      "abi": "x86",
+      "output": "D:\\programa\\app\\build\\intermediates\\cxx\\Debug\\1g142t39\\obj\\x86\\libnative-lib.so",
+      "runtimeFiles": [
+        "D:\\programa\\app\\src\\main\\jniLibs\\arm64-v8a\\libpqzkesim.so"
+      ]
+    }
+  }
+}

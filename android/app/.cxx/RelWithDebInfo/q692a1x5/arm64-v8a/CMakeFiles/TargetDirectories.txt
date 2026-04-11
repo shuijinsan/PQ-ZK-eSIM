@@ -1,0 +1,4 @@
+D:/programa/app/.cxx/RelWithDebInfo/q692a1x5/arm64-v8a/CMakeFiles/pqzkesim.dir
+D:/programa/app/.cxx/RelWithDebInfo/q692a1x5/arm64-v8a/CMakeFiles/native-lib.dir
+D:/programa/app/.cxx/RelWithDebInfo/q692a1x5/arm64-v8a/CMakeFiles/edit_cache.dir
+D:/programa/app/.cxx/RelWithDebInfo/q692a1x5/arm64-v8a/CMakeFiles/rebuild_cache.dir

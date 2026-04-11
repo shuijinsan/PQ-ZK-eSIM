@@ -1,0 +1,7 @@
+[
+{
+  "directory": "D:/programa/app/.cxx/Debug/1g142t39/x86",
+  "command": "D:\\Androidstudio\\SDK\\ndk\\26.3.11579264\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe --target=i686-none-linux-android28 --sysroot=D:/Androidstudio/SDK/ndk/26.3.11579264/toolchains/llvm/prebuilt/windows-x86_64/sysroot -Dnative_lib_EXPORTS -g -DANDROID -fdata-sections -ffunction-sections -funwind-tables -fstack-protector-strong -no-canonical-prefixes -D_FORTIFY_SOURCE=2 -Wformat -Werror=format-security   -fno-limit-debug-info  -fPIC -o CMakeFiles\\native-lib.dir\\native-lib.cpp.o -c D:\\programa\\app\\src\\main\\cpp\\native-lib.cpp",
+  "file": "D:\\programa\\app\\src\\main\\cpp\\native-lib.cpp"
+}
+]

@@ -1,0 +1,27 @@
+{
+  "buildFiles": [
+    "D:\\programa\\app\\src\\main\\cpp\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "D:\\Androidstudio\\SDK\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "D:\\programa\\app\\.cxx\\RelWithDebInfo\\3e1y705p\\x86",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "D:\\Androidstudio\\SDK\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "D:\\programa\\app\\.cxx\\RelWithDebInfo\\3e1y705p\\x86",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "pqzkesim::@6890427a1f51a3e7e1df": {
+      "artifactName": "pqzkesim",
+      "abi": "x86",
+      "output": "D:\\programa\\app\\build\\intermediates\\cxx\\RelWithDebInfo\\3e1y705p\\obj\\x86\\libpqzkesim.so",
+      "runtimeFiles": []
+    }
+  }
+}

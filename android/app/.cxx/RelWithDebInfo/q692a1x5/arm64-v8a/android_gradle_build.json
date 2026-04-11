@@ -1,0 +1,49 @@
+{
+  "buildFiles": [
+    "D:\\programa\\app\\src\\main\\cpp\\CMakeLists.txt"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "D:\\Androidstudio\\SDK\\cmake\\3.22.1\\bin\\ninja.exe",
+      "-C",
+      "D:\\programa\\app\\.cxx\\RelWithDebInfo\\q692a1x5\\arm64-v8a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "D:\\Androidstudio\\SDK\\cmake\\3.22.1\\bin\\ninja.exe",
+    "-C",
+    "D:\\programa\\app\\.cxx\\RelWithDebInfo\\q692a1x5\\arm64-v8a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "native-lib::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "native-lib",
+      "output": "D:\\programa\\app\\build\\intermediates\\cxx\\RelWithDebInfo\\q692a1x5\\obj\\arm64-v8a\\libnative-lib.so",
+      "runtimeFiles": [
+        "D:\\programa\\app\\build\\intermediates\\cxx\\RelWithDebInfo\\q692a1x5\\obj\\arm64-v8a\\libpqzkesim.so"
+      ]
+    },
+    "pqzkesim::@6890427a1f51a3e7e1df": {
+      "toolchain": "toolchain",
+      "abi": "arm64-v8a",
+      "artifactName": "pqzkesim",
+      "output": "D:\\programa\\app\\build\\intermediates\\cxx\\RelWithDebInfo\\q692a1x5\\obj\\arm64-v8a\\libpqzkesim.so",
+      "runtimeFiles": []
+    }
+  },
+  "toolchains": {
+    "toolchain": {
+      "cCompilerExecutable": "D:\\Androidstudio\\SDK\\ndk\\26.3.11579264\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang.exe",
+      "cppCompilerExecutable": "D:\\Androidstudio\\SDK\\ndk\\26.3.11579264\\toolchains\\llvm\\prebuilt\\windows-x86_64\\bin\\clang++.exe"
+    }
+  },
+  "cFileExtensions": [
+    "c"
+  ],
+  "cppFileExtensions": [
+    "cpp"
+  ]
+}
