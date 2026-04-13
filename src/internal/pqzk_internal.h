@@ -9,6 +9,8 @@
 #include "pq_zk_esim.h"
 #include <string.h>
 #include <stdlib.h>
+#include "pqzk_merkle.h"   /* PQZK_MERKLE_MAX_DEPTH / MAX_LEAVES / HASH_BYTES */
+#include "pqzk_cert.h"     /* PQZK_MNO_ID_BYTES */
 
 #ifdef __cplusplus
 extern "C" {
@@ -191,6 +193,38 @@ typedef struct __attribute__((packed)) {
     uint8_t salt[32];                  /* 生物特征盐，由 TEE 传入 */
     uint8_t cred_kyc[64];              /* KYC 凭证，注册时注入 */
     uint8_t  _pad[7];
+
+
+    /* ──  新增：持久化 Merkle 树 ── */
+    uint8_t  R_bio[32];
+    uint8_t  tree_nodes[PQZK_MERKLE_MAX_DEPTH + 1]
+                       [PQZK_MERKLE_MAX_LEAVES]
+                       [PQZK_MERKLE_HASH_BYTES];
+    uint32_t tree_n_leaves;
+    uint32_t tree_depth;
+    uint8_t  tree_valid;
+
+    /* ──  新增：多运营商支持 ── */
+    /*
+     * 当前激活的运营商标识（16字节）。
+     * 注册完成时写入 MNO_A 标识，切换完成后更新为 MNO_B 标识。
+     * 用于 mode_auth 显示当前运营商，以及切换时记录来源运营商。
+     */
+    uint8_t  active_mno_id[PQZK_MNO_ID_BYTES];
+
+    /*
+     * 运营商专属生物根。
+     * 注册时 = R_bio（静态根）。
+     * 切换到 MNO_B 后 = R_bio_B = Hash(R_bio || Domain_ID_B)。
+     * TEE_GenerateAuthToken 每次认证时从此字段读取 R_bio 使用。
+     */
+    uint8_t  active_R_bio[32];
+
+    /*
+     * 切换历史计数器（已切换运营商次数）。
+     * 仅用于日志和审计，不参与密码学计算。
+     */
+    uint32_t switch_count;
 } nvram_state_t;
 
 /* 从 nvram_dir 读取状态，返回 0 成功，-1 失败 */

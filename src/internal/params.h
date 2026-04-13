@@ -116,6 +116,7 @@
  * 保守取整为 2735（留余量防参数漂移）
  */
 #define PQZK_BETA_MIN           2735
+#define PQZK_BETA_L1  50000
 
 /**
  * 单次认证解密失败率估算（论文 Evaluation 数据）
@@ -186,7 +187,7 @@ _Static_assert(
  *   PQC_VerifyEngine(..., &p);
  */
 #define PQZK_DEFAULT_BETA_PARAMS  \
-    { (uint16_t)PQZK_BETA_FINAL, (uint16_t)PQZK_BETA_MIN }
+    { (uint16_t)PQZK_BETA_FINAL, (uint16_t)PQZK_BETA_MIN, (uint32_t)PQZK_BETA_L1}
 
 /**
  * PQZK_MAKE_BETA_PARAMS(kappa, sigma)
@@ -200,5 +201,6 @@ _Static_assert(
                + 1 + (kappa_) * PQ_ZK_ETA_S),   /* beta_final */           \
     (uint16_t)(2735)                              /* beta_min 固定 */       \
 }
+
 
 #endif /* PQZK_PARAMS_H */

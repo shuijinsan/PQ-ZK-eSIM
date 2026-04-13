@@ -15,9 +15,10 @@
 #include <stddef.h>
 #include <stdbool.h>    
 
-/* pqzk_merkle.h 包含 merkle_tree_t / merkle_path_t，
- * 供 TEE_GenerateAuthToken 参数使用（内部接口） */
+
 #include "pqzk_merkle.h"
+#include "pqzk_merkle.h"
+#include "pqzk_cert.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,6 +77,8 @@ typedef struct {
 typedef struct {
     uint16_t beta_final;   // 无穷范数上界
     uint16_t beta_min;     // 欧几里得范数下界
+    uint32_t beta_l1;      /* 新增：L1 下界：‖z_unmasked‖₁ ≥ β_L1，防噪声整形攻击
+                            * 设为 0 时禁用此项检查（向后兼容） */
 } beta_params_t;
 
 /**
@@ -271,5 +274,74 @@ PQ_ZK_ErrorCode PQC_VerifyEngine(const uint8_t mat_A_seed[32],
 #ifdef __cplusplus
 }
 #endif
+
+
+/* ================================================================
+ * 注册与持久化接口（新增）
+ * ================================================================ */
+
+/**
+ * @brief [注册] 一次性注册初始化
+ *
+ * 完成密钥对生成、Merkle 树建立、nvram 初始化。
+ * 输出需要上传服务器的注册数据。
+ *
+ * @param nvram_dir       eUICC 存储路径
+ * @param feature_blocks  人脸特征块数组（每块32字节）
+ * @param n_blocks        特征块数量
+ * @param k_sym           预共享对称密钥（服务器带外传入）
+ * @param k_tee           TEE 内部总线密钥
+ * @param initial_ctr     初始计数器
+ * @param mno_id          当前运营商标识（16字节）
+ * @param pk_t_out        [out] 公钥（上传服务器）
+ * @param R_bio_out       [out] 静态生物根（上传服务器）
+ * @param salt_out        [out] 设备盐（上传服务器）
+ */
+PQ_ZK_ErrorCode PQC_Register(
+    const char    *nvram_dir,
+    const uint8_t  feature_blocks[][PQZK_MERKLE_HASH_BYTES],
+    size_t         n_blocks,
+    const uint8_t  k_sym[32],
+    const uint8_t  k_tee[32],
+    uint64_t       initial_ctr,
+    const uint8_t  mno_id[PQZK_MNO_ID_BYTES],
+    uint8_t        pk_t_out[PQ_ZK_PUBLICKEY_BYTES],
+    uint8_t        R_bio_out[32],
+    uint8_t        salt_out[32]
+);
+
+/**
+ * @brief [认证前] 从 nvram 加载 Merkle 树
+ *
+ * 认证阶段 TEE 调用，从持久化存储恢复 merkle_tree_t。
+ *
+ * @param nvram_dir  eUICC 存储路径
+ * @param tree_out   [out] Merkle 树
+ */
+PQ_ZK_ErrorCode PQC_LoadTree(const char    *nvram_dir,
+                               merkle_tree_t *tree_out);
+
+/* ================================================================
+ * 运营商切换接口（v5.0 新增）
+ * ================================================================ */
+
+/**
+ * @brief [切换] 完整运营商切换流程（七步）
+ *
+ * 对应协议 §5.1.5，包含：
+ *   TEE 活体验证 → 派生 R_bio_B → 生成新密钥对 →
+ *   ML-KEM 握手 → 身份证据包传输 → MNO_B 验证 → 密钥注入
+ *
+ * @param nvram_dir    当前 eUICC nvram 目录（MNO_A 状态）
+ * @param domain_id_b  目标运营商 MNO_B 标识（16字节）
+ * @param mno_a_id     当前运营商 MNO_A 标识（16字节）
+ * @param mno_a_sk     MNO_A 签名私钥（32字节，模拟）
+ *
+ * @return PQ_ZK_SUCCESS 或错误码
+ */
+int mode_switch(const char    *nvram_dir,
+                const uint8_t  domain_id_b[PQZK_MNO_ID_BYTES],
+                const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES],
+                const uint8_t  mno_a_sk[32]);
 
 #endif // PQ_ZK_ESIM_H

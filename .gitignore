@@ -61,3 +61,4 @@ build/
 __pycache__/
 .vscode/
 bin/
+venv/

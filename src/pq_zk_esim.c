@@ -280,7 +280,13 @@ void PQC_eUICC_Init(const char* nvram_dir,
 
     nvram_state_t state;
     memset(&state, 0, sizeof(state));
-
+    /* 初始运营商标识（注册时传入，切换后由 mode_switch 更新） */
+    /* 如果调用方没有传 mno_id，保持全零表示"未设置" */
+    /* 注意：PQC_Register 会直接操作 nvram_state_t，
+     *       PQC_eUICC_Init 保持向后兼容，不强制要求 mno_id */
+    memset(state.active_mno_id, 0, PQZK_MNO_ID_BYTES);
+    memset(state.active_R_bio,  0, 32);
+   
     memcpy(state.magic, NVRAM_MAGIC, 4);
     memcpy(state.eid,   eid,   eid_len);
     PQC_EncodePolyVec(sk_s, state.sk_s);    /* 私钥序列化存储 */
@@ -290,7 +296,9 @@ void PQC_eUICC_Init(const char* nvram_dir,
     if (cred_kyc)  memcpy(state.cred_kyc, cred_kyc,
                           cred_kyc_len > 64 ? 64 : cred_kyc_len);
     state.ctr_local   = initial_ctr;
+    state.switch_count = 0;
     state.y_sec_valid = 0;                  /* 尚未生成 y_sec */
+    state.tree_valid   = 0;   /* 树由 PQC_Register 写入，Init 不写 */
 
     /*
      * d_seed 派生：
@@ -303,6 +311,101 @@ void PQC_eUICC_Init(const char* nvram_dir,
 
     /* 清零敏感中间状态 */
     secure_zero(&state, sizeof(state));
+}
+
+/* ================================================================
+ * PQC_Register — 注册阶段一次性初始化（新增）
+ * ================================================================ */
+PQ_ZK_ErrorCode PQC_Register(
+    const char    *nvram_dir,
+    const uint8_t  feature_blocks[][PQZK_MERKLE_HASH_BYTES],
+    size_t         n_blocks,
+    const uint8_t  k_sym[32],
+    const uint8_t  k_tee[32],
+    uint64_t       initial_ctr,
+    const uint8_t  mno_id[PQZK_MNO_ID_BYTES],
+    uint8_t        pk_t_out[PQ_ZK_PUBLICKEY_BYTES],
+    uint8_t        R_bio_out[32],
+    uint8_t        salt_out[32])
+{
+    if (!nvram_dir || !feature_blocks || !k_sym ||
+        !k_tee || !mno_id || !pk_t_out || !R_bio_out || !salt_out)
+        return PQ_ZK_ERR_INVALID_PARAM;
+
+    /* 生成密钥对 */
+    poly_vec_t sk_s;
+    PQC_GenKeyPair(pk_t_out, &sk_s);
+
+    /* 生成设备专属盐 */
+    pqzk_rand_bytes(salt_out, 32);
+
+    /* 建 Merkle 树 */
+    merkle_tree_t tree;
+    if (PQC_MerkleTree_Build(feature_blocks, n_blocks,
+                              salt_out, &tree) != 0) {
+        secure_zero(&sk_s, sizeof(sk_s));
+        return PQ_ZK_ERR_INVALID_PARAM;
+    }
+    memcpy(R_bio_out, tree.root, 32);
+
+    /* 构造 nvram 初始状态 */
+    nvram_state_t state;
+    memset(&state, 0, sizeof(state));
+
+    memcpy(state.magic,         "PQZK",  4);
+    memcpy(state.k_sym,         k_sym,   32);
+    memcpy(state.k_tee,         k_tee,   32);
+    memcpy(state.salt,          salt_out, 32);
+    memcpy(state.R_bio,         R_bio_out, 32);
+    memcpy(state.active_R_bio,  R_bio_out, 32);  /* 初始激活根 = 静态根 */
+    memcpy(state.active_mno_id, mno_id,   PQZK_MNO_ID_BYTES);
+    PQC_EncodePolyVec(&sk_s, state.sk_s);
+    pqzk_sha256(k_sym, 32, state.d_seed);
+    state.ctr_local    = initial_ctr;
+    state.y_sec_valid  = 0;
+    state.switch_count = 0;
+
+    /* 持久化 Merkle 树 */
+    state.tree_valid    = 1;
+    state.tree_n_leaves = tree.n_leaves;
+    state.tree_depth    = tree.depth;
+    memcpy(state.tree_nodes, tree.nodes, sizeof(tree.nodes));
+
+    nvram_write_atomic(nvram_dir, &state);
+
+    /* 安全清零 */
+    secure_zero(&sk_s,  sizeof(sk_s));
+    secure_zero(&state, sizeof(state));
+    return PQ_ZK_SUCCESS;
+}
+
+/* ================================================================
+ * PQC_LoadTree — 从 nvram 恢复 Merkle 树（新增）
+ * ================================================================ */
+PQ_ZK_ErrorCode PQC_LoadTree(const char    *nvram_dir,
+                               merkle_tree_t *tree_out)
+{
+    if (!nvram_dir || !tree_out) return PQ_ZK_ERR_INVALID_PARAM;
+
+    nvram_state_t state;
+    if (nvram_read(nvram_dir, &state) != 0)
+        return PQ_ZK_ERR_NOT_INITIALIZED;
+
+    if (!state.tree_valid) {
+        secure_zero(&state, sizeof(state));
+        return PQ_ZK_ERR_NOT_INITIALIZED;
+    }
+
+    memset(tree_out, 0, sizeof(*tree_out));
+    tree_out->n_leaves = state.tree_n_leaves;
+    tree_out->depth    = state.tree_depth;
+    memcpy(tree_out->root,  state.active_R_bio, 32); /* 用激活根，切换后为R_bio_B */
+    memcpy(tree_out->salt,  state.salt,          32);
+    memcpy(tree_out->nodes, state.tree_nodes,
+           sizeof(tree_out->nodes));
+
+    secure_zero(&state, sizeof(state));
+    return PQ_ZK_SUCCESS;
 }
 
 /* ================================================================
@@ -799,18 +902,46 @@ PQ_ZK_ErrorCode PQC_VerifyEngine(
     }
 
     /* 步骤3（提前）：范数检查
-     * 提前执行可避免大矩阵乘法的无谓开销 */
+     * 提前执行可避免大矩阵乘法的无谓开销 
+      提前执行可避免大矩阵乘法的无谓开销。
+     * 三重校验设计（v5.0 新增 L1 下界）：
+     *
+     *   1. L∞ 上界：‖z_unmasked‖∞ ≤ β_final
+     *      防止模 q 环绕导致信息丢失，确保解盲正确性。
+     *
+     *   2. L2 下界：‖z_unmasked‖₂ ≥ β_min
+     *      防止恶意 LPA 令 y_pub=0（裸露攻击），
+     *      正常高斯噪声的 L2 范数以压倒性概率超过 β_min。
+     *
+     *   3. L1 下界：‖z_unmasked‖₁ ≥ β_L1（v5.0 新增）
+     *      防止"噪声整形攻击"：恶意 LPA 可能构造稀疏噪声向量，
+     *      仅在少数维度填入大噪声，其余维度为零。此类向量可绕过
+     *      L∞ 和 L2 检查，但会导致零值维度上统计分布偏斜，
+     *      削弱统计零知识性（Statistical ZK）的覆盖密度。
+     *      L1 下界要求噪声能量在各维度上均匀分布，
+     *      强制 LPA 在绝大多数维度上填入非零噪声。
+     *      计算开销：仅 O(K·N) 次绝对值求和，对服务器性能几乎无影响。*/
     int32_t inf_norm = 0;
     int64_t l2_sq    = 0;
+    int64_t l1_norm  = 0;   /*  新增：L1 范数累加器 */
     for (int i = 0; i < PQ_ZK_K * PQ_ZK_N; i++) {
         int32_t v  = z_unmasked.coeffs[i];
         int32_t av = (v < 0) ? -v : v;
         if (av > inf_norm) inf_norm = av;
         l2_sq += (int64_t)v * v;
+        l1_norm += (int64_t)av;   /* v5.0 新增：累加绝对值 */
     }
+    /* L∞ 上界：防溢出 */
     if (inf_norm > (int32_t)beta_params->beta_final)
         return PQ_ZK_ERR_NORM_BOUND;
+ 
+    /* L2 下界：防裸露攻击（y_pub=0） */
     if (l2_sq < (int64_t)beta_params->beta_min * beta_params->beta_min)
+        return PQ_ZK_ERR_NORM_BOUND;
+ 
+    /* L1 下界：防噪声整形攻击（v5.0 新增） */
+    if (beta_params->beta_l1 > 0 &&
+        l1_norm < (int64_t)beta_params->beta_l1)
         return PQ_ZK_ERR_NORM_BOUND;
 
     /* 步骤4：W' = A·z_unmasked - T·c_agg mod q */
