@@ -21,6 +21,8 @@
 #include <errno.h>
 
 #define NVRAM_MAGIC "PQZK"
+static uint64_t nvram_write_count = 0;
+static uint64_t nvram_byte_count = 0;
 
 /* 构造文件路径 */
 static void build_path(const char *dir, const char *file, char *out, size_t sz)
@@ -46,6 +48,7 @@ int nvram_read(const char *nvram_dir, nvram_state_t *state)
     if (nr != sizeof(nvram_state_t)) return -1;
     if (memcmp(state->magic, NVRAM_MAGIC, 4) != 0) return -1;
 
+
     return 0;
 }
 
@@ -67,13 +70,26 @@ int nvram_write_atomic(const char *nvram_dir, const nvram_state_t *state)
     size_t nw = fwrite(state, 1, sizeof(nvram_state_t), f);
     if (nw != sizeof(nvram_state_t)) { fclose(f); return -1; }
 
-    /* 2. fsync 确保数据落盘 */
-    if (fflush(f) != 0) { fclose(f); return -1; }
-    if (fsync(fileno(f)) != 0) { fclose(f); return -1; }
     fclose(f);
 
     /* 3. 原子 rename */
     if (rename(path_tmp, path_final) != 0) return -1;
 
+    nvram_write_count++;
+    nvram_byte_count += nw;
     return 0;
 }
+
+void nvram_reset_write_count(void) { nvram_write_count = 0; nvram_byte_count = 0; }
+uint64_t nvram_get_write_count(void) { return nvram_write_count; }
+
+int nvram_update_ctr_and_key(const char *nvram_dir, uint64_t new_ctr,
+                              const uint8_t new_k_sym[32])
+{
+    nvram_state_t state;
+    if (nvram_read(nvram_dir, &state) != 0) return -1;
+    state.ctr_local = new_ctr;
+    memcpy(state.k_sym, new_k_sym, 32);
+    return nvram_write_atomic(nvram_dir, &state);
+}
+uint64_t nvram_get_byte_count(void) { return nvram_byte_count; }

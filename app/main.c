@@ -1,12 +1,17 @@
 /*
- * main.c — PQ-ZK-eSIM v5.0 软件入口（完整版，含运营商切换）
+ * main.c — PQ-ZK-eSIM 线上软件入口
+ *
+ * 前提：已通过线下初始化脚本（tools/setup_euicc.sh）完成 eUICC 激活。
  *
  * 用法：
- *   注册：  ./pqzkesim --register --face features.bin --nvram /tmp/euicc
- *   认证：  ./pqzkesim --auth     --nvram /tmp/euicc
- *   切换：  ./pqzkesim --switch   --nvram /tmp/euicc \
- *                      --mno-b-id "operator_b_id_16b" \
- *                      --mno-a-id "operator_a_id_16b"
+ *   认证：./pqzkesim --auth   --nvram /tmp/euicc
+ *   切换：./pqzkesim --switch --nvram /tmp/euicc --mno-b-id MNO_B_001
+ *
+ * 注意：
+ *   --register 模式已移除。
+ *   注册是线下行为，通过 tools/setup_euicc.sh 完成。
+ *   真实 eSIM 场景中，注册通过营业厅 NFC/USB OOB 信道完成，
+ *   不在本软件的职责范围内。
  */
 
 #include <stdio.h>
@@ -25,85 +30,8 @@ int mode_switch(const char    *nvram_dir,
                 const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES],
                 const uint8_t  mno_a_sk[32]);
 
-/* mode_register / mode_auth 声明（实现见下方或独立文件） */
-static int mode_register(const char *nvram_dir, const char *feature_file);
+/* mode_auth 声明（实现见下方） */
 static int mode_auth(const char *nvram_dir);
-
-/* ================================================================
- * 注册模式（同前，保持不变）
- * ================================================================ */
-static int mode_register(const char *nvram_dir, const char *feature_file)
-{
-    printf("[注册] nvram: %s\n", nvram_dir);
-    printf("[注册] 特征文件: %s\n", feature_file);
-
-    FILE *f = fopen(feature_file, "r");
-    if (!f) {
-        fprintf(stderr, "[错误] 无法读取特征文件: %s\n", feature_file);
-        fprintf(stderr, "[提示] 先运行: python3 tools/gen_face_feature.py"
-                        " --img face.jpg --out features.bin\n");
-        return -1;
-    }
-
-    int n_blocks;
-    fscanf(f, "%d", &n_blocks);
-    if (n_blocks <= 0 || n_blocks > PQZK_MERKLE_MAX_LEAVES) {
-        fclose(f); return -1;
-    }
-
-    uint8_t (*features)[32] = malloc(n_blocks * 32);
-    if (!features) { fclose(f); return -1; }
-
-    for (int i = 0; i < n_blocks; i++) {
-        for (int j = 0; j < 32; j++) {
-            unsigned int v;
-            fscanf(f, "%02x", &v);
-            features[i][j] = (uint8_t)v;
-        }
-    }
-    fclose(f);
-
-    uint8_t k_sym[32], k_tee[32];
-    pqzk_rand_bytes(k_sym, 32);
-    pqzk_rand_bytes(k_tee, 32);
-
-    uint64_t initial_ctr = 0;
-    uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];
-    uint8_t R_bio[32], salt[32];
-    uint8_t cred_kyc[64] = {0};
-    uint8_t  mno_id[PQZK_MNO_ID_BYTES];
-
-    PQ_ZK_ErrorCode rc = PQC_Register(
-        nvram_dir,
-        (const uint8_t (*)[32])features, n_blocks,mno_id,
-        k_sym, k_tee, initial_ctr,
-        pk_t, R_bio, salt);
-
-    free(features);
-
-    if (rc != PQ_ZK_SUCCESS) {
-        fprintf(stderr, "[错误] 注册失败: %d\n", rc);
-        return -1;
-    }
-
-    printf("[注册] 完成\n");
-    printf("[注册] R_bio = ");
-    for (int i = 0; i < 32; i++) printf("%02x", R_bio[i]);
-    printf("\n");
-
-    /* 保存注册数据供后续使用 */
-    FILE *reg = fopen("registration_data.bin", "wb");
-    if (reg) {
-        fwrite(pk_t,  1, PQ_ZK_PUBLICKEY_BYTES, reg);
-        fwrite(R_bio, 1, 32, reg);
-        fwrite(salt,  1, 32, reg);
-        fwrite(k_sym, 1, 32, reg);
-        fclose(reg);
-        printf("[注册] 数据已保存到 registration_data.bin\n");
-    }
-
-    return 0;
-}
 
 /* ================================================================
  * 认证模式（同前，保持不变）
@@ -142,7 +70,7 @@ static int mode_auth(const char *nvram_dir)
     PQC_PreCompute(&W_pub, seed_y);
     PQC_eUICC_Commit(nvram_dir, &W_sec, MAC_W);
     poly_vec_t W;
-    pqzk_vec_add(&W_sec, &W_pub, &W);
+    pqzk_vec_add(&W_sec, &W_pub, &W, PQ_ZK_K);
     printf("[阶段一] 承诺生成完成\n");
 
     /* 阶段二 */
@@ -172,7 +100,7 @@ static int mode_auth(const char *nvram_dir)
     }
     printf("[阶段三] TEE 授权令牌生成完成\n");
 
-    /* 序列化 M2 */
+    /* 序列化 M2 用于根重构 */
     uint8_t m2s[8 + PQZK_MERKLE_MAX_DEPTH*(PQZK_MERKLE_HASH_BYTES+1)];
     size_t off = 0;
     write_le32(m2s + off, M2.depth);      off += 4;
@@ -182,14 +110,12 @@ static int mode_auth(const char *nvram_dir)
         off += PQZK_MERKLE_HASH_BYTES;
         m2s[off] = M2.is_right_sibling[i]; off++;
     }
-    uint8_t hash_M2[32];
-    pqzk_sha256(m2s, off, hash_M2);
 
     /* 阶段四 */
     poly_vec_t z_sec_masked;
     PQ_ZK_ErrorCode rc = PQC_ComputeZ_and_Mask(
         nvram_dir, &c_agg, c_seed,
-        R_dynamic, hash_M2, AuthToken, &z_sec_masked);
+        R_dynamic, AuthToken, &z_sec_masked);
     if (rc != PQ_ZK_SUCCESS) {
         fprintf(stderr, "[错误] 阶段四失败: %d\n", rc);
         return -1;
@@ -238,8 +164,7 @@ static int mode_auth(const char *nvram_dir)
 int main(int argc, char *argv[])
 {
     const char *nvram_dir     = "/tmp/pqzk_euicc";
-    const char *feature_file  = "features.bin";
-    int do_register = 0, do_auth = 0, do_switch = 0;
+    int do_auth = 0, do_switch = 0;
 
     /*
      * MNO_A / MNO_B 标识（切换模式使用）
@@ -262,13 +187,10 @@ int main(int argc, char *argv[])
     memset(mno_a_sk, 0xA1, 32);
 
     for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "--register"))  do_register = 1;
         if (!strcmp(argv[i], "--auth"))      do_auth     = 1;
         if (!strcmp(argv[i], "--switch"))    do_switch   = 1;
         if (!strcmp(argv[i], "--nvram")   && i+1 < argc)
             nvram_dir    = argv[++i];
-        if (!strcmp(argv[i], "--face")    && i+1 < argc)
-            feature_file = argv[++i];
         if (!strcmp(argv[i], "--mno-a-id") && i+1 < argc) {
             memset(mno_a_id, 0, sizeof(mno_a_id));
             strncpy((char*)mno_a_id, argv[++i], PQZK_MNO_ID_BYTES);
@@ -286,7 +208,6 @@ int main(int argc, char *argv[])
 
     mkdir(nvram_dir, 0700);
 
-    if (do_register) return mode_register(nvram_dir, feature_file);
     if (do_auth)     return mode_auth(nvram_dir);
     if (do_switch) {
          /* 从 nvram 读取当前运营商信息并显示 */
@@ -302,10 +223,10 @@ int main(int argc, char *argv[])
     }
   
     printf("\n用法：\n");
-    printf("  注册: %s --register --face features.bin"
-           " --nvram /tmp/euicc\n", argv[0]);
     printf("  认证: %s --auth --nvram /tmp/euicc\n", argv[0]);
     printf("  切换: %s --switch --nvram /tmp/euicc"
            " --mno-a-id MNO_A_001 --mno-b-id MNO_B_001\n", argv[0]);
+    printf("\n注意：注册是线下行为，通过 tools/setup_euicc.sh 完成\n");
+    printf("      真实 eSIM 场景中，注册通过营业厅 NFC/USB OOB 信道完成\n");
     return 0;
 }

@@ -75,7 +75,7 @@ static void kat_encode_decode(void)
         orig.coeffs[i] = (int16_t)(i % PQ_ZK_Q_VAL);
 
     uint8_t encoded[PQ_ZK_POLYVEC_BYTES];
-    PQC_EncodePolyVec(&orig, encoded);
+    PQC_EncodePolyVec(&orig, encoded, PQ_ZK_M);
 
     /* 期望值：系数 0,1,2 的小端序字节表示 */
     uint8_t exp_head[6] = {0x00,0x00, 0x01,0x00, 0x02,0x00};
@@ -83,7 +83,7 @@ static void kat_encode_decode(void)
     print_hex("encoded[0:8]", encoded, 8);
 
     poly_vec_t decoded;
-    PQC_DecodePolyVec(encoded, &decoded);
+    PQC_DecodePolyVec(encoded, &decoded, PQ_ZK_M);
     ASSERT_EQ("DecodePolyVec roundtrip",
               (uint8_t*)decoded.coeffs, (uint8_t*)orig.coeffs, sizeof(orig.coeffs));
 }
@@ -252,6 +252,7 @@ static void kat_sample_in_ball(void)
  * ================================================================ */
 static void kat_merkle(void)
 {
+    uint8_t eid[16] = {0};
     printf("\n=== KAT 6: Merkle Tree ===\n");
 
     /* 模拟 4 个生物特征块（真实环境由 Android TEE 提供） */
@@ -265,7 +266,7 @@ static void kat_merkle(void)
     merkle_tree_t tree;
     int rc = PQC_MerkleTree_Build(
         (const uint8_t (*)[32])features, 4,
-        test_salt, 
+        test_salt, eid,
         &tree);
     ASSERT_TRUE("MerkleTree_Build", rc == 0);
     ASSERT_TRUE("MerkleTree n_leaves=4", tree.n_leaves == 4);
@@ -338,7 +339,7 @@ static void kat_protocol_e2e(void)
 
     PQC_eUICC_Init(nvram_dir, eid, 16, &sk_s,
                    k_sym, 32, initial_ctr, k_tee, 32,
-                   bio_salt, cred_kyc, 64);
+                   bio_salt, NULL, cred_kyc, 64);
     printf("[PASS] eUICC_Init done\n"); g_pass++;
 
     /* ---- 阶段零（补充）：建立 Merkle 树（模拟注册时的生物特征锚定）
@@ -352,7 +353,7 @@ static void kat_protocol_e2e(void)
 
     merkle_tree_t bio_tree;
     int build_rc = PQC_MerkleTree_Build(
-        (const uint8_t (*)[32])mock_features, 4, bio_salt, &bio_tree);
+        (const uint8_t (*)[32])mock_features, 4, bio_salt, eid, &bio_tree);
     ASSERT_TRUE("MerkleTree_Build (注册)", build_rc == 0);
 
    
@@ -371,7 +372,7 @@ static void kat_protocol_e2e(void)
     ASSERT_TRUE("MAC_W non-zero", MAC_W[0] != 0 || MAC_W[1] != 0);
 
     poly_vec_t W;
-    pqzk_vec_add(&W_sec, &W_pub, &W);
+    pqzk_vec_add(&W_sec, &W_pub, &W, PQ_ZK_K);
 
     /* ---- 阶段二：挑战生成（v4.0：无 H_ctx）---- */
     uint8_t c_seed[32];
@@ -427,7 +428,7 @@ static void kat_protocol_e2e(void)
     poly_vec_t z_dummy;
     PQ_ZK_ErrorCode rc_tamper = PQC_ComputeZ_and_Mask(
         nvram_dir, &c_agg, c_seed,
-        R_dynamic, M2.sibling[0],  /* hash_M2 用路径第一层兄弟哈希模拟 */
+        R_dynamic,
         AuthToken_tampered, &z_dummy);
     ASSERT_TRUE("篡改AuthToken被拒绝(ERR_MAC_FAIL)",
                 rc_tamper == PQ_ZK_ERR_MAC_FAIL);
@@ -467,7 +468,6 @@ static void kat_protocol_e2e(void)
     PQ_ZK_ErrorCode rc = PQC_ComputeZ_and_Mask(
         nvram_dir, &c_agg, c_seed,
         R_dynamic,
-        hash_M2,
         AuthToken,
         &z_sec_masked);
     ASSERT_TRUE("ComputeZ_and_Mask rc=PQ_ZK_SUCCESS", rc == PQ_ZK_SUCCESS);
@@ -475,7 +475,7 @@ static void kat_protocol_e2e(void)
     /* ---- 重放攻击测试：计数器已步进，同一 AuthToken 应被拒绝 ---- */
     PQ_ZK_ErrorCode rc_replay = PQC_ComputeZ_and_Mask(
         nvram_dir, &c_agg, c_seed,
-        R_dynamic, hash_M2, AuthToken, &z_dummy);
+        R_dynamic, AuthToken, &z_dummy);
     ASSERT_TRUE("重放攻击被拒绝(ERR_MAC_FAIL)",
                 rc_replay == PQ_ZK_ERR_MAC_FAIL);
 

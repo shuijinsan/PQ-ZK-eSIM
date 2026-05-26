@@ -116,6 +116,7 @@ int PQC_MerkleTree_Build(
     const uint8_t feature_blocks[][PQZK_MERKLE_HASH_BYTES],
     size_t         n_blocks,
     const uint8_t  salt[32],
+    const uint8_t  did[16],
     merkle_tree_t  *tree_out
 );
 

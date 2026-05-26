@@ -102,6 +102,7 @@ int PQC_MerkleTree_Build(
     const uint8_t feature_blocks[][PQZK_MERKLE_HASH_BYTES],
     size_t         n_blocks,
     const uint8_t  salt[32],
+    const uint8_t  did[16],
     merkle_tree_t *tree_out)
 {
     if (!feature_blocks || n_blocks == 0 || !tree_out) return -1;
@@ -129,8 +130,9 @@ int PQC_MerkleTree_Build(
                                : feature_blocks[n_blocks - 1];
         /* 叶子哈希 = SHA256(feature_block || salt) */
         pqzk_iov_t leaf_iov[] = {
-            { block, PQZK_MERKLE_HASH_BYTES },
             { salt,  32                     },
+            { did,   16                     },
+            { block, PQZK_MERKLE_HASH_BYTES },
             { NULL, 0 }
         };
         pqzk_sha256_iov(leaf_iov, tree_out->nodes[0][i]);

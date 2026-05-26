@@ -25,24 +25,36 @@ endif()
 # 平台检测
 # ============================================================
 if(ANDROID)
-    message(STATUS "=== 构建目标：Android ${ANDROID_ABI} ===")
+    message(STATUS "=== Build target: Android ${ANDROID_ABI} ===")
     set(USE_BORING_SSL ON)
+elseif(CMAKE_SYSTEM_PROCESSOR STREQUAL "aarch64")
+    message(STATUS "=== Build target: Linux ARM64 (cross-compile) ===")
+    set(USE_BORING_SSL OFF)
+    set(CROSS_ARM64 ON)
 else()
-    message(STATUS "=== 构建目标：Linux x86_64 ===")
+    message(STATUS "=== Build target: Linux x86_64 ===")
     set(USE_BORING_SSL OFF)
 endif()
 
 # ============================================================
-# liboqs 依赖
-# 仅作为底层数学库（大数运算、NTT、SHAKE-256 等）
-# 协议逻辑（阶段一/四/六）由 C 层自行实现
+# liboqs dependency
+# ARM64: statically linked, paths from toolchain file
+# x86_64: find_package
 # ============================================================
-find_package(liboqs REQUIRED)
+if(CROSS_ARM64)
+    set(liboqs_FOUND TRUE)
+    set(liboqs_INCLUDE_DIRS /home/ubuntu/liboqs/build_aarch64/install/include)
+    set(liboqs_LIBRARIES /home/ubuntu/liboqs/build_aarch64/install/lib/liboqs.a /home/ubuntu/liboqs/build_aarch64/install/lib/liboqs-internal.a)
+else()
+    find_package(liboqs REQUIRED)
+endif()
 
 # ============================================================
 # OpenSSL（Linux）/ BoringSSL（Android NDK 自带）
 # ============================================================
-if(NOT ANDROID)
+if(CROSS_ARM64)
+    set(CRYPTO_LIBS /home/ubuntu/pq_zk_project/buildroot-2023.02.6/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libssl.so /home/ubuntu/pq_zk_project/buildroot-2023.02.6/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libcrypto.so)
+elseif(NOT ANDROID)
     find_package(OpenSSL REQUIRED)
     set(CRYPTO_LIBS OpenSSL::SSL OpenSSL::Crypto)
 else()
@@ -78,7 +90,11 @@ set(PQZK_INCLUDES
 # ============================================================
 # 公共链接库（消除重复，统一在此定义）
 # ============================================================
-set(PQZK_LINK_LIBS ${CRYPTO_LIBS} OQS::oqs m)
+if(CROSS_ARM64)
+    set(PQZK_LINK_LIBS ${CRYPTO_LIBS} /home/ubuntu/liboqs/build_aarch64/install/lib/liboqs.a /home/ubuntu/liboqs/build_aarch64/install/lib/liboqs-internal.a m)
+else()
+    set(PQZK_LINK_LIBS ${CRYPTO_LIBS} OQS::oqs m)
+endif()
 
 # ============================================================
 # 目标 1：核心共享库（Linux .so / Android .so）
@@ -89,7 +105,7 @@ target_include_directories(pqzkesim PUBLIC ${PQZK_INCLUDES})
 target_link_libraries(pqzkesim PRIVATE ${PQZK_LINK_LIBS})
 set_target_properties(pqzkesim PROPERTIES
     OUTPUT_NAME  "pqzkesim"
-    VERSION      5.0           # 同步 v5.0
+    VERSION      5.0           # 同步 v5.1
     SOVERSION    5
     C_VISIBILITY_PRESET default   # 导出所有符号，供 Python ctypes 直接加载
 )
@@ -132,9 +148,42 @@ if(NOT ANDROID)
     target_link_libraries(bench_pqzkesim PRIVATE ${PQZK_LINK_LIBS})
 
 # ============================================================
-# 目标 6：完整模拟软件（注册 / 认证 / 运营商切换）
+# 目标 5：综合实验（仅 Linux）
+# 包括：稀疏噪声降级攻击、滑动窗口重同步、运营商切换、NVM擦写次数
+# ============================================================
+    add_executable(bench_pqzkesim_comprehensive
+        experiments/benchmarks/bench_pqzkesim_comprehensive.c
+        app/mode_switch.c
+        ${PQZK_SOURCES}
+    )
+    target_include_directories(bench_pqzkesim_comprehensive PRIVATE ${PQZK_INCLUDES})
+    target_link_libraries(bench_pqzkesim_comprehensive PRIVATE ${PQZK_LINK_LIBS})
+
+# ============================================================
+# 目标 6：对比实验（仅 Linux）
+# 包括：抗重放攻击、量子复杂度分析、零知识掩码有效性
+# ============================================================
+    add_executable(bench_comparison
+        experiments/benchmarks/bench_comparison_experiments.c
+        ${PQZK_SOURCES}
+    )
+    target_include_directories(bench_comparison PRIVATE ${PQZK_INCLUDES})
+    target_link_libraries(bench_comparison PRIVATE ${PQZK_LINK_LIBS})
+
+# ============================================================
+# 目标 7：三项目对比实验（仅 Linux）
+# 包括：PQ-ZK-eSIM、lpac、PQKEM-5G 的对比
+# ============================================================
+    add_executable(bench_triple_comparison
+        experiments/benchmarks/bench_triple_comparison.c
+        ${PQZK_SOURCES}
+    )
+    target_include_directories(bench_triple_comparison PRIVATE ${PQZK_INCLUDES})
+    target_link_libraries(bench_triple_comparison PRIVATE ${PQZK_LINK_LIBS})
+
+# ============================================================
+# 目标 8：完整模拟软件（认证 / 运营商切换）
 # 用法：
-#   注册：./pqzkesim_app --register --face features.bin --nvram /tmp/euicc
 #   认证：./pqzkesim_app --auth --nvram /tmp/euicc
 #   切换：./pqzkesim_app --switch --nvram /tmp/euicc --mno-b-id MNO_B_001
 # ============================================================
@@ -145,6 +194,18 @@ if(NOT ANDROID)
     )
     target_include_directories(pqzkesim_app PRIVATE ${PQZK_INCLUDES})
     target_link_libraries(pqzkesim_app PRIVATE ${PQZK_LINK_LIBS})
+
+# ============================================================
+# 目标 9：离线注册工具
+# 用法：
+#   ./pqzkesim_setup --nvram /tmp/euicc --face features.bin --mno-id MNO_A_SIM_001
+# ============================================================
+    add_executable(pqzkesim_setup
+        app/setup_main.c
+        ${PQZK_SOURCES}
+    )
+    target_include_directories(pqzkesim_setup PRIVATE ${PQZK_INCLUDES})
+    target_link_libraries(pqzkesim_setup PRIVATE ${PQZK_LINK_LIBS})
 
 # ============================================================
 # CTest 注册
@@ -174,7 +235,7 @@ install(FILES
 # 构建摘要
 # ============================================================
 message(STATUS "----------------------------------------")
-message(STATUS "  项目    : PQ-ZK-eSIM v5.0")
+message(STATUS "  项目    : PQ-ZK-eSIM v5.1")
 message(STATUS "  平台    : ${CMAKE_SYSTEM_NAME} ${CMAKE_SYSTEM_PROCESSOR}")
 message(STATUS "  类型    : ${CMAKE_BUILD_TYPE}")
 message(STATUS "  liboqs  : ${liboqs_FOUND}")

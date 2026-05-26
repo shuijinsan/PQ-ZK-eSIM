@@ -1,22 +1,9 @@
-/**
- * @file pq_zk_esim.h
- * @brief PQ-ZK-eSIM 全栈工程核心接口与代数标准 (4.0)
- * @note 本文件为跨端一致性最高准则，严禁私自修改参数定义或内存对齐方式。
- * * 编译环境约束：
- * - 依赖：liboqs (Kyber-768 最新版 clone)
- * - CMake >= 3.22
- * - Android NDK r26d (LTS), Min API 28
- */
-
 #ifndef PQ_ZK_ESIM_H
 #define PQ_ZK_ESIM_H
 
 #include <stdint.h>
 #include <stddef.h>
-#include <stdbool.h>    
-
-
-#include "pqzk_merkle.h"
+#include <stdbool.h>
 #include "pqzk_merkle.h"
 #include "pqzk_cert.h"
 
@@ -24,324 +11,103 @@
 extern "C" {
 #endif
 
-/* ========================================================================= */
-/* 宏定义与密码学原语参数 (基于 Kyber-768 与规范要求)                        */
-/* ========================================================================= */
-#define PQ_ZK_N 256                     // 多项式环阶数
-#define PQ_ZK_K 3                       // Kyber-768 对应的模块维度
-#define PQ_ZK_SEED_BYTES 32             // 强制 256-bit 种子长度 (SHA-256 / AES-256)
-#define PQ_ZK_TEE_KEY_BYTES 32          // TEE 密钥的长度约束,规范 JNI 层的传参长度
-#define PQ_ZK_MAC_BYTES 32              // HMAC-SHA256 输出长度
-#define PQ_ZK_CHALLENGE_WEIGHT 26       // 稀疏挑战多项式非零系数个数 (kappa)
+#define PQ_ZK_N 256
+#define PQ_ZK_K 5
+#define PQ_ZK_M 8
+#define PQ_ZK_SEED_BYTES 32
+#define PQ_ZK_TEE_KEY_BYTES 32
+#define PQ_ZK_MAC_BYTES 32
+#define PQ_ZK_CHALLENGE_WEIGHT 35
+#define PQ_ZK_ETA_S 1
+#define PQ_ZK_SIGMA_PUB 5000.0
+#define PQ_ZK_BETA_INF 35700
+#define PQ_ZK_BETA_FINAL 260000
+#define PQ_ZK_PUBLICKEY_BYTES (32 + PQ_ZK_K * PQ_ZK_N * 3)
+#define PQ_ZK_POLYVEC_BYTES (PQ_ZK_M * PQ_ZK_N * 4)
+#define PQ_ZK_POLY_BYTES (PQ_ZK_N * 4)
 
-// [新增] 大噪声淹没实验参数 (算法师需据此编写测试桩)
-#define PQ_ZK_ETA_S 2              // Kyber-768 私钥无穷范数边界
-#define PQ_ZK_RENYI_GAMMA 2        // Rényi 散度安全系数
-// sigma_pub >= gamma * eta_s * kappa = 2 * 2 * 26 = 104
-#define PQ_ZK_SIGMA_PUB 104.0      // 外部盲化因子高斯标准差
-
-// beta_final 必须小于 q/2 (1664)，设定截断参数 tau = 12 
-// beta_pub = 12 * 104 = 1248。最大理论边界 = 1248 + 1(y_sec) + 52(S*c) = 1301 < 1664
-#define PQ_ZK_BETA_FINAL 1301      // 服务器防溢出无穷范数上界阈值
-// 完整公钥序列化长度 (32字节种子 + 3*256*12bit系数)
-#define PQ_ZK_PUBLICKEY_BYTES 1184
-// [新增] 内存安全红线：跨端 FFI/JNI 调用时强制约束的 Buffer 长度
-// 假设采用最直接的 16-bit 小端序扁平化: 3(k) * 256(N) * 2(bytes) = 1536 字节
-#define PQ_ZK_POLYVEC_BYTES 1536
-#define PQ_ZK_POLY_BYTES 512 // 256(N) * 2(bytes)
-/* ========================================================================= */
-/* 错误码枚举                                                                */
-/* ========================================================================= */
 typedef enum {
     PQ_ZK_SUCCESS = 0,
-    PQ_ZK_ERR_MAC_FAIL = -1,            // MAC 完整性校验失败
-    PQ_ZK_ERR_CHALLENGE_WEIGHT = -2,    // 扩展挑战 c_agg 汉明权重或系数校验失败
-    PQ_ZK_ERR_NORM_BOUND = -3,          // 代数响应范数边界检查失败 (溢出或裸露)
-    PQ_ZK_ERR_INVALID_PARAM = -4,       // 输入参数无效
-    PQ_ZK_ERR_NOT_INITIALIZED = -5,     //nvram 未初始化或 magic 校验失败
-    PQ_ZK_ERR_YSEC_CONSUMED = -6        // y_sec 已使用或未生成，禁止重复调用
+    PQ_ZK_ERR_MAC_FAIL = -1,
+    PQ_ZK_ERR_CHALLENGE_WEIGHT = -2,
+    PQ_ZK_ERR_NORM_BOUND = -3,
+    PQ_ZK_ERR_INVALID_PARAM = -4,
+    PQ_ZK_ERR_NOT_INITIALIZED = -5,
+    PQ_ZK_ERR_YSEC_CONSUMED = -6,
+    PQ_ZK_ERR_RESYNC_NEEDED = -7,
+    PQ_ZK_ERR_SYNC_WINDOW = -8
 } PQ_ZK_ErrorCode;
 
-/* ========================================================================= */
-/* 核心代数数据结构                                                          */
-/* ========================================================================= */
-
-/**
- * @brief [新增] 单个多项式结构 (映射至环 R_q)
- * @note 专用于标量多项式，如扩展挑战 c_agg。强制采用小端序存储。
- */
 typedef struct {
-    int16_t coeffs[PQ_ZK_N];  
-} poly_t;
+    uint64_t ctr_server;
+    uint8_t  k_sym[32];
+    uint8_t  d_seed[32];
+    uint8_t  eid[16];
+} server_state_t;
+
+#define PQZK_WINDOW_MAX 32
+
+typedef struct { int32_t coeffs[PQ_ZK_N]; } poly_t;
 
 typedef struct {
-    uint16_t beta_final;   // 无穷范数上界
-    uint16_t beta_min;     // 欧几里得范数下界
-    uint32_t beta_l1;      /* 新增：L1 下界：‖z_unmasked‖₁ ≥ β_L1，防噪声整形攻击
-                            * 设为 0 时禁用此项检查（向后兼容） */
+    uint32_t beta_final;
+    uint32_t beta_min;
+    uint32_t beta_l1;
 } beta_params_t;
 
-/**
- * @brief 多项式向量抽象结构 (映射至环 R_q^m)
- * @note 用于私钥 S、响应 z、盲化因子 y 等。JNI 传递时必须展平为一维 byte[]。
- */
-typedef struct {
-    int16_t coeffs[PQ_ZK_K * PQ_ZK_N];  
-} poly_vec_t;
+typedef struct { int32_t coeffs[PQ_ZK_M * PQ_ZK_N]; } poly_vec_t;
 
-/* ========================================================================= */
-/* 默认范数边界参数
- *
- * 推导：
- *   beta_final = tau(12) * sigma_pub(104) + eta_s(2) + eta_s(2)*kappa(26)
- *              = 1248 + 2 + 52 = 1302，取保守值 1301
- *   beta_min   基于 y_pub 期望 L2 范数下界，确保 y_pub=0 时验证被拒绝
- *
- * 供 C 测试文件、Python ctypes、Android JNI 统一使用。
- * ========================================================================= */
-#define PQZK_DEFAULT_BETA_PARAMS \
-    ((beta_params_t){ .beta_final = PQ_ZK_BETA_FINAL, .beta_min = 2735 })
+#define PQZK_DEFAULT_BETA_PARAMS ((beta_params_t){ .beta_final = PQ_ZK_BETA_FINAL, .beta_min = 200000, .beta_l1 = 7400000 })
 
-/* ========================================================================= */
-/* 统一 API 黑盒声明 (阶段调用基准)                                          */
-/* ========================================================================= */
-
-/**
- * @brief [阶段零] 生成长期公私钥对
- * @param pk_t [out] 服务器存储的序列化公钥 T (包含矩阵 A 的种子与多项式向量 T)
- * @param sk_s [out] eUICC 内部存储的长期私钥 S
- */
 void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s);
-
-// [补充] 单多项式序列化（供 TEE 计算 AuthToken 使用）
 void PQC_EncodePoly(const poly_t *in_poly, uint8_t *out_bytes);
-
-// [补充] 单多项式反序列化（供 JNI 层重构 c_agg 使用）
 void PQC_DecodePoly(const uint8_t *in_bytes, poly_t *out_poly);
-
-/**
- * @brief [阶段零] eUICC 状态初始化
- * @note 将设备标识、私钥、对称密钥等安全写入指定的工作目录。
- * @param nvram_dir [in] [新增] eUICC 安全存储的挂载目录路径 (绝对路径)
- */
 void PQC_eUICC_Init(const char* nvram_dir, const uint8_t* eid, size_t eid_len,
-                    const poly_vec_t* sk_s,
-                    const uint8_t* k_sym, size_t k_sym_len,
-                    uint64_t initial_ctr,
-                    const uint8_t* k_tee, size_t k_tee_len,
-                    const uint8_t* salt,                   
-                    const uint8_t* cred_kyc, size_t cred_kyc_len  );
-/**
- * @brief [通用标准] 多项式序列化
- * @note 强制采用小端序 (Little-Endian) 和固定位宽对齐，供后端 FFI 调用以验证完整性。
- * @param in_poly [in] 输入的代数多项式向量
- * @param out_bytes [out] 输出的扁平化字节流
- */
-void PQC_EncodePolyVec(const poly_vec_t *in_poly, uint8_t *out_bytes);
-
-/**
- * @brief [新增] [通用标准] 多项式向量反序列化 (Decode)
- * @note 跨端联调的生命线。用于将后端 Python 或 JNI 传入的字节流重构为代数对象。
- * @param in_bytes [in] 长度必须为 PQ_ZK_POLYVEC_BYTES
- */
-void PQC_DecodePolyVec(const uint8_t *in_bytes, poly_vec_t *out_poly);
-
-
-/**
- * @brief [阶段一] LPA 外部盲化因子预计算
- * @param W_pub [out] LPA 外部承诺 W_pub = A * y_pub (mod q)
- * @param seed_y [out] LPA 生成的伪随机种子 s_pub
- */
+    const poly_vec_t* sk_s, const uint8_t* k_sym, size_t k_sym_len,
+    uint64_t initial_ctr, const uint8_t* k_tee, size_t k_tee_len,
+    const uint8_t* salt, const uint8_t* R_bio,
+    const uint8_t* cred_kyc, size_t cred_kyc_len);
+void PQC_EncodePolyVec(const poly_vec_t *in_poly, uint8_t *out_bytes, int vec_dim);
+void PQC_DecodePolyVec(const uint8_t *in_bytes, poly_vec_t *out_poly, int vec_dim);
 void PQC_PreCompute(poly_vec_t *W_pub, uint8_t seed_y[PQ_ZK_SEED_BYTES]);
-
-/**
- * @brief [阶段五] LPA 恢复外部大方差盲化因子
- * @param seed_y [in] 预计算阶段生成的伪随机种子 s_pub
- * @param y_pub [out] 重新生成的离散高斯分布外部盲化因子 y_pub
- */
 void PQC_RegenerateYpub(const uint8_t seed_y[PQ_ZK_SEED_BYTES], poly_vec_t *y_pub);
-
-/**
- * @brief [阶段一] eUICC 内部承诺生成 (安全修正版)
- * @note y_sec 必须安全存储在内部，绝不输出。K_sym 与 ctr 由底层内部读取。
- * @param W_sec [out] 内部承诺 W_sec = A * y_sec (mod q)
- * @param MAC_W [out] 内部防篡改认证码 MAC(K_sym, Encode(W_sec) || Serialize(ctr_local))
- */
 void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec, uint8_t MAC_W[PQ_ZK_MAC_BYTES]);
+void PQC_GenChallenge(const poly_vec_t *comm_W, const uint8_t nonce[PQ_ZK_SEED_BYTES], poly_t *c_agg);
 
-/**
- * @brief [阶段二] 挑战生成 (LPA 多维挑战展开)
- * @param comm_W [in] 聚合后的总承诺 W
- * @param nonce [in] 服务器下发的轻量级挑战种子 c_seed
- * @param c_agg [out] 扩展的高维稀疏挑战标量多项式
- */
-void PQC_GenChallenge(const poly_vec_t *comm_W, const uint8_t nonce[PQ_ZK_SEED_BYTES], 
-                      poly_t *c_agg);
+PQ_ZK_ErrorCode TEE_GenerateAuthToken(const char *nvram_dir, const poly_t *c_agg,
+    const uint8_t R_bio[PQ_ZK_MAC_BYTES], const merkle_tree_t *tree,
+    uint32_t M1, const uint8_t k_tee[PQ_ZK_TEE_KEY_BYTES],
+    uint8_t R_dynamic_out[PQ_ZK_SEED_BYTES], merkle_path_t *M2_out,
+    uint8_t AuthToken_out[PQ_ZK_MAC_BYTES]);
 
-/**
- * @brief [阶段三] TEE 生物鉴权与授权令牌签发（v4.0）
- *
- * 模拟环境：调用即视为活体验证通过。
- * ctr_local 严禁上层传入，内部从 nvram 读取。
- *
- * @param nvram_dir      eUICC 非易失存储路径（只读）
- * @param c_agg          扩展挑战多项式
- * @param R_bio          TEE 存储的静态生物特征根（32字节）
- * @param tree           TEE 本地完整 Merkle 树
- * @param M1             服务器下发的叶子索引
- * @param k_tee          K_TEE-eUICC（32字节）
- * @param R_dynamic_out  [out] 动态验证根
- * @param M2_out         [out] Merkle 验证路径
- * @param AuthToken_out  [out] 授权令牌（32字节）
- */
-PQ_ZK_ErrorCode TEE_GenerateAuthToken(
-    const char          *nvram_dir,
-    const poly_t        *c_agg,
-    const uint8_t        R_bio[PQ_ZK_MAC_BYTES],
-    const merkle_tree_t *tree,
-    uint32_t             M1,
-    const uint8_t        k_tee[PQ_ZK_TEE_KEY_BYTES],
-    uint8_t              R_dynamic_out[PQ_ZK_SEED_BYTES],
-    merkle_path_t       *M2_out,
-    uint8_t              AuthToken_out[PQ_ZK_MAC_BYTES]
-);
- 
-PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
-    const char*    nvram_dir,
-    const poly_t  *c_agg,
-    const uint8_t  c_seed[PQ_ZK_SEED_BYTES],
-    const uint8_t  R_dynamic[PQ_ZK_SEED_BYTES],
-    const uint8_t  hash_M2[PQ_ZK_MAC_BYTES],
-    const uint8_t  AuthToken[PQ_ZK_MAC_BYTES],
-    poly_vec_t    *z_sec_masked);
- 
-void PQC_LPA_Aggregate(const poly_vec_t *z_sec_masked,
-                        const poly_vec_t *y_pub,
-                        poly_vec_t *resp_z);
- 
-void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES],
-                       const uint8_t c_seed[PQ_ZK_SEED_BYTES],
-                       uint64_t ctr_session,
-                       const uint8_t R_dynamic[PQ_ZK_SEED_BYTES],
-                       poly_vec_t *M_mask);
- 
-PQ_ZK_ErrorCode PQC_VerifyEngine(
-    const uint8_t    mat_A_seed[32],
-    const uint8_t    pk_t[PQ_ZK_PUBLICKEY_BYTES],
-    const poly_vec_t *comm_W,
-    const poly_vec_t *resp_z,
-    const uint8_t    nonce_s[32],
-    const uint8_t    R_dynamic[32],
-    const poly_vec_t *M_mask,
-    const beta_params_t *beta_params);
- 
-#ifdef __cplusplus
-}
+PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(const char* nvram_dir, const poly_t *c_agg,
+    const uint8_t c_seed[PQ_ZK_SEED_BYTES], const uint8_t R_dynamic[PQ_ZK_SEED_BYTES],
+    const uint8_t AuthToken[PQ_ZK_MAC_BYTES], poly_vec_t *z_sec_masked);
+
+void PQC_LPA_Aggregate(const poly_vec_t *z_sec_masked, const poly_vec_t *y_pub, poly_vec_t *resp_z);
+void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES], const uint8_t c_seed[PQ_ZK_SEED_BYTES],
+    uint64_t ctr_session, const uint8_t R_dynamic[PQ_ZK_SEED_BYTES], poly_vec_t *M_mask);
+
+PQ_ZK_ErrorCode PQC_VerifyEngine(const uint8_t mat_A_seed[32], const uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES],
+    const poly_vec_t *comm_W, const poly_vec_t *resp_z, const uint8_t nonce_s[32],
+    const uint8_t R_dynamic[32], const poly_vec_t *M_mask, const beta_params_t *beta_params);
+
+PQ_ZK_ErrorCode PQC_Server_SlidingWindowSync(const server_state_t *srv,
+    const poly_vec_t *W_sec, const uint8_t MAC_W[PQ_ZK_MAC_BYTES],
+    uint32_t window_size, uint64_t *ctr_session_out, uint8_t k_synced_out[32]);
+
+PQ_ZK_ErrorCode PQC_Server_CommitSync(server_state_t *srv_state_out,
+    uint64_t ctr_session, const uint8_t k_synced[32]);
+
+PQ_ZK_ErrorCode PQC_Register(const char *nvram_dir,
+    const uint8_t feature_blocks[][PQZK_MERKLE_HASH_BYTES], size_t n_blocks,
+    const uint8_t k_sym[32], const uint8_t k_tee[32], uint64_t initial_ctr,
+    const uint8_t mno_id[PQZK_MNO_ID_BYTES],
+    uint8_t pk_t_out[PQ_ZK_PUBLICKEY_BYTES], uint8_t R_bio_out[32], uint8_t salt_out[32]);
+
+PQ_ZK_ErrorCode PQC_LoadTree(const char *nvram_dir, merkle_tree_t *tree_out);
+
+int mode_switch(const char *nvram_dir, const uint8_t domain_id_b[PQZK_MNO_ID_BYTES],
+    const uint8_t mno_a_id[PQZK_MNO_ID_BYTES], const uint8_t mno_a_sk[32]);
+
 #endif
-
-/**
- * @brief [阶段四] 掩码协同计算 (eUICC 极速盲化 - 核心安全禁区)
- */
-PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(const char* nvram_dir, const poly_t *c_agg, const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
-                           const uint8_t R_dynamic[PQ_ZK_SEED_BYTES], const uint8_t hash_M2[PQ_ZK_MAC_BYTES], 
-                           const uint8_t AuthToken[PQ_ZK_MAC_BYTES], poly_vec_t *z_sec_masked);
-/**
- * @brief [阶段五] LPA 大噪声聚合
- * @param z_sec_masked [in] eUICC 输出的掩码响应
- * @param y_pub [in] 重新生成的大方差外部盲化因子
- * @param resp_z [out] 最终聚合响应 z = z_sec_masked + y_pub (mod q)
- */
-void PQC_LPA_Aggregate(const poly_vec_t *z_sec_masked, const poly_vec_t *y_pub, 
-                       poly_vec_t *resp_z);
-
-/**
- * @brief [阶段六通用] 独立端到端掩码生成引擎
- */
-void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES], const uint8_t c_seed[PQ_ZK_SEED_BYTES], 
-                      uint64_t ctr_session, const uint8_t R_dynamic[PQ_ZK_SEED_BYTES], poly_vec_t *M_mask);
-
-/**
- * @brief [阶段六] 服务器验证引擎
- */
-PQ_ZK_ErrorCode PQC_VerifyEngine(const uint8_t mat_A_seed[32], 
-                                 const uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], 
-                                 const poly_vec_t *comm_W, const poly_vec_t *resp_z, 
-                                 const uint8_t nonce_s[32], 
-                                 const uint8_t R_dynamic[32], 
-                                 const poly_vec_t *M_mask, 
-                                 const beta_params_t *beta_params);
-
-#ifdef __cplusplus
-}
-#endif
-
-
-/* ================================================================
- * 注册与持久化接口（新增）
- * ================================================================ */
-
-/**
- * @brief [注册] 一次性注册初始化
- *
- * 完成密钥对生成、Merkle 树建立、nvram 初始化。
- * 输出需要上传服务器的注册数据。
- *
- * @param nvram_dir       eUICC 存储路径
- * @param feature_blocks  人脸特征块数组（每块32字节）
- * @param n_blocks        特征块数量
- * @param k_sym           预共享对称密钥（服务器带外传入）
- * @param k_tee           TEE 内部总线密钥
- * @param initial_ctr     初始计数器
- * @param mno_id          当前运营商标识（16字节）
- * @param pk_t_out        [out] 公钥（上传服务器）
- * @param R_bio_out       [out] 静态生物根（上传服务器）
- * @param salt_out        [out] 设备盐（上传服务器）
- */
-PQ_ZK_ErrorCode PQC_Register(
-    const char    *nvram_dir,
-    const uint8_t  feature_blocks[][PQZK_MERKLE_HASH_BYTES],
-    size_t         n_blocks,
-    const uint8_t  k_sym[32],
-    const uint8_t  k_tee[32],
-    uint64_t       initial_ctr,
-    const uint8_t  mno_id[PQZK_MNO_ID_BYTES],
-    uint8_t        pk_t_out[PQ_ZK_PUBLICKEY_BYTES],
-    uint8_t        R_bio_out[32],
-    uint8_t        salt_out[32]
-);
-
-/**
- * @brief [认证前] 从 nvram 加载 Merkle 树
- *
- * 认证阶段 TEE 调用，从持久化存储恢复 merkle_tree_t。
- *
- * @param nvram_dir  eUICC 存储路径
- * @param tree_out   [out] Merkle 树
- */
-PQ_ZK_ErrorCode PQC_LoadTree(const char    *nvram_dir,
-                               merkle_tree_t *tree_out);
-
-/* ================================================================
- * 运营商切换接口（v5.0 新增）
- * ================================================================ */
-
-/**
- * @brief [切换] 完整运营商切换流程（七步）
- *
- * 对应协议 §5.1.5，包含：
- *   TEE 活体验证 → 派生 R_bio_B → 生成新密钥对 →
- *   ML-KEM 握手 → 身份证据包传输 → MNO_B 验证 → 密钥注入
- *
- * @param nvram_dir    当前 eUICC nvram 目录（MNO_A 状态）
- * @param domain_id_b  目标运营商 MNO_B 标识（16字节）
- * @param mno_a_id     当前运营商 MNO_A 标识（16字节）
- * @param mno_a_sk     MNO_A 签名私钥（32字节，模拟）
- *
- * @return PQ_ZK_SUCCESS 或错误码
- */
-int mode_switch(const char    *nvram_dir,
-                const uint8_t  domain_id_b[PQZK_MNO_ID_BYTES],
-                const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES],
-                const uint8_t  mno_a_sk[32]);
-
-#endif // PQ_ZK_ESIM_H

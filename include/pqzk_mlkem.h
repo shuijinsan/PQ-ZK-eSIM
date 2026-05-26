@@ -88,7 +88,7 @@ typedef struct {
     uint8_t  R_bio[32];           /* 原始静态生物根 */
     uint8_t  salt[32];            /* 设备专属盐 */
     uint8_t  cred_kyc[64];        /* KYC 凭证：Sign(SK_MNO_A, EID||R_bio) */
-    uint8_t  cert_a[256];         /* MNO_A 证书（模拟：自签名，256字节占位） */
+    uint8_t  cert_a[PQZK_CERT_BYTES];         /* MNO_A 证书（模拟：自签名，256字节占位） */
     uint8_t  eid[16];             /* 设备标识 */
     uint8_t  T_new[PQ_ZK_PUBLICKEY_BYTES]; /* 为 MNO_B 生成的新公钥 */
 } apdu_payload_t;

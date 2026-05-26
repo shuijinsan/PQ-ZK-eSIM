@@ -30,17 +30,17 @@ except ImportError:
     print("[INFO] pip install matplotlib numpy\n")
 
 # ── Protocol constants ────────────────────────────────────────────
-Q         = 3329
+Q         = 8380417
 Q_HALF    = Q // 2
-ETA_S     = 2
+ETA_S     = 1
 ETA_Y     = 1
-TAU       = 12
+TAU       = 7.14
 GAMMA     = 2
 N         = 256        # polynomial degree
-K         = 3          # module dimension
-KAPPA_OPT = 26
-SIGMA_OPT = 105.0
-BETA_MIN  = 2735
+K         = 4          # module dimension
+KAPPA_OPT = 35
+SIGMA_OPT = 5000.0
+BETA_MIN  = 200000
 SECURITY_TARGET = 128  # bits
 
 def zk_lower(kappa):
@@ -214,9 +214,10 @@ def plot_parameter_space(rows, ver):
     vmax = float(np.percentile(valid_vals, 95)) if len(valid_vals) else 0.02
     vmax = max(vmax, 1e-6)
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 7))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(50, 25))
+    plt.rcParams.update({'font.size': 36})
     fig.suptitle("PQ-ZK-eSIM Parameter Space Analysis",
-                 fontsize=14, fontweight='bold')
+                 fontsize=60, fontweight='bold', y=0.99)
 
     # ── Left: heatmap ──
     masked = np.ma.masked_where(region_grid != 1, val_grid)
@@ -241,22 +242,24 @@ def plot_parameter_space(rows, ver):
 
     ax1.set_xticks(range(len(sigmas)))
     ax1.set_xticklabels([f"{s:.0f}" for s in sigmas],
-                        rotation=45, ha='right', fontsize=8)
+                        rotation=45, ha='right', fontsize=40)
     ax1.set_yticks(range(len(kappas)))
-    ax1.set_yticklabels([str(k) for k in kappas], fontsize=8)
-    ax1.set_xlabel(r"$\sigma_{pub}$", fontsize=12)
-    ax1.set_ylabel(r"$\kappa$", fontsize=12)
+    ax1.set_yticklabels([str(k) for k in kappas], fontsize=40)
+    ax1.set_xlabel(r"$\sigma_{pub}$", fontsize=48)
+    ax1.set_ylabel(r"$\kappa$", fontsize=48)
     ax1.set_title(f"(A)  {mlabel}\n"
                   "blue (////): ZK violated  |  red (xxxx): correctness violated",
-                  fontsize=10)
+                  fontsize=44)
 
     if KAPPA_OPT in kappas and SIGMA_OPT in sigmas:
         ki = kappas.index(KAPPA_OPT)
         si = sigmas.index(SIGMA_OPT)
-        ax1.plot(si, ki, '*', color='black', markersize=18, zorder=6,
+        ax1.plot(si, ki, '*', color='black', markersize=48, zorder=6,
                  label=f"Optimal ($\\kappa$={KAPPA_OPT}, $\\sigma$={SIGMA_OPT:.0f})")
-        ax1.legend(loc='upper left', fontsize=9)
-    plt.colorbar(im, ax=ax1, label=mlabel, shrink=0.8)
+        ax1.legend(loc='upper left', fontsize=40)
+    cbar = plt.colorbar(im, ax=ax1, label=mlabel, shrink=0.8)
+    cbar.ax.tick_params(labelsize=40)
+    cbar.set_label(mlabel, fontsize=40)
 
     # ── Right: region map ──
     sigma_cont = np.linspace(min(sigmas)-5, max(sigmas)+5, 500)
@@ -287,20 +290,20 @@ def plot_parameter_space(rows, ver):
 
     if KAPPA_OPT in kappas:
         ki = kappas.index(KAPPA_OPT)
-        ax2.plot(SIGMA_OPT, ki+.5, '*', color='black', markersize=18, zorder=6)
+        ax2.plot(SIGMA_OPT, ki+.5, '*', color='black', markersize=36, zorder=6)
         ax2.annotate(
             f"$\\kappa$={KAPPA_OPT}, $\\sigma$={SIGMA_OPT:.0f}  (selected)",
-            xy=(SIGMA_OPT, ki+.5), fontsize=9, va='bottom', ha='left',
+            xy=(SIGMA_OPT, ki+.5), fontsize=36, va='bottom', ha='left',
             xytext=(SIGMA_OPT+4, ki+1.8),
-            arrowprops=dict(arrowstyle='->', color='black', lw=1.2))
+            arrowprops=dict(arrowstyle='->', color='black', lw=3))
 
     ax2.set_yticks([i+.5 for i in range(len(kappas))])
-    ax2.set_yticklabels([str(k) for k in kappas], fontsize=8)
-    ax2.set_xlabel(r"$\sigma_{pub}$", fontsize=12)
-    ax2.set_ylabel(r"$\kappa$", fontsize=12)
+    ax2.set_yticklabels([str(k) for k in kappas], fontsize=40)
+    ax2.set_xlabel(r"$\sigma_{pub}$", fontsize=48)
+    ax2.set_ylabel(r"$\kappa$", fontsize=48)
     ax2.set_title("(B)  Parameter Region Classification\n"
                   "green = valid  |  blue = ZK violated  |  red = correctness violated",
-                  fontsize=10)
+                  fontsize=44)
     ax2.legend(handles=[
         mpatches.Patch(color='#aac4e8', label=r'ZK violated ($\sigma$ too small)'),
         mpatches.Patch(color='#b7e4b7', label='Valid region'),
@@ -309,9 +312,9 @@ def plot_parameter_space(rows, ver):
                    label=r'ZK lower bound $\gamma\eta_s\kappa$'),
         plt.Line2D([0],[0], color='#c0392b', lw=2.5,
                    label='Correctness upper bound'),
-        plt.Line2D([0],[0], marker='*', color='black', lw=0, markersize=12,
+        plt.Line2D([0],[0], marker='*', color='black', lw=0, markersize=36,
                    label=f'Optimal ($\\kappa$={KAPPA_OPT}, $\\sigma$={SIGMA_OPT:.0f})'),
-    ], fontsize=8, loc='upper right', framealpha=0.92)
+    ], fontsize=36, loc='upper right', framealpha=0.92)
 
     plt.tight_layout()
     plt.savefig("fig_parameter_space.png", dpi=150, bbox_inches='tight')
@@ -361,12 +364,13 @@ def plot_tradeoff(rows, ver):
     OPT_C   = '#2c3e50'
     SEC_C   = '#8e44ad'
 
-    fig, axes = plt.subplots(4, 1, figsize=(13, 14), sharex=True)
+    fig, axes = plt.subplots(4, 1, figsize=(20, 24), sharex=True)
+    plt.rcParams.update({'font.size': 18})
     fig.suptitle(
-        f"Parameter Trade-off Analysis  ($\\sigma_{{pub}}$ = {SIGMA_OPT:.0f})\n"
-        r"$\kappa$=26 is the smallest value satisfying 128-bit security "
-        r"with low overflow rate and positive correctness margin",
-        fontsize=12, fontweight='bold'
+        f"Parameter Trade-off Analysis  ($\sigma_{{pub}}$ = {SIGMA_OPT:.0f})\n"
+        r"$\kappa$=30 is the optimal value with low overflow rate "
+        r"and positive correctness margin",
+        fontsize=24, fontweight='bold'
     )
 
     valid_k = [k for k, c in zip(kappas, correct) if c]
@@ -402,19 +406,31 @@ def plot_tradeoff(rows, ver):
             xy=(KAPPA_OPT, sec_bits[idx]),
             xytext=(KAPPA_OPT+2, sec_bits[idx]-8),
             arrowprops=dict(arrowstyle='->', color=OPT_C, lw=1.5),
-            fontsize=9, color=OPT_C)
+            fontsize=16, color=OPT_C)
 
-    ax.set_ylabel(r"Security Strength (bits)", fontsize=11)
+    ax.set_ylabel(r"Security Strength (bits)", fontsize=22)
     ax.grid(axis='y', linestyle=':', alpha=0.45)
-    ax.legend(fontsize=8, loc='lower right')
+    ax.legend(fontsize=18, loc='lower right')
+    ax.tick_params(axis='both', labelsize=16)
     ax.set_title(r"(A)  Security Strength $\log_2\binom{256}{\kappa} \cdot 2^\kappa$"
-                 "  —  must be $\geq$ 128", fontsize=10, loc='left')
+                 "  —  must be $\geq$ 128", fontsize=20, loc='left')
 
     # ── Panel B: Overflow rate ──
     ax = axes[1]
-    bar_c = [VALID if c else INVALID for c in correct]
-    ax.bar(kappas, core_vals, color=bar_c, alpha=0.82, width=0.6,
-           zorder=3, label=core_label)
+    
+    # 绘制折线图
+    valid_kappas = [k for k, c in zip(kappas, correct) if c]
+    valid_core_vals = [v for v, c in zip(core_vals, correct) if c]
+    invalid_kappas = [k for k, c in zip(kappas, correct) if not c]
+    invalid_core_vals = [v for v, c in zip(core_vals, correct) if not c]
+    
+    # 绘制有效区域的折线（correctness satisfied）
+    ax.plot(valid_kappas, valid_core_vals, 'o-', color=VALID, lw=2.2, markersize=6,
+            zorder=3, label='Correctness satisfied')
+    
+    # 绘制无效区域的折线（correctness violated）
+    ax.plot(invalid_kappas, invalid_core_vals, 'o-', color=INVALID, lw=2.2, markersize=6,
+            zorder=3, label='Correctness violated')
 
     if ref_vals is not None:
         ax.plot(kappas, ref_vals, 's--', color='gray', markersize=4,
@@ -429,10 +445,11 @@ def plot_tradeoff(rows, ver):
     if nonzero and max(nonzero)/min(nonzero) > 10:
         ax.set_yscale('log')
         ax.set_ylim(bottom=max(1e-5, min(nonzero)*0.5))
-    ax.set_ylabel(core_label, fontsize=9)
+    ax.set_ylabel(core_label, fontsize=20)
     ax.grid(axis='y', linestyle=':', alpha=0.45)
-    ax.legend(fontsize=8, loc='upper right')
-    ax.set_title("(B)  Mod-$q$ Overflow Rate  —  lower is better", fontsize=10, loc='left')
+    ax.legend(fontsize=16, loc='upper right')
+    ax.tick_params(axis='both', labelsize=16)
+    ax.set_title("(B)  Mod-$q$ Overflow Rate  —  lower is better", fontsize=20, loc='left')
 
     # ── Panel C: Correctness margin ──
     ax = axes[2]
@@ -444,11 +461,12 @@ def plot_tradeoff(rows, ver):
     ax.fill_between([min(kappas)-.5, max(kappas)+.5],
                     0, min(margins)-50,
                     color='red', alpha=0.07, label='Overflow region')
-    ax.set_ylabel(r"Margin  $= q/2 - \beta_{final}$", fontsize=11)
+    ax.set_ylabel(r"Margin  $= q/2 - \beta_{final}$", fontsize=22)
     ax.grid(axis='y', linestyle=':', alpha=0.45)
-    ax.legend(fontsize=9, loc='lower left')
+    ax.legend(fontsize=16, loc='lower left')
+    ax.tick_params(axis='both', labelsize=16)
     ax.set_title(r"(C)  Correctness Margin  —  must be $> 0$",
-                 fontsize=10, loc='left')
+                 fontsize=20, loc='left')
 
     # ── Panel D: Latency ──
     ax = axes[3]
@@ -462,19 +480,20 @@ def plot_tradeoff(rows, ver):
                label='5 ms eUICC target', zorder=4)
     ax.axvline(KAPPA_OPT, color=OPT_C, linestyle=':', lw=2.2,
                label=f'Optimal $\\kappa$={KAPPA_OPT}', zorder=5)
-    ax.set_xlabel(r"$\kappa$ (sparse challenge weight)", fontsize=12)
-    ax.set_ylabel("End-to-end Latency (μs)", fontsize=11)
+    ax.set_xlabel(r"$\kappa$ (sparse challenge weight)", fontsize=22)
+    ax.set_ylabel("End-to-end Latency (μs)", fontsize=22)
     ax.grid(axis='y', linestyle=':', alpha=0.45)
-    ax.legend(fontsize=9, loc='upper left')
+    ax.legend(fontsize=16, loc='upper left')
+    ax.tick_params(axis='both', labelsize=16)
     ax.set_title("(D)  End-to-end Latency  —  lower is better",
-                 fontsize=10, loc='left')
+                 fontsize=20, loc='left')
 
     fig.legend(
         handles=[
             mpatches.Patch(color=VALID,   alpha=0.82, label='Correctness satisfied'),
             mpatches.Patch(color=INVALID, alpha=0.82, label='Correctness violated'),
         ],
-        loc='lower center', ncol=2, fontsize=10,
+        loc='lower center', ncol=2, fontsize=12,
         bbox_to_anchor=(0.5, -0.01), framealpha=0.9)
 
     plt.tight_layout(rect=[0, 0.02, 1, 1])
@@ -487,7 +506,7 @@ def plot_tradeoff(rows, ver):
 def main():
     parser = argparse.ArgumentParser(
         description="PQ-ZK-eSIM grid search visualization v4.2")
-    parser.add_argument("--csv",     default="grid_results.csv")
+    parser.add_argument("--csv",     default="../build/grid_results.csv")
     parser.add_argument("--no-plot", action="store_true")
     args = parser.parse_args()
 

@@ -56,7 +56,7 @@ PQ_ZK_ERR_NOT_INITIALIZED  = -5   # v5.0 新增：nvram 未初始化
 PQ_ZK_ERR_YSEC_CONSUMED    = -6   # v5.0 新增：y_sec 已使用
 
 PQZK_BETA_FINAL = 1301
-PQZK_BETA_MIN   = 2735
+PQZK_BETA_MIN   = 3422
 
 g_pass = 0
 g_fail = 0

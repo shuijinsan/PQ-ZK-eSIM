@@ -1,206 +1,164 @@
 /**
  * @file params.h
- * @brief PQ-ZK-eSIM 安全参数集中定义 (v3.0)
+ * @brief PQ-ZK-eSIM security parameter definitions (v5.2 — sigma=5000, kappa=35)
  *
- * 本文件是所有可调安全参数的唯一来源（Single Source of Truth）。
- * 修改任何参数前必须重新验证正确性条件（见下方推导注释）。
- * 网格搜索脚本（bench_pqzkesim.c / grid_search.py）通过
- * 覆盖 PQZK_KAPPA 和 PQZK_SIGMA_PUB 宏来扫描参数空间。
+ * This file is the Single Source of Truth for all tunable security parameters.
+ * All changes must be re-verified against the proof conditions in the paper.
  *
- * ┌─────────────────────────────────────────────────────────┐
- * │  正确性约束（必须满足，否则验证引擎概率性失败）         │
- * │  β_pub + η_y + κ · η_s  <  q/2                         │
- * │  τ·σ   +  1  + κ·2     <  1664                         │
- * │  当前值：1248 + 1 + 52 = 1301 < 1664  ✓               │
- * └─────────────────────────────────────────────────────────┘
- *
- * 与 pq_zk_esim.h 的关系：
- *   - pq_zk_esim.h 定义协议结构和 API 签名（跨端宪法，不可改）
- *   - params.h     定义可调数值参数（实验调优入口）
- *   - 两者均被包含时，params.h 的定义通过 #ifndef 保护与 h 对齐
+ * Relationship to pq_zk_esim.h:
+ *   - pq_zk_esim.h defines protocol structures and API signatures
+ *   - params.h      defines tunable numerical parameters (experiment tuning entry)
+ *   - Both are included; params.h uses #ifndef guards to align with header
  */
 
 #ifndef PQZK_PARAMS_H
 #define PQZK_PARAMS_H
 
-/* ================================================================
- * 第一层：从 pq_zk_esim.h 继承的固定系统参数（只读，不可覆盖）
- * ================================================================ */
-
 #include "pq_zk_esim.h"
 
-/* 以下来自 pq_zk_esim.h，此处仅作注释说明，不重复定义：
- *   PQ_ZK_N     = 256     多项式环阶数
- *   PQ_ZK_K     = 3       模块维度（Kyber-768）
- *   PQ_ZK_Q_VAL = 3329    模数 q（素数）
- *   PQ_ZK_ETA_S = 2       私钥 S 系数无穷范数上界 η_s
- */
-
 /* ================================================================
- * 第二层：协议安全参数（可通过网格搜索调优）
+ * Layer 1: Fixed system parameters inherited from pq_zk_esim.h
  * ================================================================
  *
- * 参数推导链：
- *
- *   1. κ（挑战稀疏权重）
- *      - 影响抗伪造安全性：组合空间 C(N,κ)·2^κ
- *      - 影响正确性上界：κ·η_s 项
- *      - 论文实验范围：κ ∈ [20, 39]
- *      - 当前最优值：26（零知识性与正确性平衡点）
- *
- *   2. σ_pub（外部盲化因子高斯标准差）
- *      - 零知识性约束：σ_pub ≥ γ·η_s·κ = 2·2·26 = 104
- *      - 正确性约束：τ·σ_pub + 1 + κ·η_s < q/2 = 1664
- *        → σ_pub < (1664 - 1 - 52) / 12 = 1611/12 ≈ 134.25
- *        → σ_pub ∈ [104, 134]，取 104 最保守（论文实验范围 [80,150]）
- *
- *   3. τ（高斯截断参数）
- *      - Pr[|x| > τ·σ] ≤ 2^{-τ}，取 τ=12 → 概率 ≈ 2^{-12} ≈ 0.024%
- *      - β_pub = τ·σ_pub = 12·104 = 1248
- *
- *   4. β_final（验证引擎无穷范数上界）
- *      - β_final = β_pub + η_y + κ·η_s = 1248 + 1 + 52 = 1301
- *      - 必须 β_final < q/2 = 1664 → 安全余量 363 ✓
- *
- *   5. β_min（验证引擎欧几里得范数下界）
- *      - 基于期望 L2 范数：E[||y_pub||_2] = sqrt(K·N·σ²) ≈ 2882
- *      - 取 0.95 倍期望值（>99% 概率满足）：β_min = 2735
- *      - 作用：检测恶意 LPA 令 y_pub=0 的攻击（此时 ||z||_2 ≪ β_min）
+ *   PQ_ZK_N     = 256     polynomial ring degree
+ *   PQ_ZK_K     = 5       matrix rows (commitment dim)
+ *   PQ_ZK_M     = 8       matrix cols (witness dim)
+ *   PQ_ZK_Q_VAL = 8380417 modulus q = 2^23 - 2^13 + 1 (NTT-friendly)
+ *   PQ_ZK_ETA_S = 1       secret S coefficient l_inf bound (ternary)
  */
 
-/* ---- 当前生产参数（κ=26，σ=104）---- */
+#ifndef PQ_ZK_Q_VAL
+#define PQ_ZK_Q_VAL 8380417
+#endif
+
+/* ================================================================
+ * Layer 2: Protocol security parameters (Paper Table 3, Theorem 3/4)
+ * ================================================================
+ *
+ * Derivation chain (sigma=5000, kappa=35):
+ *
+ *   1. kappa = 35 (challenge sparsity weight)
+ *      - log2(C(256,35)*2^35) = 178.6 bit >> NIST Level 1 (128 bit)
+ *      - Soundness via Reset Lemma: eps_fork >= eps^2 - eps/|C_chal|
+ *
+ *   2. sigma_pub = 5000 (Gaussian flooding std deviation)
+ *      - Renyi smudging: sigma >= rho_smudge * sqrt(kappa*M*N) * eta_s
+ *        5000 >= 12.36 * sqrt(35*8*256) * 1 = 12.36 * 267.7 = 3309  OK
+ *      - R_16 <= exp(16*pi*||b||^2 / sigma^2) = exp(16*pi*97960/25e6)
+ *        = exp(0.197) = 1.218  (cf. paper baseline R_16=1.51 with kappa=25)
+ *      - Per-transcript loss L = R_16^(15/16) = 1.203
+ *
+ *   3. beta_inf = 35700 (y_pub coefficient truncation bound)
+ *      - tau = beta_inf / sigma = 35700/5000 = 7.14
+ *      - Pr[|coeff| > beta_inf] = erfc(7.14/sqrt(2)) ~ 10^{-12} per coeff
+ *      - Union bound over mN=2048 coeffs: ~ 2 * 10^{-9}
+ *
+ *   4. beta_final = 260000 (z_unmasked l_2 upper bound)
+ *      - E[||y_pub||_2] = sigma*sqrt(M*N) = 5000*45.25 = 226,274
+ *      - Std[||y_pub||_2] ~ sigma = 5000 (chi distribution)
+ *      - beta_final = 226274 + 6.7*5000 = 260000 (false reject < 10^{-7})
+ *      - beta_final = 260000 << q/2 = 4,190,208  OK
+ *
+ *   5. beta_min = 200000 (l_2 lower bound, sparse noise defense)
+ *      - E[||y_pub||_2] = 226,274
+ *      - beta_min = 226274 - 5.3*5000 = 200000 (false reject ~ 10^{-7})
+ *
+ *   6. beta_L1 = 7,400,000 (L1 lower bound)
+ *      - E[||y_pub||_1] = M*N*sigma*sqrt(2/pi) = 2048*5000*0.7979 = 8,170,338
+ *      - Std[||y_pub||_1] ~ sigma*sqrt(M*N*(1-2/pi)) = 5000*27.3 = 136,500
+ *      - beta_L1 = 8,170,338 - 5*136,500 = 7,487,838 ~ 7,400,000
+ */
 
 #ifndef PQZK_KAPPA
-/** 稀疏挑战多项式汉明权重 κ（非零系数个数）*/
-#  define PQZK_KAPPA            26
+#define PQZK_KAPPA            35
 #endif
 
-#ifndef PQZK_SIGMA_PUB
-/** 外部盲化因子 y_pub 的离散高斯标准差 */
-#  define PQZK_SIGMA_PUB        104.0
+#ifndef PQ_ZK_SIGMA_PUB
+#define PQ_ZK_SIGMA_PUB        5000.0
 #endif
 
-/** 高斯截断参数 τ（Pr[越界] ≈ 2^{-τ}）*/
-#define PQZK_TAU                12
+#define PQ_ZK_TAU               7.14
+#define PQ_ZK_RENYI_GAMMA       12.36
+#define PQ_ZK_BETA_INF          35700
 
-/** Rényi 散度安全系数 γ（满足 σ_pub ≥ γ·η_s·κ）*/
-#define PQZK_RENYI_GAMMA        2
-
-/* ================================================================
- * 第三层：派生参数（由上层参数自动推导，请勿手动修改）
- * ================================================================ */
-
-/** β_pub = τ · σ_pub，y_pub 系数高置信上界 */
-#define PQZK_BETA_PUB           ((int32_t)(PQZK_TAU * (int32_t)PQZK_SIGMA_PUB))
-
-/**
- * β_final：验证引擎无穷范数上界（防模 q 溢出）
- * β_final = β_pub + η_y + κ·η_s
- *         = τ·σ + 1 + κ·η_s
- *
- * 【正确性红线】β_final 必须严格小于 q/2 = 1664
- * 当前值：1248 + 1 + 52 = 1301 < 1664 ✓
- */
-#define PQZK_BETA_FINAL         ((int32_t)(                     \
-    PQZK_BETA_PUB                                               \
-    + 1                          /* η_y = 1（三进制 y_sec）*/   \
-    + PQZK_KAPPA * PQ_ZK_ETA_S  /* κ · η_s */                  \
-))
-
-/**
- * β_min：验证引擎欧几里得范数下界（防 y_pub=0 攻击）
- * E[||y_pub||_2²] = K·N·σ²，取 0.95 倍期望的平方根
- *
- * 静态计算（避免浮点宏）：
- *   sqrt(0.95 · 3 · 256 · 104²) = sqrt(0.95 · 8306688) ≈ 2810
- * 保守取整为 2735（留余量防参数漂移）
- */
-#define PQZK_BETA_MIN           2735
-#define PQZK_BETA_L1  50000
-
-/**
- * 单次认证解密失败率估算（论文 Evaluation 数据）
- * 失败 = z 的某系数绝对值超过 β_final（发生模 q 环绕）
- * 当前参数下失败率 ≈ 2^{-10}（约 0.1%），蜂窝网络可接受
- *
- * 注意：此宏仅用于注释和断言，不参与计算
- */
-#define PQZK_EXPECTED_FAIL_RATE_LOG2  (-10)   /* 约 2^{-10} */
+/* Renyi smudging minimum: gamma * sqrt(M*N*kappa) * eta_s (Paper Theorem 3) */
+#define PQZK_RENYI_SMUDGE_MIN  3309
 
 /* ================================================================
- * 第四层：网格搜索边界（bench_pqzkesim.c 使用）
+ * Layer 3: Derived parameters (auto-derived, do not modify manually)
  * ================================================================ */
 
-/** 网格搜索 κ 最小值 */
+// beta_final = 260000: 6.7-sigma upper tail, Pr[false reject] < 10^{-7}
+// Actual z_unmasked norm: ||y_pub||_2 dominates, chi distribution
+#define PQZK_BETA_FINAL        260000
+
+// beta_min = 200000: 5.3-sigma lower tail, Pr[false reject] < 10^{-7}
+#define PQZK_BETA_MIN           200000
+
+// beta_L1 = 7,400,000: L1 lower bound for sparse noise defense
+#define PQZK_BETA_L1            7400000
+
+// Single authentication Renyi smudging bound (Bai et al. Lemma 5)
+#define PQZK_EXPECTED_FAIL_RATE_LOG2  (-12)
+
+/* ================================================================
+ * Layer 4: Grid search bounds (q=8.38M, correctness no longer bottleneck)
+ * ================================================================ */
+
 #define PQZK_GRID_KAPPA_MIN     20
-
-/** 网格搜索 κ 最大值（κ=39 时 β_final > q/2，属于预期溢出区）*/
-#define PQZK_GRID_KAPPA_MAX     39
-
-/** 网格搜索 σ_pub 最小值 */
-#define PQZK_GRID_SIGMA_MIN     80.0
-
-/** 网格搜索 σ_pub 最大值 */
-#define PQZK_GRID_SIGMA_MAX     150.0
-
-/** 网格搜索 σ_pub 步长 */
-#define PQZK_GRID_SIGMA_STEP    5.0
-
-/** 每个参数组合的重复采样次数（统计失败率用）*/
-#define PQZK_GRID_TRIALS        1000
+#define PQZK_GRID_KAPPA_MAX     40
+#define PQZK_GRID_SIGMA_MIN     3000.0
+#define PQZK_GRID_SIGMA_MAX     6000.0
+#define PQZK_GRID_SIGMA_STEP    100.0
+#define PQZK_GRID_TRIALS        50
 
 /* ================================================================
- * 第五层：编译期正确性断言
- * ================================================================
- *
- * 如果参数不满足约束，编译时直接报错，而非运行时才发现问题。
- */
+ * Layer 5: Compile-time correctness assertions
+ * ================================================================ */
 
-/* β_final < q/2 = 1664 */
 _Static_assert(
-    PQZK_BETA_FINAL < 1664,
-    "PQZK_BETA_FINAL 必须小于 q/2=1664，请检查 PQZK_KAPPA 和 PQZK_SIGMA_PUB"
+    PQZK_BETA_FINAL < 4190209,
+    "PQZK_BETA_FINAL must be < q/2 = 4,190,208"
 );
 
-/* σ_pub ≥ γ·η_s·κ（零知识性下界） */
+// Paper Theorem 3: sigma >= gamma * sqrt(M*N*kappa) * eta_s
+// Since sqrt() is not a constant expression, we precompute:
+// gamma^2 * M * N * kappa * eta_s^2 = 12.36^2 * 2048 * 35 * 1
+//                                   = 152.77 * 71680
+//                                   = 10,950,554
+// sigma^2 = 5000^2 = 25,000,000 >= 10,950,554  OK
 _Static_assert(
-    (int)(PQZK_SIGMA_PUB) >= PQZK_RENYI_GAMMA * PQ_ZK_ETA_S * PQZK_KAPPA,
-    "PQZK_SIGMA_PUB 不满足 Rényi 散度零知识性下界 γ·η_s·κ"
+    (int)(PQ_ZK_SIGMA_PUB * PQ_ZK_SIGMA_PUB) >= (int)(PQ_ZK_RENYI_GAMMA * PQ_ZK_RENYI_GAMMA * PQ_ZK_M * PQ_ZK_N * PQZK_KAPPA * PQ_ZK_ETA_S * PQ_ZK_ETA_S),
+    "PQ_ZK_SIGMA_PUB fails Renyi smudging condition (Paper Theorem 3): sigma >= gamma*sqrt(M*N*kappa)*eta_s"
 );
 
-/* κ 在有效范围内 */
+_Static_assert(
+    PQ_ZK_BETA_INF >= (int)(PQ_ZK_TAU * PQ_ZK_SIGMA_PUB),
+    "PQ_ZK_BETA_INF must be >= tau * sigma_pub"
+);
+
 _Static_assert(
     PQZK_KAPPA >= 1 && PQZK_KAPPA <= PQ_ZK_N / 2,
-    "PQZK_KAPPA 必须在 [1, N/2] 范围内"
+    "PQZK_KAPPA must be in [1, N/2]"
+);
+
+_Static_assert(
+    PQ_ZK_M > PQ_ZK_K,
+    "Rectangular matrix requires M > K (witness dim > commitment dim)"
 );
 
 /* ================================================================
- * 第六层：运行时参数初始化宏（供 VerifyEngine 调用方使用）
+ * Layer 6: Runtime parameter initialization macros
  * ================================================================ */
 
-/**
- * PQZK_DEFAULT_BETA_PARAMS
- * 用默认参数初始化 beta_params_t 结构体
- *
- * 用法：
- *   beta_params_t p = PQZK_DEFAULT_BETA_PARAMS;
- *   PQC_VerifyEngine(..., &p);
- */
-#define PQZK_DEFAULT_BETA_PARAMS  \
-    { (uint16_t)PQZK_BETA_FINAL, (uint16_t)PQZK_BETA_MIN, (uint32_t)PQZK_BETA_L1}
+#ifndef PQZK_DEFAULT_BETA_PARAMS
+#define PQZK_DEFAULT_BETA_PARAMS      { (uint32_t)PQZK_BETA_FINAL, (uint32_t)PQZK_BETA_MIN, (uint32_t)PQZK_BETA_L1 }
 
-/**
- * PQZK_MAKE_BETA_PARAMS(kappa, sigma)
- * 网格搜索时动态计算 beta_params_t
- *
- * 用法（bench_pqzkesim.c）：
- *   beta_params_t p = PQZK_MAKE_BETA_PARAMS(30, 120.0);
- */
-#define PQZK_MAKE_BETA_PARAMS(kappa_, sigma_)  {                            \
-    (uint16_t)((int32_t)(PQZK_TAU * (int32_t)(sigma_))                     \
-               + 1 + (kappa_) * PQ_ZK_ETA_S),   /* beta_final */           \
-    (uint16_t)(2735)                              /* beta_min 固定 */       \
+#define PQZK_MAKE_BETA_PARAMS(kappa_, sigma_)  { \
+    (uint32_t)PQZK_BETA_FINAL, \
+    (uint32_t)PQZK_BETA_MIN,   \
+    (uint32_t)PQZK_BETA_L1     \
 }
 
-
 #endif /* PQZK_PARAMS_H */
+#endif
