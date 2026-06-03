@@ -418,17 +418,14 @@ def plot_tradeoff(rows, ver):
     # ── Panel B: Overflow rate ──
     ax = axes[1]
     
-    # 绘制折线图
     valid_kappas = [k for k, c in zip(kappas, correct) if c]
     valid_core_vals = [v for v, c in zip(core_vals, correct) if c]
     invalid_kappas = [k for k, c in zip(kappas, correct) if not c]
     invalid_core_vals = [v for v, c in zip(core_vals, correct) if not c]
     
-    # 绘制有效区域的折线（correctness satisfied）
     ax.plot(valid_kappas, valid_core_vals, 'o-', color=VALID, lw=2.2, markersize=6,
             zorder=3, label='Correctness satisfied')
     
-    # 绘制无效区域的折线（correctness violated）
     ax.plot(invalid_kappas, invalid_core_vals, 'o-', color=INVALID, lw=2.2, markersize=6,
             zorder=3, label='Correctness violated')
 

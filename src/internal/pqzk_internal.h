@@ -32,9 +32,9 @@ static inline void secure_zero(void *p, size_t n) {
     volatile uint8_t *vp=(volatile uint8_t*)p;while(n--)*vp++=0;
 }
 
-int pqzk_sha256(const uint8_t *in, size_t len, uint8_t out[32]);
+int pqzk_sha3_256(const uint8_t *in, size_t len, uint8_t out[32]);
 typedef struct { const uint8_t *buf; size_t len; } pqzk_iov_t;
-int pqzk_sha256_iov(const pqzk_iov_t *iov, uint8_t out[32]);
+int pqzk_sha3_256_iov(const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hmac_sha256_iov(const uint8_t key[32], const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hmac_sha256_iov_anykey(const uint8_t *key, size_t key_len, const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_shake256(const uint8_t *in, size_t in_len, uint8_t *out, size_t out_len);

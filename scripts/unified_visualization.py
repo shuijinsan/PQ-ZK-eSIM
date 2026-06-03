@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """
-unified_visualization.py — PQ-ZK-eSIM 统一可视化脚本 v1.0
+unified_visualization.py — PQ-ZK-eSIM unified visualization v1.0
 
-合并所有可视化功能：
-  1. 稀疏噪声降级攻击实验
-  2. 滑动窗口重同步实验
-  3. 运营商切换实验
-  4. NVM 磨损实验
-  5. 每阶段耗时实验
-  6. 内存占用实验
-  7. DoS 防护实验
-  8. 常数时间执行实验
-  9. 环境分解实验
-  10. 组件内存对比实验
+Unified visualization:
+  1. Sparse noise attack
+  2. Sliding window resync
+  3. Operator switch
+  4. NVM wear
+  5. Phase timing
+  6. Memory usage
+  7. DoS prevention
+  8. Constant time
+  9. Environment breakdown
+  10. Component memory
 """
 
 import os
@@ -26,7 +26,6 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 from matplotlib.gridspec import GridSpec
 
-# 统一字体设置 - 增大字体适合论文
 matplotlib.rcParams.update({
     'font.family': 'DejaVu Sans',
     'font.size': 28,
@@ -43,29 +42,27 @@ matplotlib.rcParams.update({
 OUTPUT_DIR = "../build"
 
 # ================================================================
-# 工具函数
 # ================================================================
 
 def load_csv(filename):
     path = os.path.join(OUTPUT_DIR, filename)
     if not os.path.exists(path):
-        print(f"  [警告] 找不到文件: {path}")
+        print(f"  [Warning] File not found: {path}")
         return None
     try:
         df = pd.read_csv(path)
         return df
     except Exception as e:
-        print(f"  [错误] 读取文件失败: {e}")
+        print(f"  [Error] read failed: {e}")
         return None
 
 def save_fig(fig, name):
     path = os.path.join(OUTPUT_DIR, name)
     fig.savefig(path, bbox_inches='tight')
-    print(f"  -> 已保存: {path}")
+    print(f"  -> Saved: {path}")
     plt.close(fig)
 
 # ================================================================
-# 1. 稀疏噪声降级攻击实验
 # ================================================================
 
 def plot_sparse_noise_attack():
@@ -74,18 +71,15 @@ def plot_sparse_noise_attack():
         return
 
     fig, axes = plt.subplots(1, 3, figsize=(36, 14))
-    # 主标题向下移动，留出空间放图例
     fig.suptitle("Sparse Noise Degradation Attack Analysis",
                  fontweight='bold', fontsize=56, y=0.98)
 
     rho = df["rho"].values * 100
 
-    # Panel A：检测率 vs ρ
     ax = axes[0]
     colors_a = ['#d62728' if r < 100 else '#2ca02c' for r in rho]
     bars = ax.bar(rho, df["detection_rate"] * 100, color=colors_a,
                   width=8, alpha=0.85, edgecolor='white', linewidth=2)
-    # 所有数字都放在柱子顶部，保持整齐对齐
     for bar, v in zip(bars, df["detection_rate"] * 100):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
                 f'{v:.0f}%', ha='center', va='bottom', 
@@ -98,7 +92,6 @@ def plot_sparse_noise_attack():
     ax.set_xticks(rho)
     ax.tick_params(axis='both', labelsize=38)
 
-    # Panel B：误拒率
     ax = axes[1]
     honest_mask = df["rho"] >= 1.0
     if honest_mask.any():
@@ -116,7 +109,6 @@ def plot_sparse_noise_attack():
     ax.set_xticks([])
     ax.tick_params(axis='y', labelsize=38)
 
-    # Panel C：端到端延迟
     ax = axes[2]
     ax.plot(rho, df["avg_total_us"] / 1000, 'o-',
             color='#1f77b4', linewidth=4, markersize=16)
@@ -126,7 +118,6 @@ def plot_sparse_noise_attack():
     ax.set_xticks(rho)
     ax.tick_params(axis='both', labelsize=38)
 
-    # 在主标题和子标题之间添加横向图例
     red_patch = mpatches.Patch(color='#d62728', alpha=0.85, label='Attack (ρ < 100%)')
     green_patch = mpatches.Patch(color='#2ca02c', alpha=0.85, label='Honest (ρ = 100%)')
     fig.legend(handles=[red_patch, green_patch], fontsize=36, 
@@ -137,7 +128,6 @@ def plot_sparse_noise_attack():
     save_fig(fig, "fig_sparse_noise_attack_v2.png")
 
 # ================================================================
-# 2. 滑动窗口重同步实验
 # ================================================================
 
 def plot_sliding_window_resync():
@@ -145,17 +135,14 @@ def plot_sliding_window_resync():
     if df is None:
         return
 
-    # 保持图表尺寸，调整字体和间距
     fig = plt.figure(figsize=(36, 14))
     fig.suptitle("Sliding Window Resync Analysis",
                  fontweight='bold', fontsize=56, y=1.02)
-    # 减小子图间距，特别是B/C之间
     gs = GridSpec(1, 3, figure=fig, wspace=0.4)
 
     windows = sorted(df["window_size"].unique())
     depths = sorted(df["sync_depth"].unique())
 
-    # Panel A：成功率热力图
     ax_a = fig.add_subplot(gs[0])
     matrix = np.zeros((len(windows), len(depths)))
     for i, w in enumerate(windows):
@@ -178,15 +165,13 @@ def plot_sliding_window_resync():
     ax_a.set_ylabel("Window Size W", fontsize=42)
     ax_a.set_title("(A) Success Rate Heatmap\n(green=success, red=fail)", fontsize=44)
 
-    # 减小热力图中的百分比数字，避免重叠
     for i in range(len(windows)):
         for j in range(len(depths)):
             v = matrix[i, j]
             color = 'white' if v < 50 or v > 90 else 'black'
             ax_a.text(j, i, f'{v:.0f}', ha='center', va='center',
-                      fontsize=26, color=color, fontweight='bold')  # 减小字体并去掉%符号
+                      fontsize=26, color=color, fontweight='bold')  # reduce font, remove %
 
-    # Panel B：MAC 搜索延迟 vs 窗口大小（最坏情况：Δ=W）
     ax_b = fig.add_subplot(gs[1])
     worst_case_mac = []
     for w in windows:
@@ -211,7 +196,6 @@ def plot_sliding_window_resync():
     ax_b.set_xticks(windows)
     ax_b.tick_params(axis='both', labelsize=38)
 
-    # Panel C：总延迟 vs 同步深度（W=最大窗口 固定）
     ax_c = fig.add_subplot(gs[2])
     w_target = max(windows)
     df_w = df[df["window_size"] == w_target].sort_values("sync_depth")
@@ -235,7 +219,6 @@ def plot_sliding_window_resync():
     save_fig(fig, "fig_sliding_window_resync_v2.png")
 
 # ================================================================
-# 3. 运营商切换实验
 # ================================================================
 
 def plot_operator_switching():
@@ -254,7 +237,6 @@ def plot_operator_switching():
         'r2r': '#9467bd'
     }
 
-    # Panel A：切换时间
     ax = axes[0]
     for _, row in df.iterrows():
         color = colors_dir.get(row["direction"], '#7f7f7f')
@@ -285,7 +267,6 @@ def plot_operator_switching():
     ax.set_ylabel("Switch Time (μs)", fontsize=20)
     ax.set_title("(A) Operator Switching Time per Trial", fontsize=22)
 
-    # Panel B：成功率
     ax = axes[1]
     success_rate = df["success"].mean() * 100
     total = len(df)
@@ -315,7 +296,6 @@ def plot_operator_switching():
     save_fig(fig, "fig_operator_switching_v2.png")
 
 # ================================================================
-# 4. NVM 磨损实验
 # ================================================================
 
 def plot_nvm_wear():
@@ -332,7 +312,6 @@ def plot_nvm_wear():
     ops = df["operation"].tolist()
     colors = ['#8e44ad', '#1abc9c']
 
-    # Panel A：写入次数
     ax = axes[0]
     bars = ax.bar(ops, df["nvram_writes"], color=colors, alpha=0.85,
                   edgecolor='white', width=0.5)
@@ -344,7 +323,6 @@ def plot_nvm_wear():
     ax.set_title("(A) NVM Write Count per Operation", fontsize=22)
     ax.set_ylim(0, df["nvram_writes"].max() * 1.3 + 1)
 
-    # Panel B：平均耗时
     ax = axes[1]
     avg_times_ms = df["total_time_us"] / 1000 / df["nvram_writes"]
     bars = ax.bar(ops, avg_times_ms, color=colors, alpha=0.85,
@@ -357,7 +335,6 @@ def plot_nvm_wear():
     ax.set_ylabel("Average Time per NVM Write (ms)", fontsize=20)
     ax.set_title("(B) Average Time per NVM Write", fontsize=22)
 
-    # Panel C：寿命预估
     ax = axes[2]
     NVM_LIFETIME_WRITES = 200_000
     auth_per_day = 20
@@ -408,7 +385,6 @@ def plot_nvm_wear():
     save_fig(fig, "fig_nvm_wear_v2.png")
 
 # ================================================================
-# 5. 每阶段耗时实验
 # ================================================================
 
 def plot_phase_timing():
@@ -432,15 +408,13 @@ def plot_phase_timing():
 
     missing = [c for c in phase_cols if c not in df.columns]
     if missing:
-        print(f"  [警告] phase_timing CSV 缺少列: {missing}")
+        print(f"  [Warning] phase_timing CSV missing: {missing}")
         return
 
-    # 保持图表尺寸不变，增大字体（删除饼图后改为2x2布局）
     fig = plt.figure(figsize=(72, 40))
     fig.suptitle("Per-Phase Timing Analysis", fontweight='bold', fontsize=120, y=0.985)
     gs = GridSpec(2, 2, figure=fig, hspace=0.5, wspace=0.35)
 
-    # Panel A：均值 + 标准差柱状图（整行宽度）
     ax_a = fig.add_subplot(gs[0, :])
     means = df[phase_cols].mean()
     stds = df[phase_cols].std()
@@ -469,7 +443,6 @@ def plot_phase_timing():
     ]
     ax_a.legend(handles=legend_patches, fontsize=72, loc='upper right')
 
-    # Panel B：延迟分布箱线图（左列）
     ax_b = fig.add_subplot(gs[1, 0])
     data_for_box = [df[c].dropna().values for c in phase_cols]
     bp = ax_b.boxplot(data_for_box, patch_artist=True, notch=False,
@@ -487,7 +460,6 @@ def plot_phase_timing():
     ax_b.legend([mpatches.Patch(color='red', alpha=0.5)], ['Outliers'], fontsize=72, loc='upper right')
     ax_b.tick_params(axis='y', labelsize=72)
     
-    # 调整y轴范围，减少空白 - 使用Q1-Q3范围的1.5倍作为边界
     all_data = np.concatenate(data_for_box)
     q1 = np.percentile(all_data, 25)
     q3 = np.percentile(all_data, 75)
@@ -496,14 +468,12 @@ def plot_phase_timing():
     y_max = q3 + 2 * iqr
     ax_b.set_ylim(y_min, y_max)
 
-    # Panel C：总延迟时间序列（右列）- 只去除最离谱的最后一个离群值，保留前两个
     ax_c = fig.add_subplot(gs[1, 1])
     if "total_us" in df.columns:
         total = df["total_us"].values
     else:
         total = df[[c for c in phase_cols if c in df.columns]].sum(axis=1).values
     
-    # 只去除最后一个最离谱的离群值（最大的值），保留前两个离群值
     sorted_total = np.sort(total)
     if len(sorted_total) > 3:
         max_val = sorted_total[-1]
@@ -531,7 +501,6 @@ def plot_phase_timing():
     ax_c.legend(fontsize=68)
     ax_c.tick_params(axis='both', labelsize=72)
     
-    # 设置合理的y轴范围
     t_min = max(0, filtered_total.min() * 0.9)
     t_max = filtered_total.max() * 1.1
     ax_c.set_ylim(t_min, t_max)
@@ -540,7 +509,6 @@ def plot_phase_timing():
     save_fig(fig, "fig_phase_timing_v2.png")
 
 # ================================================================
-# 6. 内存占用实验
 # ================================================================
 
 def plot_memory_usage():
@@ -556,7 +524,6 @@ def plot_memory_usage():
     fig, axes = plt.subplots(1, 2, figsize=(20, 10))
     fig.suptitle("Memory Usage Analysis", fontweight='bold', fontsize=26, y=1.02)
 
-    # Panel A：内存增量
     ax = axes[0]
     deltas = []
     for phase in phases:
@@ -576,7 +543,6 @@ def plot_memory_usage():
     ax.set_xlabel("RSS Delta (KB)", fontsize=20)
     ax.set_title("(A) Memory Delta per Phase", fontsize=22)
 
-    # Panel B：绝对RSS
     ax = axes[1]
     rss_values = []
     for phase in phases:
@@ -602,13 +568,12 @@ def plot_memory_usage():
     save_fig(fig, "fig_memory_usage_v2.png")
 
 # ================================================================
-# 7. DoS 防护实验
 # ================================================================
 
 def load_dos_results(csv_path):
     path = os.path.join(OUTPUT_DIR, csv_path)
     if not os.path.exists(path):
-        print(f"  [警告] 找不到文件: {path}")
+        print(f"  [Warning] File not found: {path}")
         return None
     
     data = {}
@@ -640,7 +605,7 @@ def plot_dos_prevention():
         times.append(dos_data['Full_Lattice_Verification'])
     
     if not tests:
-        print("  [警告] No valid DoS test data found")
+        print("  [Warning] No valid DoS test data found")
         return
 
     fig, ax = plt.subplots(figsize=(14, 10))
@@ -666,13 +631,12 @@ def plot_dos_prevention():
     save_fig(fig, "fig_dos_prevention.png")
 
 # ================================================================
-# 8. 常数时间执行实验
 # ================================================================
 
 def load_constant_time_results(csv_path):
     path = os.path.join(OUTPUT_DIR, csv_path)
     if not os.path.exists(path):
-        print(f"  [警告] 找不到文件: {path}")
+        print(f"  [Warning] File not found: {path}")
         return None
     
     times = []
@@ -724,7 +688,6 @@ def plot_constant_time():
     save_fig(fig, "fig_constant_time.png")
 
 # ================================================================
-# 9. Callgrind Top Functions 分析图表
 # ================================================================
 
 def plot_callgrind_top_functions():
@@ -732,7 +695,7 @@ def plot_callgrind_top_functions():
     if not os.path.exists(csv_path):
         csv_path = os.path.join(os.path.dirname(OUTPUT_DIR), "callgrind_top_functions.csv")
     if not os.path.exists(csv_path):
-        print(f"  [警告] 找不到 callgrind_top_functions.csv")
+        print(f"  [Warning] callgrind_top_functions.csv not found")
         return
 
     df = load_csv("callgrind_top_functions.csv")
@@ -796,13 +759,12 @@ def plot_callgrind_top_functions():
     save_fig(fig, "callgrind_top_functions.png")
 
 # ================================================================
-# 10. 环境分解实验
 # ================================================================
 
 def plot_environment_breakdown():
     csv_path = os.path.join(OUTPUT_DIR, "perf_results.csv")
     if not os.path.exists(csv_path):
-        print(f"  [警告] 找不到文件: {csv_path}")
+        print(f"  [Warning] File not found: {csv_path}")
         return
 
     data = {}
@@ -813,7 +775,7 @@ def plot_environment_breakdown():
                 data[row['function']] = float(row['avg_us'])
 
     if not data:
-        print("  [警告] No environment breakdown data found")
+        print("  [Warning] No environment breakdown data found")
         return
 
     labels = ['eUICC\n(resource-constrained)', 'LPA\n(high-power)', 'Server']
@@ -830,15 +792,12 @@ def plot_environment_breakdown():
 
     fig, ax = plt.subplots(figsize=(12, 10))
     
-    # 使用条形图代替饼图
     bars = ax.bar(labels, values, color=colors, alpha=0.85, edgecolor='white', width=0.7)
     
-    # 添加数值标签
     for bar, v in zip(bars, values):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.02,
                 f'{v:.1f} μs', ha='center', va='bottom', fontsize=36, fontweight='bold')
     
-    # 计算百分比并显示
     total = sum(values)
     for bar, v, label in zip(bars, values, labels):
         percentage = (v / total) * 100
@@ -853,7 +812,6 @@ def plot_environment_breakdown():
     save_fig(fig, "fig_environment_breakdown.png")
 
 # ================================================================
-# 10. 组件内存对比实验
 # ================================================================
 
 def plot_component_memory():
@@ -862,7 +820,7 @@ def plot_component_memory():
     server_df = load_csv("server_memory_results.csv")
 
     if lpa_df is None and euicc_df is None and server_df is None:
-        print("  [警告] 缺少组件内存 CSV 文件")
+        print("  [Warning] Missing component memory CSV")
         return
 
     components = []
@@ -888,22 +846,19 @@ def plot_component_memory():
         colors.append('#2ca02c')
 
     if not components:
-        print("  [警告] CSV 文件中没有有效的内存数据")
+        print("  [Warning] no valid memory data")
         return
 
     fig, ax = plt.subplots(figsize=(12, 10))
     fig.suptitle("Component Memory Comparison", fontweight='bold', fontsize=26, y=1.02)
 
-    # 使用条形图展示内存使用
     bars = ax.bar(components, memory_values, color=colors, alpha=0.85,
                   edgecolor='white', width=0.6)
     
-    # 添加数值标签
     for bar, v in zip(bars, memory_values):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(memory_values)*0.03,
                 f'{v:.1f} KB', ha='center', va='bottom', fontsize=20, fontweight='bold')
     
-    # 计算百分比并显示在柱子内部
     total = sum(memory_values)
     for bar, v, label in zip(bars, memory_values, components):
         percentage = (v / total) * 100
@@ -918,17 +873,15 @@ def plot_component_memory():
     save_fig(fig, "fig_component_memory.png")
 
 # ================================================================
-# 主函数
 # ================================================================
 
 # ================================================================
-# 11. 参数空间分析实验
 # ================================================================
 
 def plot_parameter_space():
     csv_path = os.path.join(OUTPUT_DIR, "grid_results.csv")
     if not os.path.exists(csv_path):
-        print("  [警告] 找不到文件: grid_results.csv")
+        print("  [Warning] File not found: grid_results.csv")
         return
 
     import csv
@@ -1127,16 +1080,15 @@ def plot_parameter_space():
     plt.tight_layout()
     fig.savefig(os.path.join(OUTPUT_DIR, "fig_parameter_space.png"), dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"  -> 已保存: {os.path.join(OUTPUT_DIR, 'fig_parameter_space.png')}")
+    print(f"  -> Saved: {os.path.join(OUTPUT_DIR, 'fig_parameter_space.png')}")
 
 # ================================================================
-# 12. 参数权衡分析实验
 # ================================================================
 
 def plot_tradeoff():
     csv_path = os.path.join(OUTPUT_DIR, "grid_results.csv")
     if not os.path.exists(csv_path):
-        print("  [警告] 找不到文件: grid_results.csv")
+        print("  [Warning] File not found: grid_results.csv")
         return
 
     import csv
@@ -1185,7 +1137,7 @@ def plot_tradeoff():
         key=lambda x: x['kappa']
     )
     if not subset:
-        print(f"  [警告] No data for sigma={SIGMA_OPT:.0f}")
+        print(f"  [Warning] No data for sigma={SIGMA_OPT:.0f}")
         return
 
     kappas = [r['kappa'] for r in subset]
@@ -1328,31 +1280,30 @@ def plot_tradeoff():
     plt.tight_layout(rect=[0, 0.02, 1, 1])
     fig.savefig(os.path.join(OUTPUT_DIR, "fig_tradeoff.png"), dpi=150, bbox_inches='tight')
     plt.close()
-    print(f"  -> 已保存: {os.path.join(OUTPUT_DIR, 'fig_tradeoff.png')}")
+    print(f"  -> Saved: {os.path.join(OUTPUT_DIR, 'fig_tradeoff.png')}")
 
 # ================================================================
-# 主函数
 # ================================================================
 
 def main():
     print("=" * 60)
-    print("  PQ-ZK-eSIM 统一可视化脚本 v1.0")
+    print("  PQ-ZK-eSIM unified visualization v1.0")
     print("=" * 60)
 
     plot_functions = [
-        ("稀疏噪声降级攻击", plot_sparse_noise_attack),
-        ("滑动窗口重同步", plot_sliding_window_resync),
-        ("运营商切换", plot_operator_switching),
-        ("NVM 磨损", plot_nvm_wear),
-        ("每阶段耗时", plot_phase_timing),
-        ("内存占用", plot_memory_usage),
-        ("DoS 防护", plot_dos_prevention),
-        ("常数时间执行", plot_constant_time),
+        ("Sparse noise attack", plot_sparse_noise_attack),
+        ("Sliding window resync", plot_sliding_window_resync),
+        ("Operator switch", plot_operator_switching),
+        ("NVM wear", plot_nvm_wear),
+        ("Phase timing", plot_phase_timing),
+        ("Memory usage", plot_memory_usage),
+        ("DoS prevention", plot_dos_prevention),
+        ("Constant time", plot_constant_time),
         ("Callgrind Top Functions", plot_callgrind_top_functions),
-        ("环境分解", plot_environment_breakdown),
-        ("组件内存对比", plot_component_memory),
-        ("参数空间分析", plot_parameter_space),
-        ("参数权衡分析", plot_tradeoff),
+        ("Environment breakdown", plot_environment_breakdown),
+        ("Component memory", plot_component_memory),
+        ("Parameter space", plot_parameter_space),
+        ("Parameter tradeoff", plot_tradeoff),
     ]
 
     for i, (name, func) in enumerate(plot_functions, 1):
@@ -1360,12 +1311,12 @@ def main():
         try:
             func()
         except Exception as e:
-            print(f"  [错误] {e}")
+            print(f"  [Error]  {e}")
             import traceback
             traceback.print_exc()
 
     print("\n" + "=" * 60)
-    print("  完成，图表已保存到 build 目录")
+    print("  Done, charts saved to build/")
     print("=" * 60)
 
 if __name__ == "__main__":

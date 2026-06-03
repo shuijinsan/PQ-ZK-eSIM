@@ -77,7 +77,7 @@ static PQ_ZK_ErrorCode run_one_trial(const char *nvram_dir,
 
     pqzk_iov_t rdyn_iov[] = { { R_bio, 32 }, { ctr_bytes, 8 }, { NULL, 0 } };
     uint8_t R_dynamic[32];
-    pqzk_sha256_iov(rdyn_iov, R_dynamic);
+    pqzk_sha3_256_iov(rdyn_iov, R_dynamic);
 
     uint8_t cagg_bytes[PQ_ZK_POLY_BYTES];
     PQC_EncodePoly(&c_agg, cagg_bytes);
@@ -89,7 +89,7 @@ static PQ_ZK_ErrorCode run_one_trial(const char *nvram_dir,
         { NULL, 0 }
     };
     uint8_t AuthToken[32];
-    pqzk_hmac_sha256_iov(k_tee, auth_iov, AuthToken);
+    pqzk_aes256_cmac(k_tee, auth_iov, AuthToken);
 
     poly_vec_t z_sec_masked;
     t0 = get_time_us();
@@ -384,7 +384,7 @@ static void run_dos_bench(void)
 
     pqzk_iov_t rdyn_iov[] = { { R_bio, 32 }, { ctr_bytes, 8 }, { NULL, 0 } };
     uint8_t R_dynamic[32];
-    pqzk_sha256_iov(rdyn_iov, R_dynamic);
+    pqzk_sha3_256_iov(rdyn_iov, R_dynamic);
 
     uint8_t cagg_bytes[PQ_ZK_POLY_BYTES];
     PQC_EncodePoly(&c_agg, cagg_bytes);
@@ -396,7 +396,7 @@ static void run_dos_bench(void)
         { NULL, 0 }
     };
     uint8_t AuthToken[32];
-    pqzk_hmac_sha256_iov(k_tee, auth_iov, AuthToken);
+    pqzk_aes256_cmac(k_tee, auth_iov, AuthToken);
 
     poly_vec_t z_sec_masked;
     PQC_ComputeZ_and_Mask(
@@ -516,7 +516,7 @@ static void run_constant_time_bench(void)
 
         pqzk_iov_t rdyn_iov[] = { { R_bio, 32 }, { ctr_bytes, 8 }, { NULL, 0 } };
         uint8_t R_dynamic[32];
-        pqzk_sha256_iov(rdyn_iov, R_dynamic);
+        pqzk_sha3_256_iov(rdyn_iov, R_dynamic);
 
         uint8_t cagg_bytes[PQ_ZK_POLY_BYTES];
         PQC_EncodePoly(&c_agg, cagg_bytes);
@@ -528,7 +528,7 @@ static void run_constant_time_bench(void)
             { NULL, 0 }
         };
         uint8_t AuthToken[32];
-        pqzk_hmac_sha256_iov(k_tee, auth_iov, AuthToken);
+        pqzk_aes256_cmac(k_tee, auth_iov, AuthToken);
 
         poly_vec_t z_sec_masked;
         double t0 = get_time_us();

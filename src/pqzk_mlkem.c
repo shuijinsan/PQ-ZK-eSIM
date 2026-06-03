@@ -1,10 +1,6 @@
 /*
- * pqzk_mlkem.c — PQ-ZK-eSIM v5.0
- * ML-KEM（CRYSTALS-Kyber-768）后量子安全 APDU 隧道实现
- *
- * 依赖：
- *   liboqs（OQS_KEM_kyber_768）
- *   pqzk_crypto.c（pqzk_sha256、pqzk_aes256_ctr、pqzk_rand_bytes）
+ * pqzk_mlkem.c — PQ-ZK-eSIM v5.2
+ * ML-KEM (CRYSTALS-Kyber-768) APDU tunnel for operator switching
  */
 
 #include "pqzk_mlkem.h"
@@ -14,13 +10,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-/* ================================================================
- * 内部工具：从 KEM 共享密钥派生 APDU 会话密钥
- *
- * session_key = SHA-256(shared_secret || "PQZK-APDU-v1" || tunnel_id)
- *
- * 加入域分离标签和 tunnel_id，确保不同会话的会话密钥互不相关。
- * ================================================================ */
+/* Derive session key from KEM shared secret */
 static int derive_session_key(const uint8_t ss[PQZK_MLKEM_SS_BYTES],
                                const uint8_t tunnel_id[16],
                                uint8_t session_key[PQZK_MLKEM_SESSION_KEY_BYTES])
@@ -33,7 +23,7 @@ static int derive_session_key(const uint8_t ss[PQZK_MLKEM_SS_BYTES],
         { tunnel_id, 16                  },
         { NULL, 0 }
     };
-    return pqzk_sha256_iov(iov, session_key);
+    return pqzk_sha3_256_iov(iov, session_key);
 }
 
 /* ================================================================
@@ -74,11 +64,11 @@ int PQZK_MLKEM_Encapsulate(const uint8_t  server_pk[PQZK_MLKEM_PK_BYTES],
     if (OQS_KEM_encaps(kem, ct_out, ss, server_pk) != OQS_SUCCESS)
         goto done;
 
-    /* 生成随机 tunnel_id */
+    /* Generate random tunnel_id */
     if (pqzk_rand_bytes(tunnel_out->tunnel_id, 16) != 0)
         goto done;
 
-    /* 派生会话密钥 */
+    /* Derive session key */
     if (derive_session_key(ss, tunnel_out->tunnel_id,
                            tunnel_out->session_key) != 0)
         goto done;
@@ -125,13 +115,7 @@ done:
     return ret;
 }
 
-/* ================================================================
- * PQZK_APDU_Encrypt / Decrypt
- * 用会话密钥对载荷进行 AES-256-CTR 加密/解密
- *
- * IV = SHA-256(session_key || "ENC" || seq)[0:16]
- * seq 固定为 0（每条隧道消息只发一次，不需要计数器）
- * ================================================================ */
+/* AES-256-CTR encrypt under session key. IV = SHA3-256(session_key || "ENC" || seq)[0:16] */
 int PQZK_APDU_Encrypt(const mlkem_tunnel_t *tunnel,
                        const uint8_t *plaintext, size_t pt_len,
                        uint8_t *ciphertext)
@@ -149,7 +133,7 @@ int PQZK_APDU_Encrypt(const mlkem_tunnel_t *tunnel,
         { NULL, 0 }
     };
     uint8_t hash[32], iv[16];
-    if (pqzk_sha256_iov(iov, hash) != 0) return -1;
+    if (pqzk_sha3_256_iov(iov, hash) != 0) return -1;
     memcpy(iv, hash, 16);
 
     return pqzk_aes256_ctr(tunnel->session_key, iv, ciphertext, pt_len);
@@ -159,26 +143,13 @@ int PQZK_APDU_Decrypt(const mlkem_tunnel_t *tunnel,
                        const uint8_t *ciphertext, size_t ct_len,
                        uint8_t *plaintext)
 {
-    /*
-     * AES-CTR 加解密完全对称，直接复用 Encrypt。
-     * 调用方保证 plaintext 缓冲区 >= ct_len。
-     */
+    /* AES-CTR encrypt/decrypt are symmetric */
     return PQZK_APDU_Encrypt(tunnel, ciphertext, ct_len, plaintext);
 }
 
-/* ================================================================
- * PQZK_APDU_SerializePayload / DeserializePayload
- *
- * 序列化格式（全小端序，固定字段布局）：
- *   R_bio_B   [32]
- *   R_bio     [32]
- *   salt      [32]
- *   cred_kyc  [64]
- *   cert_a    [256]
- *   eid       [16]
- *   T_new     [PQ_ZK_PUBLICKEY_BYTES=1184]
- *   总计：32+32+32+64+256+16+1184 = 1616 字节
- * ================================================================ */
+/* APDU payload serialization (little-endian, fixed layout):
+ *   R_bio_B[32] | R_bio[32] | salt[32] | cred_kyc[64] |
+ *   cert_a[256] | eid[16] | T_new[PQ_ZK_PUBLICKEY_BYTES] */
 #define APDU_PAYLOAD_SERIAL_BYTES \
     (32 + 32 + 32 + 64 + 256 + 16 + PQ_ZK_PUBLICKEY_BYTES)
 

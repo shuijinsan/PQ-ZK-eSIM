@@ -1,17 +1,7 @@
 /*
- * main.c — PQ-ZK-eSIM 线上软件入口
- *
- * 前提：已通过线下初始化脚本（tools/setup_euicc.sh）完成 eUICC 激活。
- *
- * 用法：
- *   认证：./pqzkesim --auth   --nvram /tmp/euicc
- *   切换：./pqzkesim --switch --nvram /tmp/euicc --mno-b-id MNO_B_001
- *
- * 注意：
- *   --register 模式已移除。
- *   注册是线下行为，通过 tools/setup_euicc.sh 完成。
- *   真实 eSIM 场景中，注册通过营业厅 NFC/USB OOB 信道完成，
- *   不在本软件的职责范围内。
+ * main.c — PQ-ZK-eSIM simulation entry point
+ * Usage: ./pqzkesim --auth --nvram /tmp/euicc
+ *        ./pqzkesim --switch --nvram /tmp/euicc --mno-b-id MNO_B_001
  */
 
 #include <stdio.h>
@@ -24,36 +14,34 @@
 #include "pqzk_merkle.h"
 #include "pqzk_cert.h"
 
-/* mode_switch 声明（实现在 mode_switch.c） */
+/* mode_switch (see mode_switch.c) */
 int mode_switch(const char    *nvram_dir,
                 const uint8_t  domain_id_b[PQZK_MNO_ID_BYTES],
                 const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES],
                 const uint8_t  mno_a_sk[32]);
 
-/* mode_auth 声明（实现见下方） */
+/* mode_auth (see below) */
 static int mode_auth(const char *nvram_dir);
 
-/* ================================================================
- * 认证模式（同前，保持不变）
- * ================================================================ */
+/* Authentication mode */
 static int mode_auth(const char *nvram_dir)
 {
-    printf("[认证] nvram: %s\n", nvram_dir);
+    printf("[Auth] nvram: %s\n", nvram_dir);
 
     merkle_tree_t tree;
     PQ_ZK_ErrorCode load_rc = PQC_LoadTree(nvram_dir, &tree);
     if (load_rc != PQ_ZK_SUCCESS) {
-        fprintf(stderr, "[错误] nvram 未初始化，请先注册\n");
+        fprintf(stderr, "[Error] nvram not initialized, register first\n");
         return -1;
     }
 
-    printf("[认证] Merkle 树加载成功，叶子数: %u\n", tree.n_leaves);
+    printf("[Auth] Merkle tree loaded, leaves:: %u\n", tree.n_leaves);
 
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];
     uint8_t R_bio[32], salt[32], k_sym[32];
     FILE *reg = fopen("registration_data.bin", "rb");
     if (!reg) {
-        fprintf(stderr, "[错误] 找不到 registration_data.bin\n");
+        fprintf(stderr, "[Error] registration_data.bin not found\n");
         return -1;
     }
     fread(pk_t,  1, PQ_ZK_PUBLICKEY_BYTES, reg);
@@ -62,26 +50,26 @@ static int mode_auth(const char *nvram_dir)
     fread(k_sym, 1, 32, reg);
     fclose(reg);
 
-    printf("[认证] 活体验证（模拟）：通过\n");
+    printf("[Auth] Biometric match: PASS\n");
 
-    /* 阶段一 */
+    /* Phase 1 */
     poly_vec_t W_pub, W_sec;
     uint8_t seed_y[32], MAC_W[32];
     PQC_PreCompute(&W_pub, seed_y);
     PQC_eUICC_Commit(nvram_dir, &W_sec, MAC_W);
     poly_vec_t W;
     pqzk_vec_add(&W_sec, &W_pub, &W, PQ_ZK_K);
-    printf("[阶段一] 承诺生成完成\n");
+    printf("[Phase 1] Commitment done\n");
 
-    /* 阶段二 */
+    /* Phase 2 */
     uint8_t c_seed[32];
     pqzk_rand_bytes(c_seed, 32);
     poly_t c_agg;
     PQC_GenChallenge(&W, c_seed, &c_agg);
     uint32_t M1 = 0;
-    printf("[阶段二] 挑战生成完成\n");
+    printf("[Phase 2] Challenge done\n");
 
-    /* 阶段三 */
+    /* Phase 3 */
     nvram_state_t nvram_st;
     nvram_read(nvram_dir, &nvram_st);
     uint8_t k_tee[32];
@@ -95,12 +83,12 @@ static int mode_auth(const char *nvram_dir)
         nvram_dir, &c_agg, R_bio, &tree,
         M1, k_tee, R_dynamic, &M2, AuthToken);
     if (tee_rc != PQ_ZK_SUCCESS) {
-        fprintf(stderr, "[错误] TEE 令牌生成失败: %d\n", tee_rc);
+        fprintf(stderr, "[Error] TEE token generation failed: %d\n", tee_rc);
         return -1;
     }
-    printf("[阶段三] TEE 授权令牌生成完成\n");
+    printf("[Phase 3] TEE AuthToken done\n");
 
-    /* 序列化 M2 用于根重构 */
+    /* Serialize M2 for root reconstruction */
     uint8_t m2s[8 + PQZK_MERKLE_MAX_DEPTH*(PQZK_MERKLE_HASH_BYTES+1)];
     size_t off = 0;
     write_le32(m2s + off, M2.depth);      off += 4;
@@ -111,24 +99,24 @@ static int mode_auth(const char *nvram_dir)
         m2s[off] = M2.is_right_sibling[i]; off++;
     }
 
-    /* 阶段四 */
+    /* Phase 4 */
     poly_vec_t z_sec_masked;
     PQ_ZK_ErrorCode rc = PQC_ComputeZ_and_Mask(
         nvram_dir, &c_agg, c_seed,
         R_dynamic, AuthToken, &z_sec_masked);
     if (rc != PQ_ZK_SUCCESS) {
-        fprintf(stderr, "[错误] 阶段四失败: %d\n", rc);
+        fprintf(stderr, "[Error] Phase 4 failed: %d\n", rc);
         return -1;
     }
-    printf("[阶段四] 掩码计算完成\n");
+    printf("[Phase 4] Masked response done\n");
 
-    /* 阶段五 */
+    /* Phase 5 */
     poly_vec_t y_pub, resp_z;
     PQC_RegenerateYpub(seed_y, &y_pub);
     PQC_LPA_Aggregate(&z_sec_masked, &y_pub, &resp_z);
-    printf("[阶段五] 响应聚合完成\n");
+    printf("[Phase 5] Aggregation done\n");
 
-    /* 阶段六 */
+    /* Phase 6 */
     nvram_read(nvram_dir, &nvram_st);
     uint8_t ctr_le8[8];
     write_le64(ctr_le8, nvram_st.ctr_local - 1);
@@ -136,7 +124,7 @@ static int mode_auth(const char *nvram_dir)
 
     pqzk_iov_t ri[] = {{ R_bio, 32 }, { ctr_le8, 8 }, { NULL, 0 }};
     uint8_t R_dynamic_server[32];
-    pqzk_sha256_iov(ri, R_dynamic_server);
+    pqzk_sha3_256_iov(ri, R_dynamic_server);
 
     poly_vec_t M_mask;
     uint64_t ctr_session;
@@ -149,11 +137,11 @@ static int mode_auth(const char *nvram_dir)
         c_seed, R_dynamic_server, &M_mask, &params);
 
     if (vrc == PQ_ZK_SUCCESS) {
-        printf("[阶段六] 验证通过 ✓\n");
-        printf("[认证] 认证成功！\n");
+        printf("[Phase 6] Verify PASS ✓\n");
+        printf("[Auth] Success!\n");
         return 0;
     } else {
-        fprintf(stderr, "[阶段六] 验证失败: %d\n", vrc);
+        fprintf(stderr, "[Phase 6] Verify FAIL: %d\n", vrc);
         return -1;
     }
 }
@@ -167,23 +155,23 @@ int main(int argc, char *argv[])
     int do_auth = 0, do_switch = 0;
 
     /*
-     * MNO_A / MNO_B 标识（切换模式使用）
-     * 真实场景：从运营商配置文件或 SIM 配置中读取
-     * 模拟场景：命令行参数或默认值
+     * MNO_A / MNO_B identifiers
+     * Real: from operator profile
+     * Sim: cmdline or default
      */
     uint8_t mno_a_id[PQZK_MNO_ID_BYTES];
     uint8_t mno_b_id[PQZK_MNO_ID_BYTES];
     uint8_t mno_a_sk[32];
 
-    /* 默认 MNO_A 标识（模拟） */
+    /* Default MNO_A (sim) */
     memset(mno_a_id, 0, sizeof(mno_a_id));
     memcpy(mno_a_id, "MNO_A_SIM_001", 13);
 
-    /* 默认 MNO_B 标识（模拟） */
+    /* Default MNO_B (sim) */
     memset(mno_b_id, 0, sizeof(mno_b_id));
     memcpy(mno_b_id, "MNO_B_SIM_001", 13);
 
-    /* MNO_A 签名私钥（模拟：固定值，真实场景由 HSM 保护） */
+    /* MNO_A signing key (sim, fixed) */
     memset(mno_a_sk, 0xA1, 32);
 
     for (int i = 1; i < argc; i++) {
@@ -202,7 +190,7 @@ int main(int argc, char *argv[])
     }
 
     printf("============================================\n");
-    printf("  PQ-ZK-eSIM  模拟软件\n");
+    printf("  PQ-ZK-eSIM  simulation\n");
     printf("  nvram: %s\n", nvram_dir);
     printf("============================================\n");
 
@@ -210,23 +198,23 @@ int main(int argc, char *argv[])
 
     if (do_auth)     return mode_auth(nvram_dir);
     if (do_switch) {
-         /* 从 nvram 读取当前运营商信息并显示 */
+         /* Read current operator from NVRAM */
         nvram_state_t cur_state;
         if (nvram_read(nvram_dir, &cur_state) == 0) {
-            printf("[切换] 当前运营商: %.16s\n",
+            printf("[Switch] Current operator: %.16s\n",
                    (char*)cur_state.active_mno_id);
-            printf("[切换] 已切换次数: %u\n", cur_state.switch_count);
+            printf("[Switch] Switch count: %u\n", cur_state.switch_count);
             secure_zero(&cur_state, sizeof(cur_state));
         }
-        printf("[切换] 目标运营商: %.16s\n", (char*)mno_b_id);
+        printf("[Switch] Target operator: %.16s\n", (char*)mno_b_id);
         return mode_switch(nvram_dir, mno_b_id, mno_a_id, mno_a_sk);
     }
   
-    printf("\n用法：\n");
-    printf("  认证: %s --auth --nvram /tmp/euicc\n", argv[0]);
-    printf("  切换: %s --switch --nvram /tmp/euicc"
+    printf("\nUsage:\n");
+    printf("  auth: %s --auth --nvram /tmp/euicc\n", argv[0]);
+    printf("  switch: %s --switch --nvram /tmp/euicc"
            " --mno-a-id MNO_A_001 --mno-b-id MNO_B_001\n", argv[0]);
-    printf("\n注意：注册是线下行为，通过 tools/setup_euicc.sh 完成\n");
-    printf("      真实 eSIM 场景中，注册通过营业厅 NFC/USB OOB 信道完成\n");
+    printf("\nNote: registration is offline，via tools/setup_euicc.sh\n");
+    printf("      Real eSIM uses OOB NFC/USB channel for registration\n");
     return 0;
 }

@@ -19,6 +19,7 @@
  * Internal utilities
  * ================================================================ */
 
+/* sample_binomial_B1 -- centered binomial B_1 (Paper Table 1): Pr[+1]=1/4, Pr[0]=1/2, Pr[-1]=1/4 */static void sample_binomial_B1(const uint8_t seed[32], poly_vec_t *v){    int total = PQ_ZK_M * PQ_ZK_N;    uint8_t buf[PQ_ZK_M * PQ_ZK_N * 2];    uint8_t expanded[40];    memcpy(expanded, seed, 32);    for (int block = 0; block * 32 < total * 2; block++) {        write_le64(expanded + 32, (uint64_t)block);        pqzk_sha3_256(expanded, 40, buf + block * 32);    }    for (int i = 0; i < total; i++) {        int a = (buf[2*i] >> 0) & 1;        int b = (buf[2*i] >> 1) & 1;        int c = (buf[2*i] >> 2) & 1;        int d = (buf[2*i] >> 3) & 1;        v->coeffs[i] = a + b - c - d;    }    secure_zero(buf, sizeof(buf));}
 static void sample_ternary(const uint8_t seed[32], poly_vec_t *y_sec)
 {
     uint8_t buf[PQ_ZK_M * PQ_ZK_N];
@@ -140,7 +141,7 @@ void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s)
     if (!pk_t || !sk_s) return;
     uint8_t sk_seed[32];
     pqzk_rand_bytes(sk_seed, 32);
-    sample_ternary(sk_seed, sk_s);
+    sample_binomial_B1(sk_seed, sk_s);
     memcpy(pk_t, PQZK_MATRIX_A_SEED, 32);
 
     poly_vec_t A_rows[PQ_ZK_K];
@@ -185,7 +186,7 @@ void PQC_eUICC_Init(const char* nvram_dir,
     state.auth_retry_count = 0;
     state.y_sec_valid = 0;
     state.tree_valid = 0;
-    pqzk_sha256(k_sym, k_sym_len, state.d_seed);
+    pqzk_sha3_256(k_sym, k_sym_len, state.d_seed);
     nvram_write_atomic(nvram_dir, &state);
     secure_zero(&state, sizeof(state));
 }
@@ -227,7 +228,7 @@ PQ_ZK_ErrorCode PQC_Register(
     memcpy(state.active_R_bio, R_bio_out, 32);
     memcpy(state.active_mno_id, mno_id, PQZK_MNO_ID_BYTES);
     PQC_EncodePolyVec(&sk_s, state.sk_s, PQ_ZK_M);
-    pqzk_sha256(k_sym, 32, state.d_seed);
+    pqzk_sha3_256(k_sym, 32, state.d_seed);
     state.ctr_local = initial_ctr;
     state.y_sec_valid = 0;
     state.switch_count = 0;
@@ -309,7 +310,11 @@ void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec,
         { ctr_bytes,  8 },
         { NULL, 0 }
     };
-    pqzk_hmac_sha256_iov(state.k_sym, mac_iov, MAC_W);
+    /* HKDF: derive K_MAC from K_sym (Paper Table 2, Algorithm 4) */
+    uint8_t k_mac[32];
+    pqzk_hkdf_expand(state.k_sym, "MAC", 3, k_mac);
+    pqzk_aes256_cmac(k_mac, mac_iov, MAC_W);
+    secure_zero(k_mac, sizeof(k_mac));
 
     PQC_EncodePolyVec(&y_sec, state.y_sec, PQ_ZK_M);
     state.y_sec_valid = 1;
@@ -336,7 +341,7 @@ void PQC_GenChallenge(const poly_vec_t *comm_W,
         { NULL, 0 }
     };
     uint8_t hash[32];
-    pqzk_sha256_iov(iov, hash);
+    pqzk_sha3_256_iov(iov, hash);
     pqzk_sample_in_ball(hash, c_agg);
 }
 
@@ -372,7 +377,7 @@ PQ_ZK_ErrorCode TEE_GenerateAuthToken(
         { ctr_le8, 8 },
         { NULL, 0 }
     };
-    if (pqzk_sha256_iov(rdyn_iov, R_dynamic_out) != 0)
+    if (pqzk_sha3_256_iov(rdyn_iov, R_dynamic_out) != 0)
         return PQ_ZK_ERR_MAC_FAIL;
 
     if (PQC_MerkleTree_GetPath(tree, M1, M2_out) != 0)
@@ -387,7 +392,7 @@ PQ_ZK_ErrorCode TEE_GenerateAuthToken(
         { R_dynamic_out, PQ_ZK_SEED_BYTES },
         { NULL, 0 }
     };
-    if (pqzk_hmac_sha256_iov(k_tee, auth_iov, AuthToken_out) != 0)
+    if (pqzk_aes256_cmac(k_tee, auth_iov, AuthToken_out) != 0)
         return PQ_ZK_ERR_MAC_FAIL;
 
     secure_zero(&nvram_st, sizeof(nvram_st));
@@ -426,7 +431,7 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
         { NULL, 0 }
     };
     uint8_t expected_token[32];
-    pqzk_hmac_sha256_iov(state.k_tee, auth_iov, expected_token);
+    pqzk_aes256_cmac(state.k_tee, auth_iov, expected_token);
 
     volatile int mismatch = 0;
     for (int i = 0; i < 32; i++)
@@ -486,7 +491,10 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
         secure_zero(&sk_s, sizeof(sk_s));
         return PQ_ZK_ERR_INVALID_PARAM;
     }
-    pqzk_prf(state.k_sym, c_seed, ctr_session, R_dynamic,
+    /* HKDF: derive K_PRF from K_sym */
+    uint8_t k_prf[32];
+    pqzk_hkdf_expand(state.k_sym, "PRF", 3, k_prf);
+    pqzk_prf(k_prf, c_seed, ctr_session, R_dynamic,
               mask_stream, mask_stream_len);
 
     poly_vec_t M_mask;
@@ -541,7 +549,10 @@ void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES],
     size_t stream_len = (size_t)PQ_ZK_M * PQ_ZK_N * 3;
     uint8_t *stream = (uint8_t *)malloc(stream_len);
     if (!stream) return;
-    pqzk_prf(K_sym, c_seed, ctr_session, R_dynamic, stream, stream_len);
+    uint8_t k_prf[32];
+    pqzk_hkdf_expand(K_sym, "PRF", 3, k_prf);
+    pqzk_prf(k_prf, c_seed, ctr_session, R_dynamic, stream, stream_len);
+    secure_zero(k_prf, sizeof(k_prf));
     pqzk_parse_poly_vec(stream, stream_len, M_mask);
     free(stream);
 }
@@ -653,7 +664,11 @@ static void compute_mac_w(const uint8_t k_try[32], const poly_vec_t *W_sec,
         { ctr_bytes,  8 },
         { NULL, 0 }
     };
-    pqzk_hmac_sha256_iov(k_try, iov, mac_out);
+    /* HKDF: derive K_MAC from k_try */
+    uint8_t k_mac[32];
+    pqzk_hkdf_expand(k_try, "MAC", 3, k_mac);
+    pqzk_aes256_cmac(k_mac, iov, mac_out);
+    secure_zero(k_mac, sizeof(k_mac));
     secure_zero(wsec_bytes, sizeof(wsec_bytes));
     secure_zero(ctr_bytes, sizeof(ctr_bytes));
 }

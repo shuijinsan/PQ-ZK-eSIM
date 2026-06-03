@@ -1,9 +1,6 @@
 /*
- * pqzk_poly.c — v5.1
- * 多项式环 R_q = Z_q[X]/(X^N+1) 代数运算 (6x8 rectangular MSIS)
- *
- * q = 2^23 - 2^13 + 1 = 8,380,417 (NTT-friendly 23-bit prime)
- * K=6, M=8, kappa=25, sigma=2800, beta_inf=20000, beta_final=150000
+ * pqzk_poly.c — v5.2
+ * Polynomial arithmetic in R_q = Z_q[X]/(X^N+1)
  */
 
 #include "pqzk_internal.h"

@@ -1,15 +1,6 @@
 /*
- * pqzk_nvram.c
- * eUICC 模拟器非易失性存储原子读写
- *
- * Linux 原子性保证：tmpfile + fsync + rename
- * POSIX 保证同一文件系统内 rename 是原子的
- *
- * 掉电安全逻辑：
- *   写入临时文件 → fsync → rename 覆盖原文件
- *   若在 rename 前崩溃：原文件保持不变
- *   若在 rename 后崩溃：新状态已生效
- *   严禁先更新计数器再更新密钥（必须同时原子绑定）
+ * pqzk_nvram.c — eUICC NVRAM atomic read/write
+ * Atomicity: write-temp-file → rename (POSIX guarantee)
  */
 
 #include "pqzk_internal.h"
@@ -24,7 +15,7 @@
 static uint64_t nvram_write_count = 0;
 static uint64_t nvram_byte_count = 0;
 
-/* 构造文件路径 */
+/* Build file path */
 static void build_path(const char *dir, const char *file, char *out, size_t sz)
 {
     snprintf(out, sz, "%s/%s", dir, file);

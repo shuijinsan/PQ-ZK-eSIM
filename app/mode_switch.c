@@ -1,15 +1,14 @@
 /*
- * mode_switch.c — PQ-ZK-eSIM v5.2
+ * mode_switch.c — PQ-ZK-eSIM v5.2 operator switching
  *
- * 修复清单（相对 v5.1）：
- *   FIX-A  Step 4：ML-KEM 公钥用 ML-DSA 签名认证，防 MitM
- *   FIX-B  Step 5：直接读取 nvram 中已有的 cred_kyc，禁止现场重新签发
- *   FIX-C  Step 5：移除 gsma_root_cert 字段（MNO_B 预装，不由 eUICC 传输）
- *   FIX-D  Step 6：MNO_B 用自身预装根 CA 验证 Cert_A，消除循环信任
- *   FIX-E  Step 7：保留原始 R_bio 静态根，只更新 active_R_bio
- *   FIX-F  Step 7：计数器重置使用随机初始值，而非固定 0
- *   FIX-G  Step 6：CredKYC 验证统一使用 R_bio（静态根），而非 R_bio_B
- *   FIX-H  Step 7：重签 cred_kyc 统一使用 R_bio（静态根），保证跨切换一致
+ * FIX-A: ML-KEM pk signed with ML-DSA (MitM prevention)
+ * FIX-B: read cred_kyc directly from nvram (no reissue)  
+ * FIX-C: remove gsma_root_cert field (MNO_B preinstalled)
+ * FIX-D: MNO_B verifies Cert_A with own root CA
+ * FIX-E: keep original R_bio static root, update active_R_bio
+ * FIX-F: random counter reset
+ * FIX-G: CredKYC verify uses R_bio (static root)
+ * FIX-H: reissue cred_kyc with R_bio (cross-switch consistency)
  */
 
 #include <stdio.h>
@@ -25,7 +24,7 @@
 #include "pqzk_cert.h"
 
 /* ================================================================
- * 内部工具
+ * Internal helpers
  * ================================================================ */
 static void print_hex(const char *label, const uint8_t *buf, size_t len)
 {
@@ -36,16 +35,16 @@ static void print_hex(const char *label, const uint8_t *buf, size_t len)
 }
 
 /* ================================================================
- * Step 1：TEE 活体验证（模拟）
+ * Step 1：TEE Biometric match (sim)
  * ================================================================ */
 static int tee_biometric_verify(void)
 {
-    printf("  [TEE] 活体验证（模拟）：用户在场确认 ✓\n");
+    printf("  [TEE] Biometric match (sim): user present ✓\n");
     return 0;
 }
 
 /* ================================================================
- * Step 2：TEE 计算运营商专属生物根
+ * Step 2: compute domain-specific bio root
  * R_bio_B = SHA-256(R_bio || Domain_ID_B)
  * ================================================================ */
 static int tee_derive_domain_bio_root(const uint8_t R_bio[32],
@@ -57,11 +56,11 @@ static int tee_derive_domain_bio_root(const uint8_t R_bio[32],
         { domain_id_b, PQZK_MNO_ID_BYTES },
         { NULL, 0 }
     };
-    return pqzk_sha256_iov(iov, R_bio_B_out);
+    return pqzk_sha3_256_iov(iov, R_bio_B_out);
 }
 
 /* ================================================================
- * Step 3：eUICC 为 MNO_B 生成新格密钥对
+ * Step 3：eUICC generate new keypair for MNO_B
  * ================================================================ */
 static int euicc_gen_new_keypair(poly_vec_t *sk_b_out,
                                   uint8_t     pk_b_out[PQ_ZK_PUBLICKEY_BYTES])
@@ -71,7 +70,7 @@ static int euicc_gen_new_keypair(poly_vec_t *sk_b_out,
 }
 
 /* ================================================================
- * Step 4：ML-KEM 握手（FIX-A）
+ * Step 4：ML-KEM handshake (FIX-A)
  * ================================================================ */
 static int mlkem_handshake(
     const pqzk_cert_t *cert_b,
@@ -81,42 +80,42 @@ static int mlkem_handshake(
 {
     static mlkem_keypair_t server_kp;
     if (PQZK_MLKEM_Keygen(&server_kp) != 0) {
-        fprintf(stderr, "  [错误] ML-KEM 密钥生成失败\n");
+        fprintf(stderr, "  [Error] ML-KEM keygen failed\n");
         return -1;
     }
-    printf("  [ML-KEM] MNO_B 临时密钥对生成完成\n");
+    printf("  [ML-KEM] MNO_B temp keypair generated\n");
     print_hex("server pk[0:16]", server_kp.pk, 16);
 
     static uint8_t pk_signature[PQZK_MLDSA_SIG_BYTES];
     if (PQZK_MLDSA_Sign(cert_b->mno_sk, server_kp.pk,
                          PQZK_MLKEM_PK_BYTES, pk_signature) != 0) {
-        fprintf(stderr, "  [错误] ML-KEM 公钥签名失败\n");
+        fprintf(stderr, "  [Error] ML-KEM pk sign failed\n");
         secure_zero(&server_kp, sizeof(server_kp));
         return -1;
     }
-    printf("  [ML-KEM] MNO_B 对公钥完成 ML-DSA 签名\n");
+    printf("  [ML-KEM] MNO_B ML-DSA signature on pk done\n");
 
     if (domain_id_b &&
         memcmp(cert_b->mno_id, domain_id_b, PQZK_MNO_ID_BYTES) != 0) {
-        fprintf(stderr, "  [警告] cert_b MNO_ID 与 domain_id_b 不符\n");
+        fprintf(stderr, "  [Warning] cert_b MNO_ID != domain_id_b\n");
     }
 
     if (PQZK_MLDSA_Verify(cert_b->mno_sk, server_kp.pk,
                             PQZK_MLKEM_PK_BYTES, pk_signature) != 0) {
-        fprintf(stderr, "  [eUICC] ML-KEM 公钥签名验证失败，疑似 MitM\n");
+        fprintf(stderr, "  [eUICC] ML-KEM pk verify FAIL (MitM?)\n");
         secure_zero(&server_kp, sizeof(server_kp));
         return -1;
     }
-    printf("  [eUICC] ML-KEM 公钥签名验证通过 ✓\n");
+    printf("  [eUICC] ML-KEM pk verified ✓\n");
 
     static uint8_t ciphertext[PQZK_MLKEM_CT_BYTES];
     if (PQZK_MLKEM_Encapsulate(server_kp.pk, ciphertext,
                                 euicc_tunnel_out) != 0) {
-        fprintf(stderr, "  [错误] ML-KEM 封装失败\n");
+        fprintf(stderr, "  [Error] ML-KEM encapsulation failed\n");
         secure_zero(&server_kp, sizeof(server_kp));
         return -1;
     }
-    printf("  [ML-KEM] eUICC 封装完成，密文长度: %d 字节\n",
+    printf("  [ML-KEM] eUICC encapsulation done, ct len:: %d bytes\n",
            PQZK_MLKEM_CT_BYTES);
 
     memcpy(server_tunnel_out->tunnel_id, euicc_tunnel_out->tunnel_id, 16);
@@ -124,29 +123,29 @@ static int mlkem_handshake(
 
     if (PQZK_MLKEM_Decapsulate(&server_kp, ciphertext,
                                 server_tunnel_out) != 0) {
-        fprintf(stderr, "  [错误] ML-KEM 解封装失败\n");
+        fprintf(stderr, "  [Error] ML-KEM decapsulation failed\n");
         secure_zero(&server_kp, sizeof(server_kp));
         return -1;
     }
-    printf("  [ML-KEM] MNO_B 解封装完成\n");
+    printf("  [ML-KEM] MNO_B decapsulation done\n");
 
     if (memcmp(euicc_tunnel_out->session_key,
                server_tunnel_out->session_key, 32) != 0) {
-        fprintf(stderr, "  [错误] 双方 session_key 不一致\n");
+        fprintf(stderr, "  [Error] session_key mismatch\n");
         secure_zero(&server_kp, sizeof(server_kp));
         return -1;
     }
     print_hex("session_key[0:16]", euicc_tunnel_out->session_key, 16);
-    printf("  [ML-KEM] 隧道建立成功 ✓\n");
+    printf("  [ML-KEM] tunnel established ✓\n");
 
     secure_zero(&server_kp, sizeof(server_kp));
     return 0;
 }
 
 /* ================================================================
- * Step 5：eUICC 发送身份证据包（FIX-B / FIX-C）
+ * Step 5：eUICC send identity payload (FIX-B/C)
  *
- * 载荷字段（与论文 §5.1.5 一致）：
+ * Payload (paper §5.1.5 ：
  *   R_bio_B(32) | R_bio(32) | salt(32) | cred_kyc(64) |
  *   cert_a(PQZK_CERT_BYTES) | eid(16) | T_new(PQ_ZK_PUBLICKEY_BYTES)
  * ================================================================ */
@@ -182,18 +181,18 @@ static int euicc_send_identity_payload(
         return -1;
 
     *encrypted_len_out = (size_t)serial_len;
-    printf("  [eUICC] 身份证据包加密完成，载荷长度: %d 字节\n", serial_len);
+    printf("  [eUICC] identity payload encrypted, len:: %d bytes\n", serial_len);
     return 0;
 }
 
 /* ================================================================
- * Step 6：MNO_B 验证身份证据包（FIX-D / FIX-G）
+ * Step 6：MNO_B verify identity (FIX-D/G)
  *
- * FIX-G：CredKYC 验证统一使用 payload_out->R_bio（静态根），
- *         而非 payload_out->R_bio_B（域专属根）。
+ * FIX-G: CredKYC verify uses payload_out->R_bio（static root），
+ *         not payload_out->R_bio_B（domain-specific root）。
  *
- *         约定：Cred_KYC = HMAC(mno_sk, eid || R_bio_静态根)
- *         R_bio_B 仅用于域派生验证（Step 6.4），不参与 CredKYC 计算。
+ *         Cred_KYC = HMAC(mno_sk, eid || R_bio_static root)
+ *         R_bio_B only for domain derivation (Step 6.4)
  * ================================================================ */
 static int mnob_verify_identity(
     const mlkem_tunnel_t *server_tunnel,
@@ -204,79 +203,79 @@ static int mnob_verify_identity(
     const uint8_t  gsma_root_ca_pk[PQZK_GSMA_CA_PK_BYTES],
     apdu_payload_t *payload_out)
 {
-    /* 6.0 解密 */
+    /* 6.0 decrypt payload */
     static uint8_t decrypted[4096];
     if (PQZK_APDU_Decrypt(server_tunnel, encrypted_payload,
                            payload_len, decrypted) != 0) {
-        fprintf(stderr, "  [MNO_B] 解密失败\n");
+        fprintf(stderr, "  [MNO_B] decrypt failed\n");
         return -1;
     }
     if (PQZK_APDU_DeserializePayload(decrypted, payload_len,
                                       payload_out) != 0) {
-        fprintf(stderr, "  [MNO_B] 载荷反序列化失败\n");
+        fprintf(stderr, "  [MNO_B] payload deserialize failed\n");
         return -1;
     }
-    printf("  [MNO_B] 载荷解密成功\n");
+    printf("  [MNO_B] payload decrypted\n");
 
-    /* 6.1 验证 Cert_A（FIX-D：用预装根 CA 公钥） */
+    /* 6.1 verify Cert_A (FIX-D: preinstalled root CA) */
     static pqzk_cert_t cert_a;
     if (PQZK_Cert_Deserialize(payload_out->cert_a, &cert_a) != 0) {
-        fprintf(stderr, "  [MNO_B] Cert_A 反序列化失败\n");
+        fprintf(stderr, "  [MNO_B] Cert_A deserialize failed\n");
         return -1;
     }
     if (PQZK_Cert_VerifyWithRootPK(&cert_a, gsma_root_ca_pk) != 0) {
-        fprintf(stderr, "  [MNO_B] Cert_A 验证失败（GSMA 证书链无效）\n");
+        fprintf(stderr, "  [MNO_B] Cert_A verify failed (GSMA chain)\n");
         return -1;
     }
-    printf("  [MNO_B] Cert_A 验证通过 ✓\n");
+    printf("  [MNO_B] Cert_A verified ✓\n");
     print_hex("MNO_A ID", cert_a.mno_id, PQZK_MNO_ID_BYTES);
 
-    /* 6.2 验证 Cred_KYC（FIX-G：使用 R_bio 静态根，不用 R_bio_B）
+    /* 6.2 verify Cred_KYC (FIX-G: use R_bio static root)
      *
      * Cred_KYC = HMAC(mno_a_sk, eid || R_bio)
-     * R_bio 是注册时的全局静态锚点，与域无关，跨切换保持不变。
-     * payload_out->R_bio 即注册时的原始 R_bio，由 eUICC 在 Step 5 传来。
+     * R_bio is the global static anchor, invariant across switches.
+     * payload_out->R_bio is the original R_bio from enrollment, sent in Step 5.
      */
     if (PQZK_CredKYC_Verify(&cert_a,
                               payload_out->eid,
-                              payload_out->R_bio,      /* FIX-G: 静态根 */
+                              payload_out->R_bio,      /* FIX-G: static root */
                               payload_out->cred_kyc) != 0) {
-        fprintf(stderr, "  [MNO_B] Cred_KYC 验证失败\n");
+        fprintf(stderr, "  [MNO_B] Cred_KYC verify failed\n");
         return -1;
     }
-    printf("  [MNO_B] Cred_KYC 验证通过 ✓\n");
+    printf("  [MNO_B] Cred_KYC verified ✓\n");
 
-    /* 6.3 物理 EID == 逻辑 EID */
+    /* 6.3 physical EID == logical EID */
     if (memcmp(physical_eid, payload_out->eid, 16) != 0) {
-        fprintf(stderr, "  [MNO_B] EID 不匹配\n");
+        fprintf(stderr, "  [MNO_B] EID mismatch\n");
         return -1;
     }
-    printf("  [MNO_B] EID 比对通过 ✓\n");
+    printf("  [MNO_B] EID match ✓\n");
 
-    /* 6.4 重构 R_bio_B' = SHA-256(R_bio || Domain_ID_B) */
+    /* 6.4 reconstruct R_bio_B' = SHA-256(R_bio || Domain_ID_B) */
     uint8_t R_bio_B_recomputed[32];
     pqzk_iov_t iov[] = {
         { payload_out->R_bio, 32                 },
         { domain_id_b,        PQZK_MNO_ID_BYTES },
         { NULL, 0 }
     };
-    pqzk_sha256_iov(iov, R_bio_B_recomputed);
+    pqzk_sha3_256_iov(iov, R_bio_B_recomputed);
     if (memcmp(R_bio_B_recomputed, payload_out->R_bio_B, 32) != 0) {
-        fprintf(stderr, "  [MNO_B] R_bio_B 验证失败\n");
+        fprintf(stderr, "  [MNO_B] R_bio_B verify failed\n");
         return -1;
     }
-    printf("  [MNO_B] R_bio_B 验证通过 ✓\n");
+    printf("  [MNO_B] R_bio_B verified ✓\n");
     print_hex("R_bio_B", payload_out->R_bio_B, 32);
 
     return 0;
 }
 
 /* ================================================================
- * Step 7：注入新密钥，更新 nvram（FIX-E / FIX-F / FIX-H）
+ * Step 7：inject keys, update nvram (FIX-E/F/H)
  *
- * FIX-H：重签 cred_kyc 使用 R_bio（静态根），与 FIX-G 约定一致。
- *         这样无论切换多少次，CredKYC 的签发和验证始终使用：
- *           HMAC(当前运营商私钥, eid || R_bio_静态根)
+ * FIX-H：reissue cred_kyc with R_bio (static root), consistent with FIX-G.
+ *         CredKYC issuance and verification always uses:
+ *           HMAC(current_sk, eid || R_bio)
  * ================================================================ */
 static int mnob_inject_new_keys(
     const char           *nvram_dir,
@@ -287,14 +286,14 @@ static int mnob_inject_new_keys(
     const uint8_t         domain_id_b[PQZK_MNO_ID_BYTES],
     const uint8_t         mno_b_sk[32])
 {
-    /* MNO_B 生成新对称密钥材料 */
+    /* MNO_B generates new symmetric keys */
     uint8_t k_sym_b[32], d_seed_b[32];
     pqzk_rand_bytes(k_sym_b,  32);
     pqzk_rand_bytes(d_seed_b, 32);
-    printf("  [MNO_B] 生成新密钥材料 K_symB, d_seedB\n");
+    printf("  [MNO_B] new keys K_symB, d_seedB generated\n");
     print_hex("K_symB[0:16]", k_sym_b, 16);
 
-    /* 通过隧道加密传输 (K_symB || d_seedB) */
+    /* encrypt (K_symB || d_seedB) via tunnel */
     uint8_t key_material[64];
     memcpy(key_material,      k_sym_b,  32);
     memcpy(key_material + 32, d_seed_b, 32);
@@ -302,80 +301,80 @@ static int mnob_inject_new_keys(
     uint8_t encrypted_keys[64];
     if (PQZK_APDU_Encrypt(server_tunnel, key_material, 64,
                            encrypted_keys) != 0) {
-        fprintf(stderr, "  [MNO_B] 密钥加密失败\n");
+        fprintf(stderr, "  [MNO_B] key encrypt failed\n");
         return -1;
     }
 
     uint8_t decrypted_keys[64];
     if (PQZK_APDU_Decrypt(euicc_tunnel, encrypted_keys, 64,
                            decrypted_keys) != 0) {
-        fprintf(stderr, "  [eUICC] 密钥解密失败\n");
+        fprintf(stderr, "  [eUICC] key decrypt failed\n");
         return -1;
     }
 
-    /* 读取 nvram */
+    /* read nvram */
     nvram_state_t state;
     if (nvram_read(nvram_dir, &state) != 0) {
-        fprintf(stderr, "  [eUICC] nvram 读取失败\n");
+        fprintf(stderr, "  [eUICC] nvram read failed\n");
         return -1;
     }
 
-    /* 更新对称密钥和派生种子 */
+    /* update symmetric key and d_seed */
     memcpy(state.k_sym,  decrypted_keys,      32);
     memcpy(state.d_seed, decrypted_keys + 32, 32);
 
-    /* 更新格私钥 */
+    /* update lattice secret key */
     PQC_EncodePolyVec(sk_b, state.sk_s, PQ_ZK_M);
 
-    /* FIX-E：state.R_bio 静态根保持不变，只更新 active_R_bio */
+    /* FIX-E：keep R_bio static root, update active_R_bio */
     memcpy(state.active_R_bio, payload->R_bio_B, 32);
 
-    /* FIX-F：计数器随机初始化 */
+    /* FIX-F：random counter init */
     uint64_t new_ctr;
     pqzk_rand_bytes((uint8_t*)&new_ctr, 8);
     state.ctr_local   = new_ctr;
     state.y_sec_valid = 0;
     memset(state.y_sec, 0, sizeof(state.y_sec));
 
-    /* 更新运营商标识 */
+    /* update operator ID */
     memcpy(state.active_mno_id, domain_id_b, PQZK_MNO_ID_BYTES);
     state.switch_count += 1;
 
-    /* FIX-H：用新运营商私钥 + R_bio 静态根重签 cred_kyc
+    /* FIX-H：reissue cred_kyc with new key + R_bio
      *
-     * 约定与 FIX-G 保持一致：
-     *   Cred_KYC = HMAC(mno_b_sk, eid || R_bio_静态根)
+     * consistent with FIX-G：
+     *   Cred_KYC = HMAC(mno_b_sk, eid || R_bio)
      *
-     * state.R_bio 是注册时写入的全局静态锚点，此处不会被修改（FIX-E），
-     * 因此重签结果在下次切换时可被正确验证。
+     * R_bio is the global static anchor, unchanged (FIX-E),
+     * so reissue is verifiable on next switch.
      */
     uint8_t new_cred_kyc[32];
     memset(new_cred_kyc, 0, 32);
     if (PQZK_CredKYC_Issue(mno_b_sk,
                             state.eid,
-                            state.R_bio,      /* FIX-H: 静态根，不用 R_bio_B */
+                            state.R_bio,      /* FIX-H: static root, not R_bio_B */
                             new_cred_kyc) != 0) {
-        fprintf(stderr, "  [MNO_B] Cred_KYC 重签失败\n");
+        fprintf(stderr, "  [MNO_B] Cred_KYC reissue failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
     memset(state.cred_kyc, 0, 64);
     memcpy(state.cred_kyc, new_cred_kyc, 32);
     secure_zero(new_cred_kyc, 32);
-    printf("  [MNO_B] Cred_KYC 重签完成（新运营商私钥 + R_bio 静态根）✓\n");
+    printf("  [MNO_B] Cred_KYC reissued (new key + R_bio static)✓\n");
 
-    /* 原子写入 nvram */
+    /* atomic nvram write */
     if (nvram_write_atomic(nvram_dir, &state) != 0) {
-        fprintf(stderr, "  [eUICC] nvram 写入失败\n");
+        fprintf(stderr, "  [eUICC] nvram write failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
     secure_zero(&state, sizeof(state));
 
-    printf("  [eUICC] nvram 更新完成 ✓\n");
-    printf("  [eUICC] R_bio 静态根保持不变（FIX-E）✓\n");
-    printf("  [eUICC] active_R_bio 已更新为 R_bio_B\n");
-    printf("  [eUICC] 计数器重置为随机值（FIX-F）✓\n");
+    printf("  [eUICC] nvram updated ✓\n");
+    printf("  [eUICC] R_bio static root unchanged (FIX-E)✓\n");
+    printf("  [eUICC] active_R_bio updated to R_bio_B\n");
+    printf("  [eUICC] counter reset to random (FIX-F)✓\n");
 
     secure_zero(k_sym_b,      32);
     secure_zero(d_seed_b,     32);
@@ -385,13 +384,13 @@ static int mnob_inject_new_keys(
 }
 
 /* ================================================================
- * mode_switch — 运营商切换主入口
+ * mode_switch — operator switching entry
  *
- * 参数：
- *   nvram_dir    eUICC nvram 目录
- *   domain_id_b  目标运营商 MNO_B 标识（PQZK_MNO_ID_BYTES，零填充）
- *   mno_a_id     当前运营商 MNO_A 标识（PQZK_MNO_ID_BYTES，零填充）
- *   mno_a_sk     MNO_A 的私钥（32字节），用于构造 Cert_A
+ * Parameters:
+ *   nvram_dir    eUICC nvram directory
+ *   domain_id_b  target MNO_B ID (zero-padded)
+ *   mno_a_id     current MNO_A ID (zero-padded)
+ *   mno_a_sk     MNO_A signing key (32 bytes)
  * ================================================================ */
 int mode_switch(const char    *nvram_dir,
                 const uint8_t  domain_id_b[PQZK_MNO_ID_BYTES],
@@ -399,55 +398,55 @@ int mode_switch(const char    *nvram_dir,
                 const uint8_t  mno_a_sk[32])
 {
     printf("\n============================================\n");
-    printf("  运营商切换流程（MNO_A → MNO_B）\n");
+    printf("  Operator Switch (MNO_A -> MNO_B)\n");
     printf("============================================\n");
 
     nvram_state_t state;
     if (nvram_read(nvram_dir, &state) != 0) {
-        fprintf(stderr, "[错误] nvram 未初始化\n");
+        fprintf(stderr, "[Error] nvram not initialized\n");
         return -1;
     }
-    printf("[切换] EID: ");
+    printf("[Switch] EID: ");
     for (int i = 0; i < 16; i++) printf("%02x", state.eid[i]);
     printf("\n");
 
-    /* Step 1：活体验证 */
-    printf("\n[Step 1] TEE 活体验证\n");
+    /* Step 1：biometric match */
+    printf("\n[Step 1] TEE biometric match\n");
     if (tee_biometric_verify() != 0) {
         secure_zero(&state, sizeof(state));
         return -1;
     }
 
-    /* Step 2：计算域专属生物根 */
-    printf("\n[Step 2] 计算运营商专属生物根\n");
+    /* Step 2：compute domain-specific bio root */
+    printf("\n[Step 2] compute domain-specific bio root\n");
     uint8_t R_bio_B[32];
     if (tee_derive_domain_bio_root(state.R_bio, domain_id_b, R_bio_B) != 0) {
         secure_zero(&state, sizeof(state));
         return -1;
     }
-    print_hex("R_bio（原始，保持不变）", state.R_bio, 32);
+    print_hex("R_bio(original, unchanged)", state.R_bio, 32);
     print_hex("Domain_ID_B",             domain_id_b,  PQZK_MNO_ID_BYTES);
-    print_hex("R_bio_B（专属）",          R_bio_B,      32);
+    print_hex("R_bio_B(domain-specific)",          R_bio_B,      32);
 
-    /* Step 3：生成新格密钥对 */
-    printf("\n[Step 3] eUICC 生成 MNO_B 专属格密钥对\n");
+    /* Step 3：generate new keypair */
+    printf("\n[Step 3] eUICC generate MNO_B keypair\n");
     poly_vec_t sk_b;
     uint8_t    pk_b[PQ_ZK_PUBLICKEY_BYTES];
     if (euicc_gen_new_keypair(&sk_b, pk_b) != 0) {
         secure_zero(&state, sizeof(state));
         return -1;
     }
-    print_hex("T_B（新公钥）", pk_b, 8);
-    printf("  [eUICC] 新私钥 S_B 已生成\n");
+    print_hex("T_B(new pk)", pk_b, 8);
+    printf("  [eUICC] new S_B generated\n");
 
-    /* Step 4：ML-KEM 握手 */
-    printf("\n[Step 4] ML-KEM 握手（含 ML-DSA 公钥认证）\n");
+    /* Step 4：ML-KEM handshake */
+    printf("\n[Step 4] ML-KEM handshake(with ML-DSA pk auth)\n");
     sync();
     usleep(5000);
 
     pqzk_cert_t cert_b;
     if (PQZK_Cert_IssueForMNO(domain_id_b, &cert_b) != 0) {
-        fprintf(stderr, "[Step 4] MNO_B 证书获取失败\n");
+        fprintf(stderr, "[Step 4] MNO_B cert obtain failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
@@ -458,17 +457,17 @@ int mode_switch(const char    *nvram_dir,
 
     if (mlkem_handshake(&cert_b, domain_id_b,
                          &euicc_tunnel, &server_tunnel) != 0) {
-        fprintf(stderr, "[Step 4] ML-KEM 握手失败\n");
+        fprintf(stderr, "[Step 4] ML-KEM handshake failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
 
-    /* Step 5：发送身份证据包 */
-    printf("\n[Step 5] eUICC 发送身份证据包\n");
+    /* Step 5：send identity payload */
+    printf("\n[Step 5] eUICC send identity payload\n");
 
     pqzk_cert_t cert_a;
     if (PQZK_Cert_Issue(mno_a_id, mno_a_sk, &cert_a) != 0) {
-        fprintf(stderr, "[Step 5] Cert_A 签发失败\n");
+        fprintf(stderr, "[Step 5] Cert_A issue failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
@@ -480,20 +479,20 @@ int mode_switch(const char    *nvram_dir,
     if (euicc_send_identity_payload(
             &euicc_tunnel,
             R_bio_B,
-            state.R_bio,       /* 静态根 */
+            state.R_bio,       /* static root */
             state.salt,
-            state.cred_kyc,    /* 来自 nvram，FIX-B */
+            state.cred_kyc,    /* from nvram, FIX-B */
             cert_a_bytes,
             state.eid,
             pk_b,
             encrypted_payload, &encrypted_len) != 0) {
-        fprintf(stderr, "[Step 5] 身份证据包发送失败\n");
+        fprintf(stderr, "[Step 5] identity payload send failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
 
-    /* Step 6：验证身份证据包 */
-    printf("\n[Step 6] MNO_B 验证身份证据包\n");
+    /* Step 6：verify identity payload */
+    printf("\n[Step 6] MNO_B verify identity payload\n");
 
     uint8_t gsma_root_ca_pk[PQZK_GSMA_CA_PK_BYTES];
     PQZK_GSMA_GetRootCAPK(gsma_root_ca_pk);
@@ -506,21 +505,21 @@ int mode_switch(const char    *nvram_dir,
             state.eid,
             gsma_root_ca_pk,
             &received_payload) != 0) {
-        fprintf(stderr, "[Step 6] 身份验证失败，切换中止\n");
+        fprintf(stderr, "[Step 6] identity verify failed, abort\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
-    printf("[Step 6] 身份验证全部通过 ✓\n");
+    printf("[Step 6] identity verified ✓\n");
 
-    /* Step 7：注入新密钥 */
-    printf("\n[Step 7] MNO_B 注入新密钥材料\n");
+    /* Step 7：inject new keys */
+    printf("\n[Step 7] MNO_B inject new keys\n");
     if (mnob_inject_new_keys(
             nvram_dir,
             &euicc_tunnel, &server_tunnel,
             &sk_b, &received_payload,
             domain_id_b,
             cert_b.mno_sk) != 0) {
-        fprintf(stderr, "[Step 7] 密钥注入失败\n");
+        fprintf(stderr, "[Step 7] key injection failed\n");
         secure_zero(&state, sizeof(state));
         secure_zero(&sk_b,  sizeof(sk_b));
         return -1;
@@ -532,7 +531,7 @@ int mode_switch(const char    *nvram_dir,
     secure_zero(&server_tunnel, sizeof(server_tunnel));
 
     printf("\n============================================\n");
-    printf("  运营商切换完成 ✓\n");
+    printf("  Operator switch complete ✓\n");
     printf("============================================\n");
     return 0;
 }
