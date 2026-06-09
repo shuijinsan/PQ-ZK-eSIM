@@ -30,6 +30,7 @@ typedef struct {
 
 /* Root CA */
 void PQZK_GSMA_GetRootCAPK(uint8_t root_ca_pk_out[PQZK_GSMA_CA_PK_BYTES]);
+void PQZK_GSMA_Sign(const uint8_t *tbs, size_t tbs_len, uint8_t sig_out[PQZK_MLDSA_SIG_BYTES], size_t *sig_len_out);
 
 /* Certificate operations */
 int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],

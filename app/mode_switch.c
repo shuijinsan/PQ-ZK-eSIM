@@ -84,23 +84,9 @@ static int smdp_switch(const uint8_t  eid[16],
     memcpy(tbs + 16,                     did_b,  PQZK_MNO_ID_BYTES);
     memcpy(tbs + 16 + PQZK_MNO_ID_BYTES, R_bio_B, 32);
 
-    /* Use the SM-DP+ CA key directly for signing in simulation */
-    uint8_t ca_sk[PQZK_MLDSA_SK_BYTES];
-    uint8_t ca_pk[PQZK_GSMA_CA_PK_BYTES];
-    /* In simulation, CA key is derived deterministically inside cert.c.
-     * Here we call Cert_Issue which internally uses the CA key.
-     * For Cred_KYC_B, we use the same CA key via CredKYC_Issue. */
-    uint8_t dummy_sk[32];
-    pqzk_sha3_256((const uint8_t *)"GSMA_ROOT_CA", 12, dummy_sk);
-
-    /* Re-derive the CA keypair deterministically */
-    OQS_SIG_ml_dsa_44_keypair(ca_pk, ca_sk);
-
-    OQS_SIG_ml_dsa_44_sign(cred_kyc_b_out, cred_kyc_b_len,
-        tbs, sizeof(tbs), ca_sk);
-    printf("  [SM-DP+] Cred_KYC_B issued\n");
-
-    secure_zero(ca_sk, sizeof(ca_sk));
+    /* Sign Cred_KYC_B with GSMA root CA key */
+    PQZK_GSMA_Sign(tbs, sizeof(tbs), cred_kyc_b_out, cred_kyc_b_len);
+    printf("  [SM-DP+] Cred_KYC_B issued");
     return 0;
 }
 

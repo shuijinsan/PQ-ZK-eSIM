@@ -133,6 +133,14 @@ int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
     return 0;
 }
 
+void PQZK_GSMA_Sign(const uint8_t *tbs, size_t tbs_len,
+                      uint8_t sig_out[PQZK_MLDSA_SIG_BYTES],
+                      size_t *sig_len_out)
+{
+    ensure_ca_key();
+    OQS_SIG_ml_dsa_44_sign(sig_out, sig_len_out, tbs, tbs_len, gsma_ca_sk);
+}
+
 int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
                         const uint8_t eid[16],
                         const uint8_t R_bio[32],
