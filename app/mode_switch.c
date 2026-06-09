@@ -86,9 +86,16 @@ static int mlkem_handshake(
     printf("  [ML-KEM] MNO_B temp keypair generated\n");
     print_hex("server pk[0:16]", server_kp.pk, 16);
 
+    /* Derive full ML-DSA keypair from simulated 32-byte seed */
+    static uint8_t mldsa_pk[PQZK_MLDSA_PK_BYTES];
+    static uint8_t mldsa_sk[PQZK_MLDSA_SK_BYTES];
+    uint8_t key_seed[32];
+    pqzk_sha3_256(cert_b->mno_sk, 32, key_seed);
+    OQS_SIG_ml_dsa_44_keypair(mldsa_pk, mldsa_sk);
+
     static uint8_t pk_signature[PQZK_MLDSA_SIG_BYTES];
     size_t pk_sig_len = 0;
-    if (PQZK_MLDSA_Sign(cert_b->mno_sk, server_kp.pk,
+    if (PQZK_MLDSA_Sign(mldsa_sk, server_kp.pk,
                          PQZK_MLKEM_PK_BYTES, pk_signature, &pk_sig_len) != 0) {
         fprintf(stderr, "  [Error] ML-KEM pk sign failed\n");
         secure_zero(&server_kp, sizeof(server_kp));
@@ -101,7 +108,7 @@ static int mlkem_handshake(
         fprintf(stderr, "  [Warning] cert_b MNO_ID != domain_id_b\n");
     }
 
-    if (PQZK_MLDSA_Verify(cert_b->mno_sk, server_kp.pk,
+    if (PQZK_MLDSA_Verify(mldsa_pk, server_kp.pk,
                             PQZK_MLKEM_PK_BYTES, pk_signature, pk_sig_len) != 0) {
         fprintf(stderr, "  [eUICC] ML-KEM pk verify FAIL (MitM?)\n");
         secure_zero(&server_kp, sizeof(server_kp));
@@ -240,7 +247,7 @@ static int mnob_verify_identity(
     if (PQZK_CredKYC_Verify(&cert_a,
                               payload_out->eid,
                               payload_out->R_bio,      /* FIX-G: static root */
-                              payload_out->cred_kyc, 64) != 0) {
+                              payload_out->cred_kyc, sizeof(payload_out->cred_kyc)) != 0) {
         fprintf(stderr, "  [MNO_B] Cred_KYC verify failed\n");
         return -1;
     }
@@ -349,8 +356,9 @@ static int mnob_inject_new_keys(
      * R_bio is the global static anchor, unchanged (FIX-E),
      * so reissue is verifiable on next switch.
      */
-    size_t ck_len; uint8_t new_cred_kyc[PQZK_CERT_CA_SIG_BYTES];
-    memset(new_cred_kyc, 0, PQZK_CERT_CA_SIG_BYTES);
+    size_t ck_len;
+    uint8_t new_cred_kyc[PQZK_MLDSA_SIG_BYTES];
+    memset(new_cred_kyc, 0, PQZK_MLDSA_SIG_BYTES);
     if (PQZK_CredKYC_Issue(mno_b_sk,
                             state.eid,
                             state.R_bio,      /* FIX-H: static root, not R_bio_B */
@@ -361,7 +369,7 @@ static int mnob_inject_new_keys(
     }
     memset(state.cred_kyc, 0, 64);
     memcpy(state.cred_kyc, new_cred_kyc, ck_len);
-    secure_zero(new_cred_kyc, PQZK_CERT_CA_SIG_BYTES);
+    secure_zero(new_cred_kyc, 32);
     printf("  [MNO_B] Cred_KYC reissued (new key + R_bio static)✓\n");
 
     /* atomic nvram write */

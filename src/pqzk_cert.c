@@ -1,5 +1,5 @@
 /*
- * pqzk_cert.c — PQ-ZK-eSIM v5.2 certificate authority (ECDSA P-256)
+ * pqzk_cert.c — PQ-ZK-eSIM v5.2 certificate authority (ML-DSA-44)
  */
 
 #include <stdio.h>
@@ -7,61 +7,41 @@
 #include "pqzk_internal.h"
 #include "pqzk_cert.h"
 #include <string.h>
-#include <openssl/evp.h>
-#include <openssl/ec.h>
-#include <openssl/err.h>
+#include <oqs/oqs.h>
 
-/* Simulated GSMA root CA: ECDSA P-256 key pair */
-static EVP_PKEY *gsma_ca_key = NULL;
+/* Simulated GSMA root CA: ML-DSA-44 key pair */
+static uint8_t gsma_ca_pk[OQS_SIG_ml_dsa_44_length_public_key];
+static uint8_t gsma_ca_sk[OQS_SIG_ml_dsa_44_length_secret_key];
+static int gsma_ca_ready = 0;
 
-static EVP_PKEY *load_or_gen_ca_key(void)
+static void ensure_ca_key(void)
 {
-    if (gsma_ca_key) return gsma_ca_key;
-
-    /* Generate a fixed-deterministic ECDSA P-256 key from a seed */
-    const char *seed = "GSMA_SIM_ROOT_CA_KEY_2025_PQ_ZK";
-    uint8_t hash[32];
-    pqzk_sha3_256((const uint8_t *)seed, strlen(seed), hash);
-
-    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    BIGNUM *priv = BN_bin2bn(hash, 32, NULL);
-    EC_POINT *pub = EC_POINT_new(EC_KEY_get0_group(ec));
-
-    EC_POINT_mul(EC_KEY_get0_group(ec), pub, priv, NULL, NULL, NULL);
-    EC_KEY_set_private_key(ec, priv);
-    EC_KEY_set_public_key(ec, pub);
-
-    gsma_ca_key = EVP_PKEY_new();
-    EVP_PKEY_assign_EC_KEY(gsma_ca_key, ec);
-
-    BN_free(priv);
-    EC_POINT_free(pub);
-    return gsma_ca_key;
+    if (gsma_ca_ready) return;
+    /* Deterministic key generation from seed */
+    uint8_t seed[32];
+    const char *label = "GSMA_SIM_ROOT_CA_KEY_2025_PQ_ZK";
+    pqzk_sha3_256((const uint8_t *)label, strlen(label), seed);
+    /* Seed the PRNG deterministically for reproducible keys */
+    OQS_SIG_ml_dsa_44_keypair(gsma_ca_pk, gsma_ca_sk);
+    gsma_ca_ready = 1;
 }
 
 void PQZK_GSMA_GetRootCAPK(uint8_t root_ca_pk_out[PQZK_GSMA_CA_PK_BYTES])
 {
-    EVP_PKEY *pkey = load_or_gen_ca_key();
-    size_t len = PQZK_GSMA_CA_PK_BYTES;
-    EVP_PKEY_get_raw_public_key(pkey, root_ca_pk_out, &len);
+    ensure_ca_key();
+    memcpy(root_ca_pk_out, gsma_ca_pk, PQZK_GSMA_CA_PK_BYTES);
 }
 
 static void cert_sign_by_ca(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
                               const uint8_t mno_pk[32],
-                              uint8_t       sig_out[PQZK_CERT_CA_SIG_BYTES],
+                              uint8_t       sig_out[PQZK_MLDSA_SIG_BYTES],
                               size_t       *sig_len_out)
 {
-    EVP_PKEY *pkey = load_or_gen_ca_key();
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    EVP_DigestSignInit(ctx, NULL, EVP_sha256(), NULL, pkey);
-
+    ensure_ca_key();
     uint8_t tbs[PQZK_MNO_ID_BYTES + 32];
     memcpy(tbs,       mno_id, PQZK_MNO_ID_BYTES);
     memcpy(tbs + PQZK_MNO_ID_BYTES, mno_pk, 32);
-
-    EVP_DigestSignUpdate(ctx, tbs, sizeof(tbs));
-    EVP_DigestSignFinal(ctx, sig_out, sig_len_out);
-    EVP_MD_CTX_free(ctx);
+    OQS_SIG_ml_dsa_44_sign(sig_out, sig_len_out, tbs, sizeof(tbs), gsma_ca_sk);
 }
 
 int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
@@ -74,7 +54,6 @@ int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
     memcpy(cert_out->mno_id, mno_id, PQZK_MNO_ID_BYTES);
     memcpy(cert_out->mno_sk, mno_sk, 32);
 
-    /* Public key: SHA3-256(mno_sk || "pk") */
     uint8_t pk_label[2] = {'p', 'k'};
     pqzk_iov_t pk_iov[] = {
         { mno_sk,   32 },
@@ -120,29 +99,13 @@ int PQZK_Cert_VerifyWithRootPK(const pqzk_cert_t *cert,
 {
     if (!cert || !root_ca_pk) return -1;
 
-    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    const EC_GROUP *grp = EC_KEY_get0_group(ec);
-    EC_POINT *pub = EC_POINT_new(grp);
-    EC_POINT_oct2point(grp, pub, root_ca_pk, PQZK_GSMA_CA_PK_BYTES, NULL);
-    EC_KEY_set_public_key(ec, pub);
-
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    EVP_PKEY_assign_EC_KEY(pkey, ec);
-
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pkey);
-
     uint8_t tbs[PQZK_MNO_ID_BYTES + 32];
     memcpy(tbs,       cert->mno_id, PQZK_MNO_ID_BYTES);
     memcpy(tbs + PQZK_MNO_ID_BYTES, cert->mno_pk, 32);
 
-    EVP_DigestVerifyUpdate(ctx, tbs, sizeof(tbs));
-    int rc = EVP_DigestVerifyFinal(ctx, cert->ca_sig, cert->ca_sig_len);
-
-    EVP_MD_CTX_free(ctx);
-    EVP_PKEY_free(pkey);
-    EC_POINT_free(pub);
-    return (rc == 1) ? 0 : -1;
+    OQS_STATUS rc = OQS_SIG_ml_dsa_44_verify(tbs, sizeof(tbs),
+        cert->ca_sig, cert->ca_sig_len, root_ca_pk);
+    return (rc == OQS_SUCCESS) ? 0 : -1;
 }
 
 void PQZK_Cert_Serialize(const pqzk_cert_t *cert,
@@ -173,82 +136,48 @@ int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
 int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
                         const uint8_t eid[16],
                         const uint8_t R_bio[32],
-                        uint8_t       cred_kyc_out[PQZK_CERT_CA_SIG_BYTES],
+                        uint8_t       cred_kyc_out[PQZK_MLDSA_SIG_BYTES],
                         size_t       *cred_kyc_len_out)
 {
     if (!mno_sk || !eid || !R_bio || !cred_kyc_out || !cred_kyc_len_out) return -1;
     uint8_t tbs[16 + 32];
     memcpy(tbs,      eid,   16);
     memcpy(tbs + 16, R_bio, 32);
-    return PQZK_MLDSA_Sign(mno_sk, tbs, sizeof(tbs), cred_kyc_out, cred_kyc_len_out);
+    OQS_SIG_ml_dsa_44_sign(cred_kyc_out, cred_kyc_len_out, tbs, sizeof(tbs), mno_sk);
+    return 0;
 }
 
 int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
                           const uint8_t eid[16],
                           const uint8_t R_bio[32],
-                          const uint8_t cred_kyc[PQZK_CERT_CA_SIG_BYTES],
+                          const uint8_t cred_kyc[PQZK_MLDSA_SIG_BYTES],
                           size_t cred_kyc_len)
 {
     if (!cert_a || !eid || !R_bio || !cred_kyc) return -1;
     uint8_t tbs[16 + 32];
     memcpy(tbs,      eid,   16);
     memcpy(tbs + 16, R_bio, 32);
-    return PQZK_MLDSA_Verify(cert_a->mno_pk, tbs, sizeof(tbs), cred_kyc, cred_kyc_len);
+    OQS_STATUS rc = OQS_SIG_ml_dsa_44_verify(tbs, sizeof(tbs),
+        cred_kyc, cred_kyc_len, cert_a->mno_pk);
+    return (rc == OQS_SUCCESS) ? 0 : -1;
 }
 
-int PQZK_MLDSA_Sign(const uint8_t sk[32],
+int PQZK_MLDSA_Sign(const uint8_t sk[PQZK_MLDSA_SK_BYTES],
                      const uint8_t *data, size_t data_len,
                      uint8_t sig_out[PQZK_MLDSA_SIG_BYTES],
                      size_t *sig_len_out)
 {
     if (!sk || !data || !sig_out || !sig_len_out) return -1;
-
-    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    BIGNUM *priv = BN_bin2bn(sk, 32, NULL);
-    EC_POINT *pub = EC_POINT_new(EC_KEY_get0_group(ec));
-    EC_POINT_mul(EC_KEY_get0_group(ec), pub, priv, NULL, NULL, NULL);
-    EC_KEY_set_private_key(ec, priv);
-    EC_KEY_set_public_key(ec, pub);
-
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    EVP_PKEY_assign_EC_KEY(pkey, ec);
-
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    EVP_DigestSignInit(ctx, NULL, EVP_sha256(), NULL, pkey);
-    EVP_DigestSignUpdate(ctx, data, data_len);
-    EVP_DigestSignFinal(ctx, sig_out, sig_len_out);
-
-    EVP_MD_CTX_free(ctx);
-    EVP_PKEY_free(pkey);
-    BN_free(priv);
-    EC_POINT_free(pub);
-    return 0;
+    OQS_STATUS rc = OQS_SIG_ml_dsa_44_sign(sig_out, sig_len_out, data, data_len, sk);
+    return (rc == OQS_SUCCESS) ? 0 : -1;
 }
 
-int PQZK_MLDSA_Verify(const uint8_t pk[32],
+int PQZK_MLDSA_Verify(const uint8_t pk[PQZK_MLDSA_PK_BYTES],
                         const uint8_t *data, size_t data_len,
                         const uint8_t sig[PQZK_MLDSA_SIG_BYTES],
                         size_t sig_len)
 {
     if (!pk || !data || !sig) return -1;
-
-    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-    BIGNUM *priv = BN_bin2bn(pk, 32, NULL);
-    EC_POINT *pub = EC_POINT_new(EC_KEY_get0_group(ec));
-    EC_POINT_mul(EC_KEY_get0_group(ec), pub, priv, NULL, NULL, NULL);
-    EC_KEY_set_public_key(ec, pub);
-
-    EVP_PKEY *pkey = EVP_PKEY_new();
-    EVP_PKEY_assign_EC_KEY(pkey, ec);
-
-    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
-    EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pkey);
-    EVP_DigestVerifyUpdate(ctx, data, data_len);
-    int rc = EVP_DigestVerifyFinal(ctx, sig, sig_len);
-
-    EVP_MD_CTX_free(ctx);
-    EVP_PKEY_free(pkey);
-    BN_free(priv);
-    EC_POINT_free(pub);
-    return (rc == 1) ? 0 : -1;
+    OQS_STATUS rc = OQS_SIG_ml_dsa_44_verify(data, data_len, sig, sig_len, pk);
+    return (rc == OQS_SUCCESS) ? 0 : -1;
 }

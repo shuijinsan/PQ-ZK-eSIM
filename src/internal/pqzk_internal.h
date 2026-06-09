@@ -71,7 +71,7 @@ typedef struct __attribute__((packed)) {
     uint8_t  y_sec[NVRAM_YSEC_LEN];
     uint8_t  y_sec_valid;
     uint8_t  salt[32];
-    uint8_t  cred_kyc[64];
+    uint8_t  cred_kyc[PQZK_MLDSA_SIG_BYTES];
     uint8_t  auth_retry_count;
     uint8_t  _pad[5];
     uint8_t  R_bio[32];

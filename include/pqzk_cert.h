@@ -1,5 +1,5 @@
 /*
- * pqzk_cert.h — GSMA certificate authority (ECDSA P-256)
+ * pqzk_cert.h — GSMA certificate authority (ML-DSA-44)
  */
 
 #ifndef PQZK_CERT_H
@@ -11,12 +11,14 @@
 extern "C" {
 #endif
 
-#define PQZK_GSMA_CA_PK_BYTES   65   /* uncompressed ECDSA P-256 point */
-#define PQZK_MLDSA_SIG_BYTES    72   /* max ECDSA DER signature */
-#define PQZK_CERT_CA_SIG_BYTES  72
-#define PQZK_CERT_MLKEM_PK_BYTES     PQ_ZK_PUBLICKEY_BYTES
-#define PQZK_MNO_ID_BYTES       16
-#define PQZK_CERT_BYTES         (PQZK_MNO_ID_BYTES + 32 + 32 + sizeof(size_t) + PQZK_CERT_CA_SIG_BYTES)
+#define PQZK_GSMA_CA_PK_BYTES         1312  /* ML-DSA-44 public key */
+#define PQZK_MLDSA_SIG_BYTES          2520  /* ML-DSA-44 max signature */
+#define PQZK_MLDSA_PK_BYTES           1312
+#define PQZK_MLDSA_SK_BYTES           2560
+#define PQZK_CERT_CA_SIG_BYTES        PQZK_MLDSA_SIG_BYTES
+#define PQZK_CERT_MLKEM_PK_BYTES      PQ_ZK_PUBLICKEY_BYTES
+#define PQZK_MNO_ID_BYTES             16
+#define PQZK_CERT_BYTES               (PQZK_MNO_ID_BYTES + 32 + 32 + sizeof(size_t) + PQZK_CERT_CA_SIG_BYTES)
 
 typedef struct {
     uint8_t mno_id[PQZK_MNO_ID_BYTES];
@@ -52,20 +54,22 @@ int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
 int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
                         const uint8_t eid[16],
                         const uint8_t R_bio[32],
-                        uint8_t       cred_kyc_out[PQZK_CERT_CA_SIG_BYTES], size_t *cred_kyc_len_out);
+                        uint8_t       cred_kyc_out[PQZK_MLDSA_SIG_BYTES],
+                        size_t       *cred_kyc_len_out);
 
 int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
                           const uint8_t eid[16],
                           const uint8_t R_bio[32],
-                          const uint8_t cred_kyc[PQZK_CERT_CA_SIG_BYTES], size_t cred_kyc_len);
+                          const uint8_t cred_kyc[PQZK_MLDSA_SIG_BYTES],
+                          size_t cred_kyc_len);
 
-/* ECDSA P-256 signing */
-int PQZK_MLDSA_Sign(const uint8_t sk[32],
+/* ML-DSA-44 signing */
+int PQZK_MLDSA_Sign(const uint8_t sk[PQZK_MLDSA_SK_BYTES],
                      const uint8_t *data, size_t data_len,
                      uint8_t sig_out[PQZK_MLDSA_SIG_BYTES],
                      size_t *sig_len_out);
 
-int PQZK_MLDSA_Verify(const uint8_t pk[32],
+int PQZK_MLDSA_Verify(const uint8_t pk[PQZK_MLDSA_PK_BYTES],
                         const uint8_t *data, size_t data_len,
                         const uint8_t sig[PQZK_MLDSA_SIG_BYTES],
                         size_t sig_len);

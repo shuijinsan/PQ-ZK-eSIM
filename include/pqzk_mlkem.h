@@ -35,7 +35,7 @@ typedef struct {
     uint8_t  R_bio_B[32];
     uint8_t  R_bio[32];
     uint8_t  salt[32];
-    uint8_t  cred_kyc[64];
+    uint8_t  cred_kyc[PQZK_MLDSA_SIG_BYTES];
     uint8_t  cert_a[PQZK_CERT_BYTES];
     uint8_t  eid[16];
     uint8_t  T_new[PQ_ZK_PUBLICKEY_BYTES];

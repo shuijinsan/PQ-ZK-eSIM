@@ -151,7 +151,7 @@ int PQZK_APDU_Decrypt(const mlkem_tunnel_t *tunnel,
  *   R_bio_B[32] | R_bio[32] | salt[32] | cred_kyc[64] |
  *   cert_a[256] | eid[16] | T_new[PQ_ZK_PUBLICKEY_BYTES] */
 #define APDU_PAYLOAD_SERIAL_BYTES \
-    (32 + 32 + 32 + 64 + 256 + 16 + PQ_ZK_PUBLICKEY_BYTES)
+    (32 + 32 + 32 + PQZK_MLDSA_SIG_BYTES + 256 + 16 + PQ_ZK_PUBLICKEY_BYTES)
 
 int PQZK_APDU_SerializePayload(const apdu_payload_t *payload,
                                 uint8_t *buf, size_t buf_len)
