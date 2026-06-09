@@ -224,7 +224,7 @@ static void run_operator_switching_experiment(void){
     pqzk_iov_t bsk_iov[] = {{ bid, PQZK_MNO_ID_BYTES },{ label, 4 },{ NULL, 0 }};
     pqzk_sha3_256_iov(bsk_iov, bsk);
     memset(cred_kyc, 0, 64);
-    PQZK_CredKYC_Issue(ask, eid, R_bio, cred_kyc);
+    size_t ck_len; PQZK_CredKYC_Issue(ask, eid, R_bio, cred_kyc, &ck_len);
     uint64_t ic;pqzk_rand_bytes((uint8_t*)&ic,8);
     PQC_eUICC_Init(nd,eid,16,&sk_s,k_sym,32,ic,k_tee,32,salt,R_bio,cred_kyc,64);
     { nvram_state_t st; nvram_read(nd,&st); memcpy(st.R_bio,R_bio,32); memcpy(st.active_R_bio,R_bio,32); nvram_write_atomic(nd,&st); }

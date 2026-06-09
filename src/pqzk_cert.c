@@ -173,38 +173,27 @@ int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
 int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
                         const uint8_t eid[16],
                         const uint8_t R_bio[32],
-                        uint8_t       cred_kyc_out[32])
+                        uint8_t       cred_kyc_out[PQZK_CERT_CA_SIG_BYTES],
+                        size_t       *cred_kyc_len_out)
 {
-    if (!mno_sk || !eid || !R_bio || !cred_kyc_out) return -1;
-    pqzk_iov_t iov[] = {
-        { eid,   16 },
-        { R_bio, 32 },
-        { NULL, 0 }
-    };
-    pqzk_hmac_sha256_iov(mno_sk, iov, cred_kyc_out);
-    return 0;
+    if (!mno_sk || !eid || !R_bio || !cred_kyc_out || !cred_kyc_len_out) return -1;
+    uint8_t tbs[16 + 32];
+    memcpy(tbs,      eid,   16);
+    memcpy(tbs + 16, R_bio, 32);
+    return PQZK_MLDSA_Sign(mno_sk, tbs, sizeof(tbs), cred_kyc_out, cred_kyc_len_out);
 }
 
 int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
                           const uint8_t eid[16],
                           const uint8_t R_bio[32],
-                          const uint8_t cred_kyc[32])
+                          const uint8_t cred_kyc[PQZK_CERT_CA_SIG_BYTES],
+                          size_t cred_kyc_len)
 {
     if (!cert_a || !eid || !R_bio || !cred_kyc) return -1;
-
-    uint8_t expected[32];
-    pqzk_iov_t iov[] = {
-        { eid,   16 },
-        { R_bio, 32 },
-        { NULL, 0 }
-    };
-    pqzk_hmac_sha256_iov(cert_a->mno_sk, iov, expected);
-
-    volatile int mismatch = 0;
-    for (int i = 0; i < 32; i++)
-        mismatch |= (expected[i] ^ cred_kyc[i]);
-    secure_zero(expected, 32);
-    return mismatch ? -1 : 0;
+    uint8_t tbs[16 + 32];
+    memcpy(tbs,      eid,   16);
+    memcpy(tbs + 16, R_bio, 32);
+    return PQZK_MLDSA_Verify(cert_a->mno_pk, tbs, sizeof(tbs), cred_kyc, cred_kyc_len);
 }
 
 int PQZK_MLDSA_Sign(const uint8_t sk[32],

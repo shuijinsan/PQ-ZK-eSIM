@@ -240,7 +240,7 @@ static int mnob_verify_identity(
     if (PQZK_CredKYC_Verify(&cert_a,
                               payload_out->eid,
                               payload_out->R_bio,      /* FIX-G: static root */
-                              payload_out->cred_kyc) != 0) {
+                              payload_out->cred_kyc, 64) != 0) {
         fprintf(stderr, "  [MNO_B] Cred_KYC verify failed\n");
         return -1;
     }
@@ -349,19 +349,19 @@ static int mnob_inject_new_keys(
      * R_bio is the global static anchor, unchanged (FIX-E),
      * so reissue is verifiable on next switch.
      */
-    uint8_t new_cred_kyc[32];
-    memset(new_cred_kyc, 0, 32);
+    size_t ck_len; uint8_t new_cred_kyc[PQZK_CERT_CA_SIG_BYTES];
+    memset(new_cred_kyc, 0, PQZK_CERT_CA_SIG_BYTES);
     if (PQZK_CredKYC_Issue(mno_b_sk,
                             state.eid,
                             state.R_bio,      /* FIX-H: static root, not R_bio_B */
-                            new_cred_kyc) != 0) {
+                            new_cred_kyc, &ck_len) != 0) {
         fprintf(stderr, "  [MNO_B] Cred_KYC reissue failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
     }
     memset(state.cred_kyc, 0, 64);
-    memcpy(state.cred_kyc, new_cred_kyc, 32);
-    secure_zero(new_cred_kyc, 32);
+    memcpy(state.cred_kyc, new_cred_kyc, ck_len);
+    secure_zero(new_cred_kyc, PQZK_CERT_CA_SIG_BYTES);
     printf("  [MNO_B] Cred_KYC reissued (new key + R_bio static)✓\n");
 
     /* atomic nvram write */
