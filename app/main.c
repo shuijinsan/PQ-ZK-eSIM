@@ -159,6 +159,7 @@ int main(int argc, char *argv[])
      * Real: from operator profile
      * Sim: cmdline or default
      */
+    /* MNO identifiers: simulation uses hardcoded values (real: from operator profile via GSMA RSP) */
     uint8_t mno_a_id[PQZK_MNO_ID_BYTES];
     uint8_t mno_b_id[PQZK_MNO_ID_BYTES];
     uint8_t mno_a_sk[32];
