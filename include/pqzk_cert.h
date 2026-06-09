@@ -1,5 +1,5 @@
 /*
- * pqzk_cert.h — Simulated GSMA certificate authority
+ * pqzk_cert.h — GSMA certificate authority (ECDSA P-256)
  */
 
 #ifndef PQZK_CERT_H
@@ -11,17 +11,19 @@
 extern "C" {
 #endif
 
-#define PQZK_GSMA_CA_PK_BYTES   32
-#define PQZK_MLDSA_SIG_BYTES    64
+#define PQZK_GSMA_CA_PK_BYTES   65   /* uncompressed ECDSA P-256 point */
+#define PQZK_MLDSA_SIG_BYTES    72   /* max ECDSA DER signature */
+#define PQZK_CERT_CA_SIG_BYTES  72
 #define PQZK_CERT_MLKEM_PK_BYTES     PQ_ZK_PUBLICKEY_BYTES
 #define PQZK_MNO_ID_BYTES       16
-#define PQZK_CERT_BYTES         (PQZK_MNO_ID_BYTES + 32 + 32 + 32)
+#define PQZK_CERT_BYTES         (PQZK_MNO_ID_BYTES + 32 + 32 + sizeof(size_t) + PQZK_CERT_CA_SIG_BYTES)
 
 typedef struct {
     uint8_t mno_id[PQZK_MNO_ID_BYTES];
     uint8_t mno_sk[32];
     uint8_t mno_pk[32];
-    uint8_t ca_sig[32];
+    uint8_t ca_sig[PQZK_CERT_CA_SIG_BYTES];
+    size_t  ca_sig_len;
 } pqzk_cert_t;
 
 /* Root CA */
@@ -57,14 +59,16 @@ int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
                           const uint8_t R_bio[32],
                           const uint8_t cred_kyc[32]);
 
-/* Simulated ML-DSA (HMAC-SHA256 stand-in) */
+/* ECDSA P-256 signing (production); simulated as HMAC-SHA256 for CredKYC */
 int PQZK_MLDSA_Sign(const uint8_t sk[32],
                      const uint8_t *data, size_t data_len,
-                     uint8_t sig_out[PQZK_MLDSA_SIG_BYTES]);
+                     uint8_t sig_out[PQZK_MLDSA_SIG_BYTES],
+                     size_t *sig_len_out);
 
 int PQZK_MLDSA_Verify(const uint8_t pk[32],
                         const uint8_t *data, size_t data_len,
-                        const uint8_t sig[PQZK_MLDSA_SIG_BYTES]);
+                        const uint8_t sig[PQZK_MLDSA_SIG_BYTES],
+                        size_t sig_len);
 
 #ifdef __cplusplus
 }

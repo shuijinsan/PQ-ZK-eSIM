@@ -1,8 +1,5 @@
 /*
- * pqzk_cert.c — PQ-ZK-eSIM v5.2 simulated certificate authority
- *
- * Uses HMAC-SHA256 as a stand-in for ML-DSA (real deployment: liboqs MLDSA).
- * All functions share a fixed simulated GSMA root CA key.
+ * pqzk_cert.c — PQ-ZK-eSIM v5.2 certificate authority (ECDSA P-256)
  */
 
 #include <stdio.h>
@@ -10,38 +7,61 @@
 #include "pqzk_internal.h"
 #include "pqzk_cert.h"
 #include <string.h>
+#include <openssl/evp.h>
+#include <openssl/ec.h>
+#include <openssl/err.h>
 
-/* Simulated GSMA root CA key (production: replace with ML-DSA key pair) */
-static const uint8_t PQZK_SIM_GSMA_CA_SK[32] = {
-    0x47, 0x53, 0x4d, 0x41, 0x5f, 0x53, 0x49, 0x4d,  /* "GSMA_SIM" */
-    0x5f, 0x52, 0x4f, 0x4f, 0x54, 0x5f, 0x43, 0x41,  /* "_ROOT_CA" */
-    0x5f, 0x4b, 0x45, 0x59, 0x5f, 0x32, 0x30, 0x32,  /* "_KEY_202" */
-    0x35, 0x5f, 0x50, 0x51, 0x5f, 0x5a, 0x4b, 0x21   /* "5_PQ_ZK!" */
-};
+/* Simulated GSMA root CA: ECDSA P-256 key pair */
+static EVP_PKEY *gsma_ca_key = NULL;
 
-static const uint8_t PQZK_SIM_GSMA_CA_PK[PQZK_GSMA_CA_PK_BYTES] = {
-    0x47, 0x53, 0x4d, 0x41, 0x5f, 0x53, 0x49, 0x4d,
-    0x5f, 0x52, 0x4f, 0x4f, 0x54, 0x5f, 0x43, 0x41,
-    0x5f, 0x4b, 0x45, 0x59, 0x5f, 0x32, 0x30, 0x32,
-    0x35, 0x5f, 0x50, 0x51, 0x5f, 0x5a, 0x4b, 0x21
-};
+static EVP_PKEY *load_or_gen_ca_key(void)
+{
+    if (gsma_ca_key) return gsma_ca_key;
+
+    /* Generate a fixed-deterministic ECDSA P-256 key from a seed */
+    const char *seed = "GSMA_SIM_ROOT_CA_KEY_2025_PQ_ZK";
+    uint8_t hash[32];
+    pqzk_sha3_256((const uint8_t *)seed, strlen(seed), hash);
+
+    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    BIGNUM *priv = BN_bin2bn(hash, 32, NULL);
+    EC_POINT *pub = EC_POINT_new(EC_KEY_get0_group(ec));
+
+    EC_POINT_mul(EC_KEY_get0_group(ec), pub, priv, NULL, NULL, NULL);
+    EC_KEY_set_private_key(ec, priv);
+    EC_KEY_set_public_key(ec, pub);
+
+    gsma_ca_key = EVP_PKEY_new();
+    EVP_PKEY_assign_EC_KEY(gsma_ca_key, ec);
+
+    BN_free(priv);
+    EC_POINT_free(pub);
+    return gsma_ca_key;
+}
 
 void PQZK_GSMA_GetRootCAPK(uint8_t root_ca_pk_out[PQZK_GSMA_CA_PK_BYTES])
 {
-    memcpy(root_ca_pk_out, PQZK_SIM_GSMA_CA_PK, PQZK_GSMA_CA_PK_BYTES);
+    EVP_PKEY *pkey = load_or_gen_ca_key();
+    size_t len = PQZK_GSMA_CA_PK_BYTES;
+    EVP_PKEY_get_raw_public_key(pkey, root_ca_pk_out, &len);
 }
 
-/* Sign (mno_id || mno_pk) with root CA key */
 static void cert_sign_by_ca(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
                               const uint8_t mno_pk[32],
-                              uint8_t       sig_out[32])
+                              uint8_t       sig_out[PQZK_CERT_CA_SIG_BYTES],
+                              size_t       *sig_len_out)
 {
-    pqzk_iov_t iov[] = {
-        { mno_id, PQZK_MNO_ID_BYTES },
-        { mno_pk, 32                },
-        { NULL, 0 }
-    };
-    pqzk_hmac_sha256_iov(PQZK_SIM_GSMA_CA_SK, iov, sig_out);
+    EVP_PKEY *pkey = load_or_gen_ca_key();
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_DigestSignInit(ctx, NULL, EVP_sha256(), NULL, pkey);
+
+    uint8_t tbs[PQZK_MNO_ID_BYTES + 32];
+    memcpy(tbs,       mno_id, PQZK_MNO_ID_BYTES);
+    memcpy(tbs + PQZK_MNO_ID_BYTES, mno_pk, 32);
+
+    EVP_DigestSignUpdate(ctx, tbs, sizeof(tbs));
+    EVP_DigestSignFinal(ctx, sig_out, sig_len_out);
+    EVP_MD_CTX_free(ctx);
 }
 
 int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
@@ -54,7 +74,7 @@ int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
     memcpy(cert_out->mno_id, mno_id, PQZK_MNO_ID_BYTES);
     memcpy(cert_out->mno_sk, mno_sk, 32);
 
-    /* Simulated public key: SHA3-256(mno_sk || "pk") */
+    /* Public key: SHA3-256(mno_sk || "pk") */
     uint8_t pk_label[2] = {'p', 'k'};
     pqzk_iov_t pk_iov[] = {
         { mno_sk,   32 },
@@ -63,7 +83,8 @@ int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
     };
     pqzk_sha3_256_iov(pk_iov, cert_out->mno_pk);
 
-    cert_sign_by_ca(cert_out->mno_id, cert_out->mno_pk, cert_out->ca_sig);
+    cert_sign_by_ca(cert_out->mno_id, cert_out->mno_pk,
+                    cert_out->ca_sig, &cert_out->ca_sig_len);
     return 0;
 }
 
@@ -99,19 +120,29 @@ int PQZK_Cert_VerifyWithRootPK(const pqzk_cert_t *cert,
 {
     if (!cert || !root_ca_pk) return -1;
 
-    uint8_t expected_sig[32];
-    pqzk_iov_t iov[] = {
-        { cert->mno_id, PQZK_MNO_ID_BYTES },
-        { cert->mno_pk, 32                 },
-        { NULL, 0 }
-    };
-    pqzk_hmac_sha256_iov(root_ca_pk, iov, expected_sig);
+    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    const EC_GROUP *grp = EC_KEY_get0_group(ec);
+    EC_POINT *pub = EC_POINT_new(grp);
+    EC_POINT_oct2point(grp, pub, root_ca_pk, PQZK_GSMA_CA_PK_BYTES, NULL);
+    EC_KEY_set_public_key(ec, pub);
 
-    volatile int mismatch = 0;
-    for (int i = 0; i < 32; i++)
-        mismatch |= (expected_sig[i] ^ cert->ca_sig[i]);
-    secure_zero(expected_sig, 32);
-    return mismatch ? -1 : 0;
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_assign_EC_KEY(pkey, ec);
+
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pkey);
+
+    uint8_t tbs[PQZK_MNO_ID_BYTES + 32];
+    memcpy(tbs,       cert->mno_id, PQZK_MNO_ID_BYTES);
+    memcpy(tbs + PQZK_MNO_ID_BYTES, cert->mno_pk, 32);
+
+    EVP_DigestVerifyUpdate(ctx, tbs, sizeof(tbs));
+    int rc = EVP_DigestVerifyFinal(ctx, cert->ca_sig, cert->ca_sig_len);
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+    EC_POINT_free(pub);
+    return (rc == 1) ? 0 : -1;
 }
 
 void PQZK_Cert_Serialize(const pqzk_cert_t *cert,
@@ -122,7 +153,8 @@ void PQZK_Cert_Serialize(const pqzk_cert_t *cert,
     memcpy(cert_bytes + off, cert->mno_id, PQZK_MNO_ID_BYTES); off += PQZK_MNO_ID_BYTES;
     memcpy(cert_bytes + off, cert->mno_sk, 32);                  off += 32;
     memcpy(cert_bytes + off, cert->mno_pk, 32);                  off += 32;
-    memcpy(cert_bytes + off, cert->ca_sig, 32);                  off += 32;
+    memcpy(cert_bytes + off, &cert->ca_sig_len, sizeof(size_t)); off += sizeof(size_t);
+    memcpy(cert_bytes + off, cert->ca_sig, cert->ca_sig_len);    off += cert->ca_sig_len;
 }
 
 int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
@@ -133,7 +165,8 @@ int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
     memcpy(cert_out->mno_id, cert_bytes + off, PQZK_MNO_ID_BYTES); off += PQZK_MNO_ID_BYTES;
     memcpy(cert_out->mno_sk, cert_bytes + off, 32);                  off += 32;
     memcpy(cert_out->mno_pk, cert_bytes + off, 32);                  off += 32;
-    memcpy(cert_out->ca_sig, cert_bytes + off, 32);                  off += 32;
+    memcpy(&cert_out->ca_sig_len, cert_bytes + off, sizeof(size_t)); off += sizeof(size_t);
+    memcpy(cert_out->ca_sig, cert_bytes + off, cert_out->ca_sig_len); off += cert_out->ca_sig_len;
     return 0;
 }
 
@@ -176,35 +209,57 @@ int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
 
 int PQZK_MLDSA_Sign(const uint8_t sk[32],
                      const uint8_t *data, size_t data_len,
-                     uint8_t sig_out[PQZK_MLDSA_SIG_BYTES])
+                     uint8_t sig_out[PQZK_MLDSA_SIG_BYTES],
+                     size_t *sig_len_out)
 {
-    if (!sk || !data || !sig_out) return -1;
-    uint8_t hmac_out[32];
-    pqzk_iov_t iov[] = {
-        { data, data_len },
-        { NULL, 0 }
-    };
-    pqzk_hmac_sha256_iov(sk, iov, hmac_out);
-    memcpy(sig_out, hmac_out, 32);
-    memset(sig_out + 32, 0, PQZK_MLDSA_SIG_BYTES - 32);
+    if (!sk || !data || !sig_out || !sig_len_out) return -1;
+
+    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    BIGNUM *priv = BN_bin2bn(sk, 32, NULL);
+    EC_POINT *pub = EC_POINT_new(EC_KEY_get0_group(ec));
+    EC_POINT_mul(EC_KEY_get0_group(ec), pub, priv, NULL, NULL, NULL);
+    EC_KEY_set_private_key(ec, priv);
+    EC_KEY_set_public_key(ec, pub);
+
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_assign_EC_KEY(pkey, ec);
+
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_DigestSignInit(ctx, NULL, EVP_sha256(), NULL, pkey);
+    EVP_DigestSignUpdate(ctx, data, data_len);
+    EVP_DigestSignFinal(ctx, sig_out, sig_len_out);
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+    BN_free(priv);
+    EC_POINT_free(pub);
     return 0;
 }
 
 int PQZK_MLDSA_Verify(const uint8_t pk[32],
                         const uint8_t *data, size_t data_len,
-                        const uint8_t sig[PQZK_MLDSA_SIG_BYTES])
+                        const uint8_t sig[PQZK_MLDSA_SIG_BYTES],
+                        size_t sig_len)
 {
     if (!pk || !data || !sig) return -1;
-    uint8_t expected[32];
-    pqzk_iov_t iov[] = {
-        { data, data_len },
-        { NULL, 0 }
-    };
-    pqzk_hmac_sha256_iov(pk, iov, expected);
 
-    volatile int mismatch = 0;
-    for (int i = 0; i < 32; i++)
-        mismatch |= (expected[i] ^ sig[i]);
-    secure_zero(expected, 32);
-    return mismatch ? -1 : 0;
+    EC_KEY *ec = EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
+    BIGNUM *priv = BN_bin2bn(pk, 32, NULL);
+    EC_POINT *pub = EC_POINT_new(EC_KEY_get0_group(ec));
+    EC_POINT_mul(EC_KEY_get0_group(ec), pub, priv, NULL, NULL, NULL);
+    EC_KEY_set_public_key(ec, pub);
+
+    EVP_PKEY *pkey = EVP_PKEY_new();
+    EVP_PKEY_assign_EC_KEY(pkey, ec);
+
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pkey);
+    EVP_DigestVerifyUpdate(ctx, data, data_len);
+    int rc = EVP_DigestVerifyFinal(ctx, sig, sig_len);
+
+    EVP_MD_CTX_free(ctx);
+    EVP_PKEY_free(pkey);
+    BN_free(priv);
+    EC_POINT_free(pub);
+    return (rc == 1) ? 0 : -1;
 }

@@ -87,8 +87,9 @@ static int mlkem_handshake(
     print_hex("server pk[0:16]", server_kp.pk, 16);
 
     static uint8_t pk_signature[PQZK_MLDSA_SIG_BYTES];
+    size_t pk_sig_len = 0;
     if (PQZK_MLDSA_Sign(cert_b->mno_sk, server_kp.pk,
-                         PQZK_MLKEM_PK_BYTES, pk_signature) != 0) {
+                         PQZK_MLKEM_PK_BYTES, pk_signature, &pk_sig_len) != 0) {
         fprintf(stderr, "  [Error] ML-KEM pk sign failed\n");
         secure_zero(&server_kp, sizeof(server_kp));
         return -1;
@@ -101,7 +102,7 @@ static int mlkem_handshake(
     }
 
     if (PQZK_MLDSA_Verify(cert_b->mno_sk, server_kp.pk,
-                            PQZK_MLKEM_PK_BYTES, pk_signature) != 0) {
+                            PQZK_MLKEM_PK_BYTES, pk_signature, pk_sig_len) != 0) {
         fprintf(stderr, "  [eUICC] ML-KEM pk verify FAIL (MitM?)\n");
         secure_zero(&server_kp, sizeof(server_kp));
         return -1;

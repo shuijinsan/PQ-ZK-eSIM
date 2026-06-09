@@ -111,8 +111,8 @@ static void kat_hash_mac(void)
     printf("\n=== KAT 3: SHA-256 / HMAC-SHA256 ===\n");
 
     uint8_t h[32];
-
- * NIST test vectors
+/*
+ * NIST test vectors */
     pqzk_sha3_256((uint8_t*)"", 0, h);
     uint8_t sha256_empty[32] = {
         0xe3,0xb0,0xc4,0x42, 0x98,0xfc,0x1c,0x14,
@@ -121,8 +121,8 @@ static void kat_hash_mac(void)
         0xa4,0x95,0x99,0x1b, 0x78,0x52,0xb8,0x55
     };
     ASSERT_EQ("SHA256 empty string", h, sha256_empty, 32);
-
- * NIST test vectors
+/*
+ * NIST test vectors */
     pqzk_sha3_256((uint8_t*)"abc", 3, h);
     uint8_t sha256_abc[32] = {
         0xba,0x78,0x16,0xbf, 0x8f,0x01,0xcf,0xea,
