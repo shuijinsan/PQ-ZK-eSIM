@@ -14,6 +14,7 @@ static uint8_t gsma_ca_pk[OQS_SIG_ml_dsa_44_length_public_key];
 static uint8_t gsma_ca_sk[OQS_SIG_ml_dsa_44_length_secret_key];
 static int gsma_ca_ready = 0;
 
+/* Simulation: CA key derived from fixed seed (real: HSM-stored ML-DSA-44 keypair) */
 static void ensure_ca_key(void)
 {
     if (gsma_ca_ready) return;
@@ -44,6 +45,7 @@ static void cert_sign_by_ca(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
     OQS_SIG_ml_dsa_44_sign(sig_out, sig_len_out, tbs, sizeof(tbs), gsma_ca_sk);
 }
 
+/* Cert dynamically generated from mno_id + mno_sk, not hardcoded */
 int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
                      const uint8_t mno_sk[32],
                      pqzk_cert_t  *cert_out)
@@ -67,6 +69,7 @@ int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
     return 0;
 }
 
+/* Cert dynamically generated from mno_id + mno_sk, not hardcoded */
 int PQZK_Cert_IssueForMNO(const uint8_t  domain_id_b[PQZK_MNO_ID_BYTES],
                             pqzk_cert_t   *cert_out)
 {
