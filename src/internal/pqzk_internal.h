@@ -60,6 +60,17 @@ void pqzk_vec_sub(const poly_vec_t *a, const poly_vec_t *b, poly_vec_t *result, 
 #define NVRAM_DSEED_LEN 32
 #define NVRAM_YSEC_LEN PQ_ZK_POLYVEC_BYTES
 
+/* Backup slot for previous MNO state (Paper Algorithm 3: switch-back support) */
+typedef struct __attribute__((packed)) {
+    uint8_t  sk_s[NVRAM_SKEY_LEN];
+    uint8_t  k_sym[NVRAM_SYM_LEN];
+    uint8_t  d_seed[NVRAM_DSEED_LEN];
+    uint8_t  cred_kyc[PQZK_MLDSA_SIG_BYTES];
+    uint8_t  mno_id[PQZK_MNO_ID_BYTES];
+    uint8_t  active_R_bio[32];
+    uint64_t ctr_local;
+} mno_backup_t;
+
 typedef struct __attribute__((packed)) {
     uint8_t  magic[4];
     uint8_t  eid[NVRAM_EID_LEN];
@@ -82,6 +93,7 @@ typedef struct __attribute__((packed)) {
     uint8_t  active_mno_id[PQZK_MNO_ID_BYTES];
     uint8_t  active_R_bio[32];
     uint32_t switch_count;
+    mno_backup_t prev_mno;  /* preserved MNO_A state for switch-back */
 } nvram_state_t;
 
 int nvram_read(const char *nvram_dir, nvram_state_t *state);
