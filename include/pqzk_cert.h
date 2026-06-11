@@ -11,10 +11,10 @@
 extern "C" {
 #endif
 
-#define PQZK_GSMA_CA_PK_BYTES         1312  /* ML-DSA-44 public key */
-#define PQZK_MLDSA_SIG_BYTES          2520  /* ML-DSA-44 max signature */
-#define PQZK_MLDSA_PK_BYTES           1312
-#define PQZK_MLDSA_SK_BYTES           2560
+#define PQZK_GSMA_CA_PK_BYTES         1952  /* ML-DSA-65 public key */
+#define PQZK_MLDSA_SIG_BYTES          3309  /* ML-DSA-65 max signature */
+#define PQZK_MLDSA_PK_BYTES           1952
+#define PQZK_MLDSA_SK_BYTES           4032
 #define PQZK_CERT_CA_SIG_BYTES        PQZK_MLDSA_SIG_BYTES
 #define PQZK_CERT_MLKEM_PK_BYTES      PQ_ZK_PUBLICKEY_BYTES
 #define PQZK_MNO_ID_BYTES             16

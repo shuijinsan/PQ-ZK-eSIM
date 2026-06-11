@@ -186,7 +186,7 @@ int mode_switch(const char    *nvram_dir,
     memcpy(tbs_v,                          state.eid, 16);
     memcpy(tbs_v + 16,                     domain_id_b, PQZK_MNO_ID_BYTES);
     memcpy(tbs_v + 16 + PQZK_MNO_ID_BYTES, R_bio_B, 32);
-    OQS_STATUS vrc = OQS_SIG_ml_dsa_44_verify(tbs_v, sizeof(tbs_v),
+    OQS_STATUS vrc = OQS_SIG_ml_dsa_65_verify(tbs_v, sizeof(tbs_v),
         cred_kyc_b, cred_kyc_b_len, root_ca_pk);
     if (vrc != OQS_SUCCESS) {
         fprintf(stderr, "  [eUICC] Cred_KYC_B verify failed\n");

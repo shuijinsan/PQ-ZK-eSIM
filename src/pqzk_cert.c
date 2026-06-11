@@ -10,8 +10,8 @@
 #include <oqs/oqs.h>
 
 /* Simulated GSMA root CA: ML-DSA-44 key pair */
-static uint8_t gsma_ca_pk[OQS_SIG_ml_dsa_44_length_public_key];
-static uint8_t gsma_ca_sk[OQS_SIG_ml_dsa_44_length_secret_key];
+static uint8_t gsma_ca_pk[OQS_SIG_ml_dsa_65_length_public_key];
+static uint8_t gsma_ca_sk[OQS_SIG_ml_dsa_65_length_secret_key];
 static int gsma_ca_ready = 0;
 
 /* Simulation: CA key derived from fixed seed (real: HSM-stored ML-DSA-44 keypair) */
@@ -23,7 +23,7 @@ static void ensure_ca_key(void)
     const char *label = "GSMA_SIM_ROOT_CA_KEY_2025_PQ_ZK";
     pqzk_sha3_256((const uint8_t *)label, strlen(label), seed);
     /* Seed the PRNG deterministically for reproducible keys */
-    OQS_SIG_ml_dsa_44_keypair(gsma_ca_pk, gsma_ca_sk);
+    OQS_SIG_ml_dsa_65_keypair(gsma_ca_pk, gsma_ca_sk);
     gsma_ca_ready = 1;
 }
 
@@ -42,7 +42,7 @@ static void cert_sign_by_ca(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
     uint8_t tbs[PQZK_MNO_ID_BYTES + 32];
     memcpy(tbs,       mno_id, PQZK_MNO_ID_BYTES);
     memcpy(tbs + PQZK_MNO_ID_BYTES, mno_pk, 32);
-    OQS_SIG_ml_dsa_44_sign(sig_out, sig_len_out, tbs, sizeof(tbs), gsma_ca_sk);
+    OQS_SIG_ml_dsa_65_sign(sig_out, sig_len_out, tbs, sizeof(tbs), gsma_ca_sk);
 }
 
 /* Cert dynamically generated from mno_id + mno_sk, not hardcoded */
@@ -106,7 +106,7 @@ int PQZK_Cert_VerifyWithRootPK(const pqzk_cert_t *cert,
     memcpy(tbs,       cert->mno_id, PQZK_MNO_ID_BYTES);
     memcpy(tbs + PQZK_MNO_ID_BYTES, cert->mno_pk, 32);
 
-    OQS_STATUS rc = OQS_SIG_ml_dsa_44_verify(tbs, sizeof(tbs),
+    OQS_STATUS rc = OQS_SIG_ml_dsa_65_verify(tbs, sizeof(tbs),
         cert->ca_sig, cert->ca_sig_len, root_ca_pk);
     return (rc == OQS_SUCCESS) ? 0 : -1;
 }
@@ -141,7 +141,7 @@ void PQZK_GSMA_Sign(const uint8_t *tbs, size_t tbs_len,
                       size_t *sig_len_out)
 {
     ensure_ca_key();
-    OQS_SIG_ml_dsa_44_sign(sig_out, sig_len_out, tbs, tbs_len, gsma_ca_sk);
+    OQS_SIG_ml_dsa_65_sign(sig_out, sig_len_out, tbs, tbs_len, gsma_ca_sk);
 }
 
 int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
@@ -154,7 +154,7 @@ int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
     uint8_t tbs[16 + 32];
     memcpy(tbs,      eid,   16);
     memcpy(tbs + 16, R_bio, 32);
-    OQS_SIG_ml_dsa_44_sign(cred_kyc_out, cred_kyc_len_out, tbs, sizeof(tbs), mno_sk);
+    OQS_SIG_ml_dsa_65_sign(cred_kyc_out, cred_kyc_len_out, tbs, sizeof(tbs), mno_sk);
     return 0;
 }
 
@@ -168,7 +168,7 @@ int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
     uint8_t tbs[16 + 32];
     memcpy(tbs,      eid,   16);
     memcpy(tbs + 16, R_bio, 32);
-    OQS_STATUS rc = OQS_SIG_ml_dsa_44_verify(tbs, sizeof(tbs),
+    OQS_STATUS rc = OQS_SIG_ml_dsa_65_verify(tbs, sizeof(tbs),
         cred_kyc, cred_kyc_len, cert_a->mno_pk);
     return (rc == OQS_SUCCESS) ? 0 : -1;
 }
@@ -179,7 +179,7 @@ int PQZK_MLDSA_Sign(const uint8_t sk[PQZK_MLDSA_SK_BYTES],
                      size_t *sig_len_out)
 {
     if (!sk || !data || !sig_out || !sig_len_out) return -1;
-    OQS_STATUS rc = OQS_SIG_ml_dsa_44_sign(sig_out, sig_len_out, data, data_len, sk);
+    OQS_STATUS rc = OQS_SIG_ml_dsa_65_sign(sig_out, sig_len_out, data, data_len, sk);
     return (rc == OQS_SUCCESS) ? 0 : -1;
 }
 
@@ -189,6 +189,6 @@ int PQZK_MLDSA_Verify(const uint8_t pk[PQZK_MLDSA_PK_BYTES],
                         size_t sig_len)
 {
     if (!pk || !data || !sig) return -1;
-    OQS_STATUS rc = OQS_SIG_ml_dsa_44_verify(data, data_len, sig, sig_len, pk);
+    OQS_STATUS rc = OQS_SIG_ml_dsa_65_verify(data, data_len, sig, sig_len, pk);
     return (rc == OQS_SUCCESS) ? 0 : -1;
 }
