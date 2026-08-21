@@ -213,7 +213,7 @@ void pqzk_mat_vec_mul(const poly_vec_t *A_rows, const poly_vec_t *v,
 /* ================================================================
  * vec_scalar_mul: result = S * c mod q
  * S: vec_dim polynomials, c: scalar (sparse ternary challenge)
- * eUICC专用: O(kappa * vec_dim * N) additions, no multiplier
+ * eUICC: O(kappa * vec_dim * N) additions, no multiplier
  * ================================================================ */
 void pqzk_vec_scalar_mul(const poly_vec_t *S, const poly_t *c,
                           poly_vec_t *result, int vec_dim)
