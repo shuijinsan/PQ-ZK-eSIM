@@ -19,7 +19,7 @@
  * Internal utilities
  * ================================================================ */
 
-/* sample_binomial_B1 -- centered binomial B_1 (Paper Table 1): Pr[+1]=1/4, Pr[0]=1/2, Pr[-1]=1/4 */static void sample_binomial_B1(const uint8_t seed[32], poly_vec_t *v){    int total = PQ_ZK_M * PQ_ZK_N;    uint8_t buf[PQ_ZK_M * PQ_ZK_N * 2];    uint8_t expanded[40];    memcpy(expanded, seed, 32);    for (int block = 0; block * 32 < total * 2; block++) {        write_le64(expanded + 32, (uint64_t)block);        pqzk_sha3_256(expanded, 40, buf + block * 32);    }    for (int i = 0; i < total; i++) {        int a = (buf[2*i] >> 0) & 1;        int b = (buf[2*i] >> 1) & 1;        int c = (buf[2*i] >> 2) & 1;        int d = (buf[2*i] >> 3) & 1;        v->coeffs[i] = a + b - c - d;    }    secure_zero(buf, sizeof(buf));}
+/* sample_binomial_B1 -- centered binomial B_1 (Paper Table 1): Pr[+1]=1/4, Pr[0]=1/2, Pr[-1]=1/4 */static void sample_binomial_B1(const uint8_t seed[32], poly_vec_t *v){    int total = PQ_ZK_M * PQ_ZK_N;    uint8_t buf[PQ_ZK_M * PQ_ZK_N * 2];    uint8_t expanded[40];    memcpy(expanded, seed, 32);    for (int block = 0; block * 32 < total * 2; block++) {        write_le64(expanded + 32, (uint64_t)block);        pqzk_sha3_256(expanded, 40, buf + block * 32);    }    for (int i = 0; i < total; i++) {        int a = (buf[2*i] >> 0) & 1;        int b = (buf[2*i] >> 1) & 1;        v->coeffs[i] = a - b;    }    secure_zero(buf, sizeof(buf));}
 static void sample_ternary(const uint8_t seed[32], poly_vec_t *y_sec)
 {
     uint8_t buf[PQ_ZK_M * PQ_ZK_N];
@@ -597,9 +597,11 @@ PQ_ZK_ErrorCode PQC_VerifyEngine(
         l2_sq += (int64_t)v * v;
         l1_norm += (int64_t)av;
     }
-    if (inf_norm > (int32_t)beta_params->beta_final)
-        return PQ_ZK_ERR_NORM_BOUND;
     if (l2_sq < (int64_t)beta_params->beta_min * beta_params->beta_min)
+        return PQ_ZK_ERR_NORM_BOUND;
+    if (l2_sq > (int64_t)beta_params->beta_final * beta_params->beta_final)
+        return PQ_ZK_ERR_NORM_BOUND;
+    if (inf_norm > (int32_t)PQ_ZK_BETA_INF)
         return PQ_ZK_ERR_NORM_BOUND;
     if (beta_params->beta_l1 > 0 &&
         l1_norm < (int64_t)beta_params->beta_l1)

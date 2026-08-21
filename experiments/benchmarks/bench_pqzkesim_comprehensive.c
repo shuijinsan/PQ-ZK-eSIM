@@ -36,8 +36,9 @@ static long get_rss_kb(void) {
 static int norm_precheck(const poly_vec_t*z,const beta_params_t*p,int*ov,int*un,int*l1){
     int32_t inf=0;int64_t l2=0,l1n=0;
     for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=z->coeffs[i],av=v<0?-v:v;if(av>inf)inf=av;l2+=(int64_t)v*v;l1n+=av;}
-    if(inf>(int32_t)p->beta_final){if(ov)(*ov)++;return 1;}
     if(l2<(int64_t)p->beta_min*p->beta_min){if(un)(*un)++;return 2;}
+    if(l2>(int64_t)p->beta_final*p->beta_final){if(ov)(*ov)++;return 1;}
+    if(inf>(int32_t)PQ_ZK_BETA_INF){if(ov)(*ov)++;return 1;}
     if(p->beta_l1>0&&l1n<(int64_t)p->beta_l1){if(l1)(*l1)++;return 3;}
     return 0;}
 

@@ -29,8 +29,9 @@ static int norm_precheck(const poly_vec_t *z_unmasked,
         if (av > inf_norm) inf_norm = av;
         l2_sq += (int64_t)v * v;
     }
-    if (inf_norm > (int32_t)params->beta_final) return 1;
     if (l2_sq < (int64_t)params->beta_min * params->beta_min) return 2;
+    if (l2_sq > (int64_t)params->beta_final * params->beta_final) return 1;
+    if (inf_norm > (int32_t)PQ_ZK_BETA_INF) return 1;
     return 0;
 }
 
