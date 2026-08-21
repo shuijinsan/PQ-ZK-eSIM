@@ -54,7 +54,6 @@ int PQZK_Cert_Issue(const uint8_t mno_id[PQZK_MNO_ID_BYTES],
 
     memset(cert_out, 0, sizeof(*cert_out));
     memcpy(cert_out->mno_id, mno_id, PQZK_MNO_ID_BYTES);
-    memcpy(cert_out->mno_sk, mno_sk, 32);
 
     uint8_t pk_label[2] = {'p', 'k'};
     pqzk_iov_t pk_iov[] = {
@@ -117,7 +116,6 @@ void PQZK_Cert_Serialize(const pqzk_cert_t *cert,
     if (!cert || !cert_bytes) return;
     size_t off = 0;
     memcpy(cert_bytes + off, cert->mno_id, PQZK_MNO_ID_BYTES); off += PQZK_MNO_ID_BYTES;
-    memcpy(cert_bytes + off, cert->mno_sk, 32);                  off += 32;
     memcpy(cert_bytes + off, cert->mno_pk, 32);                  off += 32;
     memcpy(cert_bytes + off, &cert->ca_sig_len, sizeof(size_t)); off += sizeof(size_t);
     memcpy(cert_bytes + off, cert->ca_sig, cert->ca_sig_len);    off += cert->ca_sig_len;
@@ -129,7 +127,6 @@ int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
     if (!cert_bytes || !cert_out) return -1;
     size_t off = 0;
     memcpy(cert_out->mno_id, cert_bytes + off, PQZK_MNO_ID_BYTES); off += PQZK_MNO_ID_BYTES;
-    memcpy(cert_out->mno_sk, cert_bytes + off, 32);                  off += 32;
     memcpy(cert_out->mno_pk, cert_bytes + off, 32);                  off += 32;
     memcpy(&cert_out->ca_sig_len, cert_bytes + off, sizeof(size_t)); off += sizeof(size_t);
     memcpy(cert_out->ca_sig, cert_bytes + off, cert_out->ca_sig_len); off += cert_out->ca_sig_len;

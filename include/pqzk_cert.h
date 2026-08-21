@@ -18,11 +18,10 @@ extern "C" {
 #define PQZK_CERT_CA_SIG_BYTES        PQZK_MLDSA_SIG_BYTES
 #define PQZK_CERT_MLKEM_PK_BYTES      PQ_ZK_PUBLICKEY_BYTES
 #define PQZK_MNO_ID_BYTES             16
-#define PQZK_CERT_BYTES               (PQZK_MNO_ID_BYTES + 32 + 32 + sizeof(size_t) + PQZK_CERT_CA_SIG_BYTES)
+#define PQZK_CERT_BYTES               (PQZK_MNO_ID_BYTES + 32 + sizeof(size_t) + PQZK_CERT_CA_SIG_BYTES)
 
 typedef struct {
     uint8_t mno_id[PQZK_MNO_ID_BYTES];
-    uint8_t mno_sk[32];
     uint8_t mno_pk[32];
     uint8_t ca_sig[PQZK_CERT_CA_SIG_BYTES];
     size_t  ca_sig_len;
