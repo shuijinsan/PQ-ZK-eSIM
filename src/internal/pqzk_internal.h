@@ -49,6 +49,7 @@ void pqzk_parse_poly_vec(const uint8_t *stream, size_t stream_len, poly_vec_t *o
 
 void pqzk_gen_matrix_A(const uint8_t seed[32], poly_vec_t *A_rows, int k_rows, int m_cols);
 void pqzk_mat_vec_mul(const poly_vec_t *A_rows, const poly_vec_t *v, poly_vec_t *result, int k_rows, int m_cols);
+void pqzk_mat_vec_mul_ntt(const poly_vec_t *A_rows, const poly_vec_t *v, poly_vec_t *result, int k_rows, int m_cols);
 void pqzk_vec_scalar_mul(const poly_vec_t *S, const poly_t *c, poly_vec_t *result, int vec_dim);
 void pqzk_vec_add(const poly_vec_t *a, const poly_vec_t *b, poly_vec_t *result, int vec_dim);
 void pqzk_vec_sub(const poly_vec_t *a, const poly_vec_t *b, poly_vec_t *result, int vec_dim);

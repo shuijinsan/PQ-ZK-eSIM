@@ -258,3 +258,109 @@ void pqzk_vec_sub(const poly_vec_t *a, const poly_vec_t *b,
         result->coeffs[i] = (int32_t)v;
     }
 }
+
+/* ================================================================
+ * NTT (Number Theoretic Transform) for R_q = Z_q[X]/(X^256+1)
+ * q = 8380417 (2^23 - 2^13 + 1), N = 256  -- Dilithium ring
+ * psi   = 1921994  (primitive 512-th root, psi^256 = -1)
+ * omega = 6644104  (= psi^2, primitive 256-th root)
+ * ninv  = 8347681  (= N^{-1} mod q)
+ * Negacyclic multiply via twist + cyclic-NTT + untwist.
+ * ================================================================ */
+
+#define PQZK_NTT_PSI    1921994
+#define PQZK_NTT_OMEGA  6644104
+#define PQZK_NTT_NINV   8347681
+
+static int32_t ntt_mod(int64_t x) {
+    x %= PQ_ZK_Q_VAL;
+    if (x < 0) x += PQ_ZK_Q_VAL;
+    return (int32_t)x;
+}
+
+static int32_t ntt_modpow(int32_t base, int32_t exp) {
+    int64_t r = 1, b = base;
+    while (exp > 0) {
+        if (exp & 1) r = r * b % PQ_ZK_Q_VAL;
+        b = b * b % PQ_ZK_Q_VAL;
+        exp >>= 1;
+    }
+    return (int32_t)r;
+}
+
+static int32_t psi_pow[PQ_ZK_N];
+static int32_t psi_inv_pow[PQ_ZK_N];
+static int32_t omega_inv;
+static int ntt_ready = 0;
+
+static void ntt_init(void) {
+    if (ntt_ready) return;
+    psi_pow[0] = 1;
+    for (int i = 1; i < PQ_ZK_N; i++)
+        psi_pow[i] = (int32_t)((int64_t)psi_pow[i - 1] * PQZK_NTT_PSI % PQ_ZK_Q_VAL);
+    psi_inv_pow[0] = 1;
+    for (int i = 1; i < PQ_ZK_N; i++)
+        psi_inv_pow[i] = ntt_mod(-(int64_t)psi_pow[PQ_ZK_N - i]);
+    omega_inv = ntt_modpow(PQZK_NTT_OMEGA, PQ_ZK_Q_VAL - 2);
+    ntt_ready = 1;
+}
+
+static void ntt_core(int32_t *a, int32_t root) {
+    int j = 0;
+    for (int i = 1; i < PQ_ZK_N; i++) {
+        int bit = PQ_ZK_N >> 1;
+        while (j & bit) { j ^= bit; bit >>= 1; }
+        j ^= bit;
+        if (i < j) { int32_t t = a[i]; a[i] = a[j]; a[j] = t; }
+    }
+    for (int len = 2; len <= PQ_ZK_N; len <<= 1) {
+        int32_t wlen = ntt_modpow(root, PQ_ZK_N / len);
+        for (int i = 0; i < PQ_ZK_N; i += len) {
+            int32_t w = 1;
+            for (int jj = 0; jj < len / 2; jj++) {
+                int32_t u = a[i + jj];
+                int32_t v = (int32_t)((int64_t)a[i + jj + len / 2] * w % PQ_ZK_Q_VAL);
+                a[i + jj] = ntt_mod((int64_t)u + v);
+                a[i + jj + len / 2] = ntt_mod((int64_t)u - v);
+                w = (int32_t)((int64_t)w * wlen % PQ_ZK_Q_VAL);
+            }
+        }
+    }
+}
+
+/* negacyclic product c = a*b mod (X^N+1) */
+static void ntt_poly_mul(const int32_t *a, const int32_t *b, int32_t *c) {
+    ntt_init();
+    int32_t at[PQ_ZK_N], bt[PQ_ZK_N];
+    for (int i = 0; i < PQ_ZK_N; i++) {
+        at[i] = (int32_t)((int64_t)a[i] * psi_pow[i] % PQ_ZK_Q_VAL);
+        bt[i] = (int32_t)((int64_t)b[i] * psi_pow[i] % PQ_ZK_Q_VAL);
+    }
+    ntt_core(at, PQZK_NTT_OMEGA);
+    ntt_core(bt, PQZK_NTT_OMEGA);
+    for (int i = 0; i < PQ_ZK_N; i++)
+        at[i] = (int32_t)((int64_t)at[i] * bt[i] % PQ_ZK_Q_VAL);
+    ntt_core(at, omega_inv);
+    for (int i = 0; i < PQ_ZK_N; i++)
+        at[i] = (int32_t)((int64_t)at[i] * PQZK_NTT_NINV % PQ_ZK_Q_VAL);
+    for (int i = 0; i < PQ_ZK_N; i++)
+        c[i] = (int32_t)((int64_t)at[i] * psi_inv_pow[i] % PQ_ZK_Q_VAL);
+}
+
+/* matrix-vector multiply result = A * v using NTT (dense inputs) */
+void pqzk_mat_vec_mul_ntt(const poly_vec_t *A_rows, const poly_vec_t *v,
+                           poly_vec_t *result, int k_rows, int m_cols)
+{
+    memset(result->coeffs, 0, sizeof(result->coeffs));
+    for (int i = 0; i < k_rows; i++) {
+        for (int j = 0; j < m_cols; j++) {
+            const int32_t *a_ij = &A_rows[i].coeffs[j * PQ_ZK_N];
+            const int32_t *v_j  = &v->coeffs[j * PQ_ZK_N];
+            int32_t       *r_i  = &result->coeffs[i * PQ_ZK_N];
+            int32_t prod[PQ_ZK_N];
+            ntt_poly_mul(a_ij, v_j, prod);
+            for (int k = 0; k < PQ_ZK_N; k++)
+                r_i[k] = ntt_mod((int64_t)r_i[k] + prod[k]);
+        }
+    }
+}

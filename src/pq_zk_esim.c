@@ -272,7 +272,7 @@ void PQC_PreCompute(poly_vec_t *W_pub, uint8_t seed_y[PQ_ZK_SEED_BYTES])
     pqzk_sample_gauss_vec(seed_y, PQ_ZK_SEED_BYTES, &y_pub);
     poly_vec_t A_rows[PQ_ZK_K];
     pqzk_gen_matrix_A(PQZK_MATRIX_A_SEED, A_rows, PQ_ZK_K, PQ_ZK_M);
-    pqzk_mat_vec_mul(A_rows, &y_pub, W_pub, PQ_ZK_K, PQ_ZK_M);
+    pqzk_mat_vec_mul_ntt(A_rows, &y_pub, W_pub, PQ_ZK_K, PQ_ZK_M);
     secure_zero(&y_pub, sizeof(y_pub));
     secure_zero(A_rows, sizeof(A_rows));
 }
@@ -616,7 +616,7 @@ PQ_ZK_ErrorCode PQC_VerifyEngine(
     decode_polyvec_24bit(pk_t + 32, &T_key, PQ_ZK_K);
 
     poly_vec_t Az, Tc, W_prime;
-    pqzk_mat_vec_mul(A_rows, &z_unmasked, &Az, PQ_ZK_K, PQ_ZK_M);
+    pqzk_mat_vec_mul_ntt(A_rows, &z_unmasked, &Az, PQ_ZK_K, PQ_ZK_M);
     pqzk_vec_scalar_mul(&T_key, &c_agg, &Tc, PQ_ZK_K);
     pqzk_vec_sub(&Az, &Tc, &W_prime, PQ_ZK_K);
 
