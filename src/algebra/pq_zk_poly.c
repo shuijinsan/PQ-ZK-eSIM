@@ -32,7 +32,7 @@ static void poly_mul_scalar_coeff(const int32_t *a, int pos, int coeff_val,
 
 /* ================================================================
  * SampleInBall_kappa: deterministic sparse challenge generation
- * kappa=25, coefficients in {-1,0,1}
+ * kappa=35, coefficients in {-1,0,1}
  * ================================================================ */
 void pqzk_sample_in_ball(const uint8_t hash[32], poly_t *c)
 {
@@ -81,7 +81,7 @@ static double approx_normal(uint64_t r1, uint64_t r2)
 
 /* ================================================================
  * SampleGauss_sigma: discrete Gaussian sampling for y_pub
- * M=8 polynomials, sigma=2800, truncation at beta_inf=20000
+ * M=8 polynomials, sigma=5000, truncation at beta_inf=35700
  * ================================================================ */
 void pqzk_sample_gauss_vec(const uint8_t *seed, size_t seed_len,
                              poly_vec_t *out)
@@ -139,7 +139,7 @@ void pqzk_parse_poly_vec(const uint8_t *stream, size_t stream_len,
 }
 
 /* ================================================================
- * gen_matrix_A: K x M rectangular matrix (6 x 8)
+ * gen_matrix_A: K x M rectangular matrix (5 x 8)
  * A_rows[i].coeffs[j*N .. j*N+N-1] = A[i][j]
  * i=0..K-1, j=0..M-1
  * ================================================================ */

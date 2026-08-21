@@ -1,6 +1,6 @@
 /* pq_zk_esim.c — v5.1
  * PQ-ZK-eSIM protocol implementation
- * K=6, M=8, q=8380417, kappa=25, sigma=2800
+ * K=5, M=8, q=8380417, kappa=35, sigma=5000
  * int32_t coefficients, int64_t intermediates (anti-overflow)
  */
 
@@ -133,7 +133,7 @@ static int serialize_merkle_path(const merkle_path_t *path,
 }
 
 /* ================================================================
- * Key Generation — K=6, M=8 rectangular MSIS
+ * Key Generation — K=5, M=8 rectangular MSIS
  * ================================================================ */
 
 void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s)
@@ -454,7 +454,7 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
 
     uint64_t ctr_session = state.ctr_local;
 
-    /* Challenge check: exactly kappa=25 nonzero entries in {-1,1} */
+    /* Challenge check: exactly kappa=35 nonzero entries in {-1,1} */
     int ham_weight = 0;
     for (int i = 0; i < PQ_ZK_N; i++) {
         int32_t v = c_agg->coeffs[i];

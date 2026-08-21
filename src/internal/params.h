@@ -44,9 +44,9 @@
  *   2. sigma_pub = 5000 (Gaussian flooding std deviation)
  *      - Renyi smudging: sigma >= rho_smudge * sqrt(kappa*M*N) * eta_s
  *        5000 >= 12.36 * sqrt(35*8*256) * 1 = 12.36 * 267.7 = 3309  OK
- *      - R_16 <= exp(16*pi*||b||^2 / sigma^2) = exp(16*pi*97960/25e6)
- *        = exp(0.197) = 1.218  (cf. paper baseline R_16=1.51 with kappa=25)
- *      - Per-transcript loss L = R_16^(15/16) = 1.203
+ *      - R_16 <= exp(16*||b||^2 / (2*sigma^2)) = exp(16*97960/(2*25e6))
+ *        = exp(0.0314) = 1.032  (paper: per-transcript loss R_16^(15/16) = 1.030)
+ *      - Per-transcript loss L = R_16^(15/16) = 1.030
  *
  *   3. beta_inf = 35700 (y_pub coefficient truncation bound)
  *      - tau = beta_inf / sigma = 35700/5000 = 7.14
