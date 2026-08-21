@@ -179,9 +179,9 @@ int pqzk_prf(const uint8_t K_sym[32],
 
 /* ================================================================
  * AES-256-CMAC (NIST SP 800-38B)
- * 16-byte CMAC, zero-padded to 32 bytes for PQ_ZK_MAC_BYTES.
+ * 16-byte CMAC tag (128-bit, NIST SP 800-38B).
  * ================================================================ */
-int pqzk_aes256_cmac(const uint8_t key[32], const pqzk_iov_t *iov, uint8_t out[32])
+int pqzk_aes256_cmac(const uint8_t key[32], const pqzk_iov_t *iov, uint8_t out[16])
 {
     if (!key || !iov || !out) return -1;
     CMAC_CTX *ctx = CMAC_CTX_new();
@@ -193,7 +193,6 @@ int pqzk_aes256_cmac(const uint8_t key[32], const pqzk_iov_t *iov, uint8_t out[3
     CMAC_Final(ctx, out, &outlen);
     CMAC_CTX_free(ctx);
     if (outlen != 16) return -1;
-    memset(out + 16, 0, 16);
     return 0;
 }
 

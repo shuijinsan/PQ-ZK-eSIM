@@ -430,11 +430,11 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
         { R_dynamic,  PQ_ZK_SEED_BYTES },
         { NULL, 0 }
     };
-    uint8_t expected_token[32];
+    uint8_t expected_token[PQ_ZK_MAC_BYTES];
     pqzk_aes256_cmac(state.k_tee, auth_iov, expected_token);
 
     volatile int mismatch = 0;
-    for (int i = 0; i < 32; i++)
+    for (int i = 0; i < PQ_ZK_MAC_BYTES; i++)
         mismatch |= (expected_token[i] ^ AuthToken[i]);
 
     if (mismatch) {
@@ -442,12 +442,12 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
         if (state.auth_retry_count >= 3) {
             state.auth_retry_count = 0;
             secure_zero(&state, sizeof(state));
-            secure_zero(expected_token, 32);
+            secure_zero(expected_token, PQ_ZK_MAC_BYTES);
             return PQ_ZK_ERR_RESYNC_NEEDED;
         }
         nvram_write_atomic(nvram_dir, &state);
         secure_zero(&state, sizeof(state));
-        secure_zero(expected_token, 32);
+        secure_zero(expected_token, PQ_ZK_MAC_BYTES);
         return PQ_ZK_ERR_MAC_FAIL;
     }
     state.auth_retry_count = 0;
@@ -518,7 +518,7 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
     secure_zero(&S_c_agg, sizeof(S_c_agg));
     secure_zero(new_k_sym, 32);
     secure_zero(cagg_bytes, sizeof(cagg_bytes));
-    secure_zero(expected_token, 32);
+    secure_zero(expected_token, PQ_ZK_MAC_BYTES);
     secure_zero(&state, sizeof(state));
 
     return PQ_ZK_SUCCESS;

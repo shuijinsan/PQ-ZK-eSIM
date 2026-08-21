@@ -16,7 +16,7 @@ extern "C" {
 #define PQ_ZK_M 8
 #define PQ_ZK_SEED_BYTES 32
 #define PQ_ZK_TEE_KEY_BYTES 32
-#define PQ_ZK_MAC_BYTES 32
+#define PQ_ZK_MAC_BYTES 16
 #define PQ_ZK_CHALLENGE_WEIGHT 35
 #define PQ_ZK_ETA_S 1
 #define PQ_ZK_SIGMA_PUB 5000.0
@@ -75,7 +75,7 @@ void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec, uint8_t MAC_W[PQ
 void PQC_GenChallenge(const poly_vec_t *comm_W, const uint8_t nonce[PQ_ZK_SEED_BYTES], poly_t *c_agg);
 
 PQ_ZK_ErrorCode TEE_GenerateAuthToken(const char *nvram_dir, const poly_t *c_agg,
-    const uint8_t R_bio[PQ_ZK_MAC_BYTES], const merkle_tree_t *tree,
+    const uint8_t R_bio[PQZK_MERKLE_HASH_BYTES], const merkle_tree_t *tree,
     uint32_t M1, const uint8_t k_tee[PQ_ZK_TEE_KEY_BYTES],
     uint8_t R_dynamic_out[PQ_ZK_SEED_BYTES], merkle_path_t *M2_out,
     uint8_t AuthToken_out[PQ_ZK_MAC_BYTES]);
