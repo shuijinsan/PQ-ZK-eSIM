@@ -63,8 +63,8 @@ static void kat_encode_decode(void)
     PQC_EncodePolyVec(&orig, encoded, PQ_ZK_M);
 
  
-    uint8_t exp_head[6] = {0x00,0x00, 0x01,0x00, 0x02,0x00};
-    ASSERT_EQ("EncodePolyVec first 3 coeffs", encoded, exp_head, 6);
+    uint8_t exp_head[12] = {0x00,0x00,0x00,0x00, 0x01,0x00,0x00,0x00, 0x02,0x00,0x00,0x00};
+    ASSERT_EQ("EncodePolyVec first 3 coeffs", encoded, exp_head, 12);
     print_hex("encoded[0:8]", encoded, 8);
 
     poly_vec_t decoded;
@@ -92,8 +92,8 @@ static void kat_encode_poly(void)
     PQC_EncodePoly(&orig, encoded);
 
  
-    uint8_t exp_head[8] = {0x01,0x00, 0xFF,0xFF, 0x00,0x00, 0x01,0x00};
-    ASSERT_EQ("EncodePoly {1,-1,0,1}", encoded, exp_head, 8);
+    uint8_t exp_head[16] = {0x01,0x00,0x00,0x00, 0xFF,0xFF,0xFF,0xFF, 0x00,0x00,0x00,0x00, 0x01,0x00,0x00,0x00};
+    ASSERT_EQ("EncodePoly {1,-1,0,1}", encoded, exp_head, 16);
 
     poly_t decoded;
     PQC_DecodePoly(encoded, &decoded);
