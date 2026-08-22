@@ -306,6 +306,7 @@ void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec,
     PQC_EncodePolyVec(W_sec, wsec_bytes, PQ_ZK_K);
     write_le64(ctr_bytes, state.ctr_local);
     pqzk_iov_t mac_iov[] = {
+        { state.eid, NVRAM_EID_LEN },
         { wsec_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
         { ctr_bytes,  8 },
         { NULL, 0 }
@@ -655,13 +656,14 @@ static void evolve_key_n_steps(const uint8_t k_in[32], const uint8_t d_seed[32],
 }
 
 static void compute_mac_w(const uint8_t k_try[32], const poly_vec_t *W_sec,
-    uint64_t ctr_window, uint8_t mac_out[PQ_ZK_MAC_BYTES])
+    uint64_t ctr_window, const uint8_t *eid, uint8_t mac_out[PQ_ZK_MAC_BYTES])
 {
     uint8_t wsec_bytes[PQ_ZK_POLYVEC_BYTES];
     uint8_t ctr_bytes[8];
     PQC_EncodePolyVec(W_sec, wsec_bytes, PQ_ZK_K);
     write_le64(ctr_bytes, ctr_window);
     pqzk_iov_t iov[] = {
+        { eid, NVRAM_EID_LEN },
         { wsec_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
         { ctr_bytes,  8 },
         { NULL, 0 }
@@ -692,7 +694,7 @@ PQ_ZK_ErrorCode PQC_Server_SlidingWindowSync(
     for (uint32_t delta = 0; delta <= window_size; delta++) {
         uint64_t ctr_window = srv->ctr_server + (uint64_t)delta;
         uint8_t mac_candidate[PQ_ZK_MAC_BYTES];
-        compute_mac_w(k_try, W_sec, ctr_window, mac_candidate);
+        compute_mac_w(k_try, W_sec, ctr_window, srv->eid, mac_candidate);
 
         volatile int mismatch = 0;
         for (int b = 0; b < PQ_ZK_MAC_BYTES; b++)

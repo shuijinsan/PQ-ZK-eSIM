@@ -16,8 +16,8 @@
 extern "C" {
 #endif
 
-#define PQZK_MERKLE_MAX_LEAVES  64
-#define PQZK_MERKLE_MAX_DEPTH   6
+#define PQZK_MERKLE_MAX_LEAVES  128
+#define PQZK_MERKLE_MAX_DEPTH   7
 #define PQZK_MERKLE_HASH_BYTES  32
 
 /* Full Merkle tree (stored in TEE) */

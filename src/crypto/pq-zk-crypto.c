@@ -31,8 +31,11 @@ int pqzk_sha3_256(const uint8_t *in, size_t len, uint8_t out[32])
 {
     if (!out) return -1;
     if (len > 0 && !in) return -1;
-    SHA256(in ? in : (const uint8_t *)"", len, out);
-    return 0;
+    const pqzk_iov_t iov[] = {
+        { in ? in : (const uint8_t *)"", len },
+        { NULL, 0 }
+    };
+    return pqzk_sha3_256_iov(iov, out);
 }
 
 /* Gather-write SHA3-256 over iov array, avoiding allocation */
