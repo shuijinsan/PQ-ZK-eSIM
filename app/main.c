@@ -17,8 +17,7 @@
 /* mode_switch (see mode_switch.c) */
 int mode_switch(const char    *nvram_dir,
                 const uint8_t  domain_id_b[PQZK_MNO_ID_BYTES],
-                const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES],
-                const uint8_t  mno_a_sk[32]);
+                const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES]);
 
 /* mode_auth (see below) */
 static int mode_auth(const char *nvram_dir);
@@ -162,7 +161,6 @@ int main(int argc, char *argv[])
     /* MNO identifiers: simulation uses hardcoded values (real: from operator profile via GSMA RSP) */
     uint8_t mno_a_id[PQZK_MNO_ID_BYTES];
     uint8_t mno_b_id[PQZK_MNO_ID_BYTES];
-    uint8_t mno_a_sk[32];
 
     /* Default MNO_A (sim) */
     memset(mno_a_id, 0, sizeof(mno_a_id));
@@ -171,9 +169,6 @@ int main(int argc, char *argv[])
     /* Default MNO_B (sim) */
     memset(mno_b_id, 0, sizeof(mno_b_id));
     memcpy(mno_b_id, "MNO_B_SIM_001", 13);
-
-    /* MNO_A signing key (sim, fixed) */
-    memset(mno_a_sk, 0xA1, 32);
 
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "--auth"))      do_auth     = 1;
@@ -208,7 +203,7 @@ int main(int argc, char *argv[])
             secure_zero(&cur_state, sizeof(cur_state));
         }
         printf("[Switch] Target operator: %.16s\n", (char*)mno_b_id);
-        return mode_switch(nvram_dir, mno_b_id, mno_a_id, mno_a_sk);
+        return mode_switch(nvram_dir, mno_b_id, mno_a_id);
     }
   
     printf("\nUsage:\n");

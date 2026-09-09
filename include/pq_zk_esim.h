@@ -108,6 +108,6 @@ PQ_ZK_ErrorCode PQC_Register(const char *nvram_dir,
 PQ_ZK_ErrorCode PQC_LoadTree(const char *nvram_dir, merkle_tree_t *tree_out);
 
 int mode_switch(const char *nvram_dir, const uint8_t domain_id_b[PQZK_MNO_ID_BYTES],
-    const uint8_t mno_a_id[PQZK_MNO_ID_BYTES], const uint8_t mno_a_sk[32]);
+    const uint8_t mno_a_id[PQZK_MNO_ID_BYTES]);
 
 #endif

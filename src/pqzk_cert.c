@@ -137,30 +137,34 @@ void PQZK_GSMA_Sign(const uint8_t *tbs, size_t tbs_len,
 }
 
 int PQZK_CredKYC_Issue(const uint8_t eid[16],
+                        const uint8_t did[PQZK_MNO_ID_BYTES],
                         const uint8_t R_bio[32],
                         uint8_t       cred_kyc_out[PQZK_MLDSA_SIG_BYTES],
                         size_t       *cred_kyc_len_out)
 {
-    if (!eid || !R_bio || !cred_kyc_out || !cred_kyc_len_out) return -1;
+    if (!eid || !did || !R_bio || !cred_kyc_out || !cred_kyc_len_out) return -1;
     ensure_ca_key();
-    uint8_t tbs[16 + 32];
-    memcpy(tbs,      eid,   16);
-    memcpy(tbs + 16, R_bio, 32);
-    /* Cred_KYC is signed by the CA (SM-DP+), matching the paper */
+    uint8_t tbs[16 + PQZK_MNO_ID_BYTES + 32];
+    memcpy(tbs,                          eid,   16);
+    memcpy(tbs + 16,                     did,   PQZK_MNO_ID_BYTES);
+    memcpy(tbs + 16 + PQZK_MNO_ID_BYTES, R_bio, 32);
+    /* Cred_KYC = SM-DP+ signature over (EID, DID, R_bio,dom), matching the paper */
     OQS_SIG_ml_dsa_65_sign(cred_kyc_out, cred_kyc_len_out, tbs, sizeof(tbs), gsma_ca_sk);
     return 0;
 }
 
 int PQZK_CredKYC_Verify(const uint8_t eid[16],
+                          const uint8_t did[PQZK_MNO_ID_BYTES],
                           const uint8_t R_bio[32],
                           const uint8_t cred_kyc[PQZK_MLDSA_SIG_BYTES],
                           size_t cred_kyc_len)
 {
-    if (!eid || !R_bio || !cred_kyc) return -1;
+    if (!eid || !did || !R_bio || !cred_kyc) return -1;
     ensure_ca_key();
-    uint8_t tbs[16 + 32];
-    memcpy(tbs,      eid,   16);
-    memcpy(tbs + 16, R_bio, 32);
+    uint8_t tbs[16 + PQZK_MNO_ID_BYTES + 32];
+    memcpy(tbs,                          eid,   16);
+    memcpy(tbs + 16,                     did,   PQZK_MNO_ID_BYTES);
+    memcpy(tbs + 16 + PQZK_MNO_ID_BYTES, R_bio, 32);
     OQS_STATUS rc = OQS_SIG_ml_dsa_65_verify(tbs, sizeof(tbs),
         cred_kyc, cred_kyc_len, gsma_ca_pk);
     return (rc == OQS_SUCCESS) ? 0 : -1;

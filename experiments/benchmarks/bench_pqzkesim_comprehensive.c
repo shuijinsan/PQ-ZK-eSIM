@@ -15,7 +15,7 @@
 #include "pqzk_internal.h"
 #include "pqzk_merkle.h"
 
-extern int mode_switch(const char*,const uint8_t[PQZK_MNO_ID_BYTES],const uint8_t[PQZK_MNO_ID_BYTES],const uint8_t[32]);
+extern int mode_switch(const char*,const uint8_t[PQZK_MNO_ID_BYTES],const uint8_t[PQZK_MNO_ID_BYTES]);
 
 static double get_time_us(void){struct timespec ts;clock_gettime(CLOCK_MONOTONIC,&ts);return(double)ts.tv_sec*1e6+(double)ts.tv_nsec/1e3;}
 static long get_rss_kb(void) {
@@ -216,25 +216,20 @@ static void run_operator_switching_experiment(void){
     uint8_t eid[16]={0},k_sym[32],k_tee[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
     pqzk_rand_bytes(k_sym,32);pqzk_rand_bytes(k_tee,32);pqzk_rand_bytes(R_bio,32);
     pqzk_rand_bytes(salt,32);
-    uint8_t aid[PQZK_MNO_ID_BYTES],bid[PQZK_MNO_ID_BYTES],ask[32],bsk[32];
+    uint8_t aid[PQZK_MNO_ID_BYTES],bid[PQZK_MNO_ID_BYTES];
     memset(aid,0,PQZK_MNO_ID_BYTES);memset(bid,0,PQZK_MNO_ID_BYTES);
     memcpy(aid,"MNO_A_001",9);memcpy(bid,"MNO_B_001",9);
-    uint8_t label[4] = {'m','n','o','k'};
-    pqzk_iov_t ask_iov[] = {{ aid, PQZK_MNO_ID_BYTES },{ label, 4 },{ NULL, 0 }};
-    pqzk_sha3_256_iov(ask_iov, ask);
-    pqzk_iov_t bsk_iov[] = {{ bid, PQZK_MNO_ID_BYTES },{ label, 4 },{ NULL, 0 }};
-    pqzk_sha3_256_iov(bsk_iov, bsk);
-    memset(cred_kyc, 0, 64);
-    size_t ck_len; PQZK_CredKYC_Issue(eid, R_bio, cred_kyc, &ck_len);
+    memset(cred_kyc, 0, PQZK_MLDSA_SIG_BYTES);
+    size_t ck_len; PQZK_CredKYC_Issue(eid, aid, R_bio, cred_kyc, &ck_len);
     uint64_t ic;pqzk_rand_bytes((uint8_t*)&ic,8);
-    PQC_eUICC_Init(nd,eid,16,&sk_s,k_sym,32,ic,k_tee,32,salt,R_bio,cred_kyc,64);
+    PQC_eUICC_Init(nd,eid,16,&sk_s,k_sym,32,ic,k_tee,32,salt,R_bio,cred_kyc,ck_len);
     { nvram_state_t st; nvram_read(nd,&st); memcpy(st.R_bio,R_bio,32); memcpy(st.active_R_bio,R_bio,32); nvram_write_atomic(nd,&st); }
     int trials=20,sc=0,cur=0;
     for(int r=0;r<trials;r++){
-        const uint8_t*fi=cur?bid:aid,*ti=cur?aid:bid,*fs=cur?bsk:ask;
+        const uint8_t*fi=cur?bid:aid,*ti=cur?aid:bid;
         const char*dir=cur?"B->A":"A->B";
         printf("  Trial %d (%s) ... ",r+1,dir);fflush(stdout);
-        double t0=get_time_us();int res=mode_switch(nd,ti,fi,fs);double us=get_time_us()-t0;
+        double t0=get_time_us();int res=mode_switch(nd,ti,fi);double us=get_time_us()-t0;
         int ok=(res==0)?1:0;if(ok){sc++;cur=1-cur;}
         fprintf(csv,"%d,%s,%.2f,%d\n",r+1,dir,us,ok);
         printf("%.1fus %s\n",us,ok?"OK":"FAIL");}

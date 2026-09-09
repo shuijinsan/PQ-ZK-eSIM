@@ -51,49 +51,31 @@ static int tee_derive_domain_root(const uint8_t  R_bio[32],
 static int smdp_switch(const uint8_t  eid[16],
                         const uint8_t  did_a[PQZK_MNO_ID_BYTES],
                         const uint8_t  did_b[PQZK_MNO_ID_BYTES],
-                        const uint8_t  mno_a_sk[32],
+                        const uint8_t  R_bio_A[32],
+                        const uint8_t  cred_kyc_a[PQZK_MLDSA_SIG_BYTES],
                         const uint8_t  R_bio_B[32],
-                        pqzk_cert_t   *cert_a_out,
                         uint8_t        cred_kyc_b_out[PQZK_MLDSA_SIG_BYTES],
                         size_t        *cred_kyc_b_len)
 {
-    /* Issue Cert_A (simulates reading stored cert from NVRAM) */
-    if (PQZK_Cert_Issue(did_a, mno_a_sk, cert_a_out) != 0) {
-        fprintf(stderr, "  [SM-DP+] Cert_A issue failed\n");
+    /* Verify Cred_KYC_A over (EID, DID_A, R_bio_A) with SM-DP+ public key */
+    if (PQZK_CredKYC_Verify(eid, did_a, R_bio_A, cred_kyc_a, PQZK_MLDSA_SIG_BYTES) != 0) {
+        fprintf(stderr, "  [SM-DP+] Cred_KYC_A verify failed\n");
         return -1;
     }
+    printf("  [SM-DP+] Cred_KYC_A verified\n");
 
-    /* Verify Cert_A with GSMA root CA */
-    uint8_t root_ca_pk[PQZK_GSMA_CA_PK_BYTES];
-    PQZK_GSMA_GetRootCAPK(root_ca_pk);
-    if (PQZK_Cert_VerifyWithRootPK(cert_a_out, root_ca_pk) != 0) {
-        fprintf(stderr, "  [SM-DP+] Cert_A verify failed\n");
+    /* Issue Cred_KYC_B = Sign_SM-DP+(EID, DID_B, R_bio_B) */
+    if (PQZK_CredKYC_Issue(eid, did_b, R_bio_B, cred_kyc_b_out, cred_kyc_b_len) != 0) {
+        fprintf(stderr, "  [SM-DP+] Cred_KYC_B issue failed\n");
         return -1;
     }
-    printf("  [SM-DP+] Cert_A verified\n");
-
-    /* Verify EID channel binding: cert_a.mno_id == did_a */
-    if (memcmp(cert_a_out->mno_id, did_a, PQZK_MNO_ID_BYTES) != 0) {
-        fprintf(stderr, "  [SM-DP+] EID mismatch\n");
-        return -1;
-    }
-
-    /* Issue Cred_KYC_B = Sign_SM-DP+(EID || DID_B || R_bio_B) */
-    uint8_t tbs[16 + PQZK_MNO_ID_BYTES + 32];
-    memcpy(tbs,                          eid,    16);
-    memcpy(tbs + 16,                     did_b,  PQZK_MNO_ID_BYTES);
-    memcpy(tbs + 16 + PQZK_MNO_ID_BYTES, R_bio_B, 32);
-
-    /* Sign Cred_KYC_B with GSMA root CA key */
-    PQZK_GSMA_Sign(tbs, sizeof(tbs), cred_kyc_b_out, cred_kyc_b_len);
-    printf("  [SM-DP+] Cred_KYC_B issued");
+    printf("  [SM-DP+] Cred_KYC_B issued\n");
     return 0;
 }
 
 int mode_switch(const char    *nvram_dir,
                 const uint8_t  domain_id_b[PQZK_MNO_ID_BYTES],
-                const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES],
-                const uint8_t  mno_a_sk[32])
+                const uint8_t  mno_a_id[PQZK_MNO_ID_BYTES])
 {
     printf("\n============================================\n");
     printf("  Operator Switch (MNO_A -> MNO_B)\n");
@@ -158,11 +140,11 @@ int mode_switch(const char    *nvram_dir,
     printf("\n[Step 4-5] SM-DP+ credential exchange\n");
     printf("  [eUICC → LPA → ES9+ → SM-DP+] Send Cred_KYC_A, R_bio_B\n");
 
-    pqzk_cert_t cert_a;
     uint8_t cred_kyc_b[PQZK_MLDSA_SIG_BYTES];
     size_t cred_kyc_b_len = 0;
-    if (smdp_switch(state.eid, mno_a_id, domain_id_b, mno_a_sk,
-                    R_bio_B, &cert_a, cred_kyc_b, &cred_kyc_b_len) != 0) {
+    if (smdp_switch(state.eid, mno_a_id, domain_id_b,
+                    state.R_bio, state.cred_kyc,
+                    R_bio_B, cred_kyc_b, &cred_kyc_b_len) != 0) {
         fprintf(stderr, "[Step 4-5] SM-DP+ handshake failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
@@ -178,17 +160,8 @@ int mode_switch(const char    *nvram_dir,
     pqzk_rand_bytes(d_seed_b, 32);
     print_hex("K_sym_B[0:16]", k_sym_b, 16);
 
-    /* eUICC verifies Cred_KYC_B with GSMA root CA */
-    uint8_t root_ca_pk[PQZK_GSMA_CA_PK_BYTES];
-    PQZK_GSMA_GetRootCAPK(root_ca_pk);
-
-    uint8_t tbs_v[16 + PQZK_MNO_ID_BYTES + 32];
-    memcpy(tbs_v,                          state.eid, 16);
-    memcpy(tbs_v + 16,                     domain_id_b, PQZK_MNO_ID_BYTES);
-    memcpy(tbs_v + 16 + PQZK_MNO_ID_BYTES, R_bio_B, 32);
-    OQS_STATUS vrc = OQS_SIG_ml_dsa_65_verify(tbs_v, sizeof(tbs_v),
-        cred_kyc_b, cred_kyc_b_len, root_ca_pk);
-    if (vrc != OQS_SUCCESS) {
+    /* eUICC verifies Cred_KYC_B over (EID, DID_B, R_bio_B) with SM-DP+ public key */
+    if (PQZK_CredKYC_Verify(state.eid, domain_id_b, R_bio_B, cred_kyc_b, cred_kyc_b_len) != 0) {
         fprintf(stderr, "  [eUICC] Cred_KYC_B verify failed\n");
         secure_zero(&state, sizeof(state));
         return -1;
