@@ -148,10 +148,10 @@ int PQZK_APDU_Decrypt(const mlkem_tunnel_t *tunnel,
 }
 
 /* APDU payload serialization (little-endian, fixed layout):
- *   R_bio_B[32] | R_bio[32] | salt[32] | cred_kyc[64] |
- *   cert_a[256] | eid[16] | T_new[PQ_ZK_PUBLICKEY_BYTES] */
+ *   R_bio_B[32] | R_bio[32] | salt[32] | cred_kyc[PQZK_MLDSA_SIG_BYTES] |
+ *   cert_a[PQZK_CERT_BYTES] | eid[16] | T_new[PQ_ZK_PUBLICKEY_BYTES] */
 #define APDU_PAYLOAD_SERIAL_BYTES \
-    (32 + 32 + 32 + PQZK_MLDSA_SIG_BYTES + 256 + 16 + PQ_ZK_PUBLICKEY_BYTES)
+    (32 + 32 + 32 + PQZK_MLDSA_SIG_BYTES + PQZK_CERT_BYTES + 16 + PQ_ZK_PUBLICKEY_BYTES)
 
 int PQZK_APDU_SerializePayload(const apdu_payload_t *payload,
                                 uint8_t *buf, size_t buf_len)
@@ -163,8 +163,8 @@ int PQZK_APDU_SerializePayload(const apdu_payload_t *payload,
     memcpy(buf + off, payload->R_bio_B,  32);   off += 32;
     memcpy(buf + off, payload->R_bio,    32);   off += 32;
     memcpy(buf + off, payload->salt,     32);   off += 32;
-    memcpy(buf + off, payload->cred_kyc, 64);   off += 64;
-    memcpy(buf + off, payload->cert_a,   256);  off += 256;
+    memcpy(buf + off, payload->cred_kyc, PQZK_MLDSA_SIG_BYTES);   off += PQZK_MLDSA_SIG_BYTES;
+    memcpy(buf + off, payload->cert_a,   PQZK_CERT_BYTES);  off += PQZK_CERT_BYTES;
     memcpy(buf + off, payload->eid,      16);   off += 16;
     memcpy(buf + off, payload->T_new,    PQ_ZK_PUBLICKEY_BYTES);
     off += PQ_ZK_PUBLICKEY_BYTES;
@@ -182,8 +182,8 @@ int PQZK_APDU_DeserializePayload(const uint8_t *buf, size_t buf_len,
     memcpy(payload_out->R_bio_B,  buf + off, 32);   off += 32;
     memcpy(payload_out->R_bio,    buf + off, 32);   off += 32;
     memcpy(payload_out->salt,     buf + off, 32);   off += 32;
-    memcpy(payload_out->cred_kyc, buf + off, 64);   off += 64;
-    memcpy(payload_out->cert_a,   buf + off, 256);  off += 256;
+    memcpy(payload_out->cred_kyc, buf + off, PQZK_MLDSA_SIG_BYTES);   off += PQZK_MLDSA_SIG_BYTES;
+    memcpy(payload_out->cert_a,   buf + off, PQZK_CERT_BYTES);  off += PQZK_CERT_BYTES;
     memcpy(payload_out->eid,      buf + off, 16);   off += 16;
     memcpy(payload_out->T_new,    buf + off, PQ_ZK_PUBLICKEY_BYTES);
 
