@@ -354,14 +354,18 @@ static void run_memory_experiment(void){
 }
 
 int main(int argc,char*argv[]){
-    (void)argc;(void)argv;
+    const char* only = NULL;
+    for(int i=1;i<argc;i++){
+        if(!strcmp(argv[i],"--only") && i+1<argc){ only=argv[++i]; }
+    }
     printf("============================================\n");
     printf("  PQ-ZK-eSIM Experiments v5.1\n");
     printf("============================================\n");
-    run_nvm_wear_experiment();
-    run_sparse_noise_attack_experiment();
-    run_sliding_window_resync_experiment();
-    run_phase_timing_experiment();
-    run_memory_experiment();
+    int run_all = (only == NULL);
+    if(run_all || (only && !strcmp(only,"nvm")))     run_nvm_wear_experiment();
+    if(run_all || (only && !strcmp(only,"sparse")))  run_sparse_noise_attack_experiment();
+    if(run_all || (only && !strcmp(only,"sliding"))) run_sliding_window_resync_experiment();
+    if(run_all || (only && !strcmp(only,"phase")))   run_phase_timing_experiment();
+    if(run_all || (only && !strcmp(only,"memory")))  run_memory_experiment();
     printf("\nAll done.\n");
     return 0;}
