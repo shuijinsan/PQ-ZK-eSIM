@@ -43,7 +43,7 @@ endif()
 
 # OpenSSL / BoringSSL
 if(CROSS_ARM64)
-    set(CRYPTO_LIBS /home/ubuntu/pq_zk_project/buildroot-2023.02.6/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libssl.so /home/ubuntu/pq_zk_project/buildroot-2023.02.6/output/host/aarch64-buildroot-linux-gnu/sysroot/usr/lib/libcrypto.so)
+    set(CRYPTO_LIBS /home/ubuntu/openssl_aarch64/lib/libssl.a /home/ubuntu/openssl_aarch64/lib/libcrypto.a dl pthread)
 elseif(NOT ANDROID)
     find_package(OpenSSL REQUIRED)
     set(CRYPTO_LIBS OpenSSL::SSL OpenSSL::Crypto)

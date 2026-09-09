@@ -54,16 +54,19 @@ int nvram_write_atomic(const char *nvram_dir, const nvram_state_t *state)
     build_path(nvram_dir, "euicc_state.bin",     path_final, sizeof(path_final));
     build_path(nvram_dir, "euicc_state.tmp",     path_tmp,   sizeof(path_tmp));
 
-    /* 1. 写入临时文件 */
+    /* 1. write temp file */
     FILE *f = fopen(path_tmp, "wb");
     if (!f) return -1;
 
     size_t nw = fwrite(state, 1, sizeof(nvram_state_t), f);
     if (nw != sizeof(nvram_state_t)) { fclose(f); return -1; }
 
+    /* 2. fsync for durability before rename */
+    if (fflush(f) != 0 || fsync(fileno(f)) != 0) { fclose(f); return -1; }
+
     fclose(f);
 
-    /* 3. 原子 rename */
+    /* 3. atomic rename */
     if (rename(path_tmp, path_final) != 0) return -1;
 
     nvram_write_count++;

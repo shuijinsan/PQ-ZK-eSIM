@@ -180,7 +180,7 @@ void PQC_eUICC_Init(const char* nvram_dir,
     if (salt)      memcpy(state.salt,     salt,     32);
     if (R_bio) { memcpy(state.R_bio, R_bio, 32); memcpy(state.active_R_bio, R_bio, 32); }
     else       { memset(state.R_bio, 0, 32); memset(state.active_R_bio, 0, 32); }
-    if (cred_kyc)  memcpy(state.cred_kyc, cred_kyc, cred_kyc_len > 64 ? 64 : cred_kyc_len);
+    if (cred_kyc)  memcpy(state.cred_kyc, cred_kyc, cred_kyc_len > PQZK_MLDSA_SIG_BYTES ? PQZK_MLDSA_SIG_BYTES : cred_kyc_len);
     state.ctr_local = initial_ctr;
     state.switch_count = 0;
     state.auth_retry_count = 0;

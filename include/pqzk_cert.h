@@ -51,14 +51,12 @@ int PQZK_Cert_Deserialize(const uint8_t cert_bytes[PQZK_CERT_BYTES],
                             pqzk_cert_t  *cert_out);
 
 /* CredKYC */
-int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
-                        const uint8_t eid[16],
+int PQZK_CredKYC_Issue(const uint8_t eid[16],
                         const uint8_t R_bio[32],
                         uint8_t       cred_kyc_out[PQZK_MLDSA_SIG_BYTES],
                         size_t       *cred_kyc_len_out);
 
-int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
-                          const uint8_t eid[16],
+int PQZK_CredKYC_Verify(const uint8_t eid[16],
                           const uint8_t R_bio[32],
                           const uint8_t cred_kyc[PQZK_MLDSA_SIG_BYTES],
                           size_t cred_kyc_len);

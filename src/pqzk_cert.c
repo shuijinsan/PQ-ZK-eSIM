@@ -1,5 +1,5 @@
 /*
- * pqzk_cert.c — PQ-ZK-eSIM v5.2 certificate authority (ML-DSA-44)
+ * pqzk_cert.c — PQ-ZK-eSIM v5.2 certificate authority (ML-DSA-65)
  */
 
 #include <stdio.h>
@@ -9,20 +9,15 @@
 #include <string.h>
 #include <oqs/oqs.h>
 
-/* Simulated GSMA root CA: ML-DSA-44 key pair */
+/* Simulated GSMA root CA: ML-DSA-65 key pair */
 static uint8_t gsma_ca_pk[OQS_SIG_ml_dsa_65_length_public_key];
 static uint8_t gsma_ca_sk[OQS_SIG_ml_dsa_65_length_secret_key];
 static int gsma_ca_ready = 0;
 
-/* Simulation: CA key derived from fixed seed (real: HSM-stored ML-DSA-44 keypair) */
+/* Simulation: CA key generated once per process (real: HSM-stored ML-DSA-65 keypair) */
 static void ensure_ca_key(void)
 {
     if (gsma_ca_ready) return;
-    /* Deterministic key generation from seed */
-    uint8_t seed[32];
-    const char *label = "GSMA_SIM_ROOT_CA_KEY_2025_PQ_ZK";
-    pqzk_sha3_256((const uint8_t *)label, strlen(label), seed);
-    /* Seed the PRNG deterministically for reproducible keys */
     OQS_SIG_ml_dsa_65_keypair(gsma_ca_pk, gsma_ca_sk);
     gsma_ca_ready = 1;
 }
@@ -141,32 +136,33 @@ void PQZK_GSMA_Sign(const uint8_t *tbs, size_t tbs_len,
     OQS_SIG_ml_dsa_65_sign(sig_out, sig_len_out, tbs, tbs_len, gsma_ca_sk);
 }
 
-int PQZK_CredKYC_Issue(const uint8_t mno_sk[32],
-                        const uint8_t eid[16],
+int PQZK_CredKYC_Issue(const uint8_t eid[16],
                         const uint8_t R_bio[32],
                         uint8_t       cred_kyc_out[PQZK_MLDSA_SIG_BYTES],
                         size_t       *cred_kyc_len_out)
 {
-    if (!mno_sk || !eid || !R_bio || !cred_kyc_out || !cred_kyc_len_out) return -1;
+    if (!eid || !R_bio || !cred_kyc_out || !cred_kyc_len_out) return -1;
+    ensure_ca_key();
     uint8_t tbs[16 + 32];
     memcpy(tbs,      eid,   16);
     memcpy(tbs + 16, R_bio, 32);
-    OQS_SIG_ml_dsa_65_sign(cred_kyc_out, cred_kyc_len_out, tbs, sizeof(tbs), mno_sk);
+    /* Cred_KYC is signed by the CA (SM-DP+), matching the paper */
+    OQS_SIG_ml_dsa_65_sign(cred_kyc_out, cred_kyc_len_out, tbs, sizeof(tbs), gsma_ca_sk);
     return 0;
 }
 
-int PQZK_CredKYC_Verify(const pqzk_cert_t *cert_a,
-                          const uint8_t eid[16],
+int PQZK_CredKYC_Verify(const uint8_t eid[16],
                           const uint8_t R_bio[32],
                           const uint8_t cred_kyc[PQZK_MLDSA_SIG_BYTES],
                           size_t cred_kyc_len)
 {
-    if (!cert_a || !eid || !R_bio || !cred_kyc) return -1;
+    if (!eid || !R_bio || !cred_kyc) return -1;
+    ensure_ca_key();
     uint8_t tbs[16 + 32];
     memcpy(tbs,      eid,   16);
     memcpy(tbs + 16, R_bio, 32);
     OQS_STATUS rc = OQS_SIG_ml_dsa_65_verify(tbs, sizeof(tbs),
-        cred_kyc, cred_kyc_len, cert_a->mno_pk);
+        cred_kyc, cred_kyc_len, gsma_ca_pk);
     return (rc == OQS_SUCCESS) ? 0 : -1;
 }
 

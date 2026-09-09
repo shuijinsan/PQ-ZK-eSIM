@@ -46,7 +46,7 @@ static void build_auth_token(const uint8_t k_tee[32],const poly_t*c_agg,uint64_t
     uint8_t cb[PQ_ZK_POLY_BYTES],ctrb[8];
     PQC_EncodePoly(c_agg,cb);write_le64(ctrb,ctr);
     pqzk_iov_t iov[]={{cb,PQ_ZK_POLY_BYTES},{ctrb,8},{R_dyn,PQ_ZK_SEED_BYTES},{NULL,0}};
-    pqzk_hmac_sha256_iov(k_tee,iov,tok);}
+    pqzk_aes256_cmac(k_tee,iov,tok);}
 
 static PQ_ZK_ErrorCode run_one_trial(
     const char*nvram,const uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES],
@@ -105,7 +105,7 @@ static void run_sparse_noise_attack_experiment(void){
     fprintf(csv,"rho,detection_rate,false_reject_rate,avg_total_us\n");
     const char*nd="/tmp/pqzk_sparse";system("mkdir -p /tmp/pqzk_sparse");
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];poly_vec_t sk_s;PQC_GenKeyPair(pk_t,&sk_s);
-    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[64];
+    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
     pqzk_rand_bytes(k_sym,32);pqzk_rand_bytes(k_tee,32);pqzk_rand_bytes(R_bio,32);
     pqzk_rand_bytes(salt,32);pqzk_rand_bytes(cred_kyc,64);pqzk_sha3_256(k_sym,32,d_seed);
     double rhos[]={0.0,0.05,0.10,0.25,0.50,0.75,0.90,1.0};int nr=(int)(sizeof(rhos)/sizeof(rhos[0]));
@@ -157,7 +157,7 @@ static void run_sliding_window_resync_experiment(void){
     fprintf(csv,"window_size,sync_depth,success_rate,avg_mac_us,avg_total_us\n");
     const char*nd="/tmp/pqzk_resync";system("mkdir -p /tmp/pqzk_resync");
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];poly_vec_t sk_s;PQC_GenKeyPair(pk_t,&sk_s);
-    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[64];
+    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
     pqzk_rand_bytes(k_sym,32);pqzk_rand_bytes(k_tee,32);pqzk_rand_bytes(R_bio,32);
     pqzk_rand_bytes(salt,32);pqzk_rand_bytes(cred_kyc,64);pqzk_sha3_256(k_sym,32,d_seed);
     int ws[]={1,2,4,8,16,32},ds[]={0,1,2,4,8,16,32,64};
@@ -213,7 +213,7 @@ static void run_operator_switching_experiment(void){
     fprintf(csv,"trial,direction,switch_time_us,success\n");
     const char*nd="/tmp/pqzk_switch";system("mkdir -p /tmp/pqzk_switch");
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];poly_vec_t sk_s;PQC_GenKeyPair(pk_t,&sk_s);
-    uint8_t eid[16]={0},k_sym[32],k_tee[32],R_bio[32],salt[32],cred_kyc[64];
+    uint8_t eid[16]={0},k_sym[32],k_tee[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
     pqzk_rand_bytes(k_sym,32);pqzk_rand_bytes(k_tee,32);pqzk_rand_bytes(R_bio,32);
     pqzk_rand_bytes(salt,32);
     uint8_t aid[PQZK_MNO_ID_BYTES],bid[PQZK_MNO_ID_BYTES],ask[32],bsk[32];
@@ -225,7 +225,7 @@ static void run_operator_switching_experiment(void){
     pqzk_iov_t bsk_iov[] = {{ bid, PQZK_MNO_ID_BYTES },{ label, 4 },{ NULL, 0 }};
     pqzk_sha3_256_iov(bsk_iov, bsk);
     memset(cred_kyc, 0, 64);
-    size_t ck_len; PQZK_CredKYC_Issue(ask, eid, R_bio, cred_kyc, &ck_len);
+    size_t ck_len; PQZK_CredKYC_Issue(eid, R_bio, cred_kyc, &ck_len);
     uint64_t ic;pqzk_rand_bytes((uint8_t*)&ic,8);
     PQC_eUICC_Init(nd,eid,16,&sk_s,k_sym,32,ic,k_tee,32,salt,R_bio,cred_kyc,64);
     { nvram_state_t st; nvram_read(nd,&st); memcpy(st.R_bio,R_bio,32); memcpy(st.active_R_bio,R_bio,32); nvram_write_atomic(nd,&st); }
@@ -248,7 +248,7 @@ static void run_nvm_wear_experiment(void){
     fprintf(csv,"operation,nvram_writes,total_time_us,bytes_written,success_count\n");
     const char*nd="/tmp/pqzk_nvm";system("mkdir -p /tmp/pqzk_nvm");
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];poly_vec_t sk_s;PQC_GenKeyPair(pk_t,&sk_s);
-    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[64];
+    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
     pqzk_rand_bytes(k_sym,32);pqzk_rand_bytes(k_tee,32);pqzk_rand_bytes(R_bio,32);
     pqzk_rand_bytes(salt,32);pqzk_sha3_256(k_sym,32,d_seed);
     beta_params_t params=PQZK_DEFAULT_BETA_PARAMS;
@@ -290,7 +290,7 @@ static void run_phase_timing_experiment(void){
     fprintf(csv,"trial,lpa_precompute_us,euicc_commit_us,challenge_gen_us,tee_authtoken_us,euicc_mask_us,lpa_aggregate_us,server_verify_us,total_us,euicc_total_us,lpa_total_us,tee_total_us,server_total_us\n");
     const char*nd="/tmp/pqzk_timing";system("mkdir -p /tmp/pqzk_timing");
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];poly_vec_t sk_s;PQC_GenKeyPair(pk_t,&sk_s);
-    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[64];
+    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
     pqzk_rand_bytes(k_sym,32);pqzk_rand_bytes(k_tee,32);pqzk_rand_bytes(R_bio,32);
     pqzk_rand_bytes(salt,32);pqzk_rand_bytes(cred_kyc,64);pqzk_sha3_256(k_sym,32,d_seed);
     beta_params_t params=PQZK_DEFAULT_BETA_PARAMS;
@@ -317,7 +317,7 @@ static void run_memory_experiment(void){
     fprintf(csv,"phase,rss_before_kb,rss_after_kb,delta_kb,peak_kb\n");
     const char*nd="/tmp/pqzk_mem";system("mkdir -p /tmp/pqzk_mem");
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];poly_vec_t sk_s;PQC_GenKeyPair(pk_t,&sk_s);
-    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[64];
+    uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
     pqzk_rand_bytes(k_sym,32);pqzk_rand_bytes(k_tee,32);pqzk_rand_bytes(R_bio,32);
     pqzk_rand_bytes(salt,32);pqzk_rand_bytes(cred_kyc,64);pqzk_sha3_256(k_sym,32,d_seed);
     beta_params_t params=PQZK_DEFAULT_BETA_PARAMS;
