@@ -84,23 +84,12 @@ bash install.sh
 
 依赖清单见 `infrastructure/requirements.txt`，第三方库与许可证见 `infrastructure/THIRD_PARTY.md`。
 
-## 后端（SM-DP+ Verifier）
+## 后端与 Verifier
 
-认证结果由后端 verifier（`verify_engine()`）真实计算得到，非写死文本。后端为独立 FastAPI 服务：
+ACCEPT / REJECT 来自真实 verifier 密码学计算，非写死文本。
 
-- **运行环境**：Python ≥ 3.9（venv），依赖 FastAPI/uvicorn/SQLAlchemy/PyMySQL/redis/cryptography（见 `infrastructure/requirements.txt`）。
-- **外部服务**：MySQL 8.0（`localhost:3306`，库 `pq_zk_esim_db`）+ Redis（`localhost:6379`，会话 TTL 300s）。
-- **端口**：监听 `0.0.0.0:8000`，接口 `POST /api/v1/auth/{register,challenge,verify}`，Swagger 文档 `/docs`。
-- **启动**：
-
-  ```bash
-  cd ~/pq_zk_esim_backend && source venv/bin/activate
-  nohup uvicorn main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
-  ```
-
-- **调用关系**：`main.py` 的 `verify_engine()` 对应 C 端 `euicc/src/pq_zk_esim.c` 的 `PQC_VerifyEngine`；正向返回 200 ACCEPT，负向返回 403 REJECT。
-
-详细说明见根目录「SM-DP+ Verifier 调用关系与测试说明.md」。
+- **demo 内（已跑通，以此为准）**：`artifact/demo/run.sh` 直接在 C 端调用 `euicc/src/pq_zk_esim.c` 的 `PQC_VerifyEngine` 完成验证（Merkle 路径 → MAC-W → 去掩码 → 范数/格等式校验），正向 ACCEPT、负向 REJECT，无需外部服务。
+- **独立 FastAPI 后端（SM-DP+，可选部署）**：另提供一套网络版后端，`main.py` 的 `verify_engine()` 对应 C 端 `PQC_VerifyEngine`；依赖 FastAPI/uvicorn/SQLAlchemy/PyMySQL/redis、MySQL 8.0 + Redis，监听 TCP 8000，接口 `POST /api/v1/auth/{register,challenge,verify}`，正向 200、负向 403。详见根目录「SM-DP+ Verifier 调用关系与测试说明.md」。
 
 ## Claims 运行命令
 

@@ -43,7 +43,7 @@
 
     - 地址：`localhost:3306`
 
-    - 账号：root / 123456
+    - 账号：root / `<DB_PASSWORD>`（密码以占位符代替，避免将真实数据库密码泄露到公网）
 
     - 数据库名：`pq_zk_esim_db`
 
