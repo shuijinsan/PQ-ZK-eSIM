@@ -1,6 +1,6 @@
 #!/bin/bash
-# Claim 6: Figure 8 / Appendix D sparse-noise degradation detection (QEMU ARM64).
-# Usage: bash claims/claim6/run.sh [--quick|--full]   (both equivalent)
+# Claim 6: Figure 7 / Appendix D sparse-noise degradation detection (QEMU ARM64).
+# Usage: bash claims/claim6_sparse_noise/run.sh [--quick|--full]   (both equivalent)
 set -e
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"

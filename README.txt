@@ -19,7 +19,7 @@ bash artifact/demo/run.sh
 PQ-ZK-eSIM 把抗量子认证的计算负担从 eUICC 卸载到 LPA/Server：eUICC 只做稀疏三元加法，NTT 和离散高斯采样由 LPA/Server 承担。本 Artifact 提供：
 
 - C 核心（prover/verifier/crypto/lattice/TEE），可在原生 x86 和 QEMU ARM64 编译运行；
-- 6 个 claim（对应论文 Figure 4/5/6/7/8）；
+- 6 个 claim（对应论文 Figure 4/5/6/7/8 及 Table 6）；
 - 端到端 demo（含真实 ACCEPT/REJECT）。
 
 ## 协议概览
