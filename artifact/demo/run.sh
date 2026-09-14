@@ -42,7 +42,8 @@ rm -rf "$NVRAM"
 # ---- 4. 正向认证：合法 proof → 期望 ACCEPT ----
 echo
 echo "[2/3] 在线认证（合法 proof，期望 ACCEPT）..."
-if "$NATIVE/pqzkesim_app" --auth --nvram "$NVRAM" | tee "$WORK/auth_ok.log" | grep -q "Verify PASS"; then
+"$NATIVE/pqzkesim_app" --auth --nvram "$NVRAM" 2>&1 | tee "$WORK/auth_ok.log" || true
+if grep -q "Verify PASS" "$WORK/auth_ok.log"; then
     echo ">>> 结果: ACCEPT ✓"
 else
     echo ">>> 结果: 认证失败（正向应 ACCEPT）"
@@ -56,7 +57,8 @@ cp registration_data.bin "$WORK/registration_data.bin.bak"
 # 翻转 registration_data.bin 第 32 字节（pk_t 中 T 公钥的起始位置，跳过前 32 字节矩阵种子）
 printf '\x00' | dd of=registration_data.bin bs=1 seek=32 count=1 conv=notrunc 2>/dev/null
 
-if "$NATIVE/pqzkesim_app" --auth --nvram "$NVRAM" | tee "$WORK/auth_bad.log" | grep -q "Verify FAIL"; then
+"$NATIVE/pqzkesim_app" --auth --nvram "$NVRAM" 2>&1 | tee "$WORK/auth_bad.log" || true
+if grep -q "Verify FAIL" "$WORK/auth_bad.log"; then
     echo ">>> 结果: REJECT ✓"
 else
     echo ">>> 结果: 非法 proof 未被拒绝（负向应 REJECT）"
