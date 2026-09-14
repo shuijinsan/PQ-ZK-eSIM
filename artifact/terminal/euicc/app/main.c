@@ -115,11 +115,33 @@ static int mode_auth(const char *nvram_dir)
     PQC_LPA_Aggregate(&z_sec_masked, &y_pub, &resp_z);
     printf("[Phase 5] Aggregation done\n");
 
-    /* Phase 6 */
+    /* Phase 6 (full Algorithm 5 verification pipeline) */
     nvram_read(nvram_dir, &nvram_st);
     uint8_t ctr_le8[8];
     write_le64(ctr_le8, nvram_st.ctr_local - 1);
     secure_zero(&nvram_st, sizeof(nvram_st));
+
+    /* Step 1: MAC pre-filter (sliding window) on (EID, W_sec, ctr) */
+    server_state_t srv;
+    memset(&srv, 0, sizeof(srv));
+    srv.ctr_server = 0;                   /* demo: single session, server ctr starts at 0 */
+    memcpy(srv.k_sym, k_sym, 32);
+    pqzk_sha3_256(k_sym, 32, srv.d_seed); /* d_seed = SHA3-256(k_sym), as in PQC_Register */
+    /* srv.eid stays zero: PQC_Register does not set EID, so the demo MAC input uses EID=0 */
+
+    uint64_t ctr_sess = 0;
+    uint8_t  k_synced[32];
+    if (PQC_Server_SlidingWindowSync(&srv, &W_sec, MAC_W, PQZK_WINDOW_MAX,
+                                     &ctr_sess, k_synced) != PQ_ZK_SUCCESS) {
+        fprintf(stderr, "[Phase 6] Verify FAIL: MAC pre-filter\n");
+        return -1;
+    }
+
+    /* Step 2: Merkle path verification (biometric root R_bio) */
+    if (PQC_MerkleTree_VerifyPath(tree.nodes[0][M1], &M2, R_bio, tree.salt) != 0) {
+        fprintf(stderr, "[Phase 6] Verify FAIL: Merkle path\n");
+        return -1;
+    }
 
     pqzk_iov_t ri[] = {{ R_bio, 32 }, { ctr_le8, 8 }, { NULL, 0 }};
     uint8_t R_dynamic_server[32];

@@ -80,8 +80,13 @@ static double approx_normal(uint64_t r1, uint64_t r2)
 }
 
 /* ================================================================
- * SampleGauss_sigma: discrete Gaussian sampling for y_pub
+ * SampleGauss_sigma: Gaussian sampling for y_pub
  * M=8 polynomials, sigma=5000, truncation at beta_inf=35700
+ * NOTE: Box-Muller continuous Gaussian + rounding is an approximation
+ *       of a discrete Gaussian sampler (not a rigorous CDT/Knuth-Yao
+ *       sampler). This is consistent with the paper, whose finite
+ *       flooding calculations are stated as illustrative rather than
+ *       instantiating the asymptotic negligible-distance condition.
  * ================================================================ */
 void pqzk_sample_gauss_vec(const uint8_t *seed, size_t seed_len,
                              poly_vec_t *out)

@@ -118,7 +118,8 @@ ACCEPT / REJECT 来自真实 verifier 密码学计算，非写死文本。
 - eUICC 为 QEMU ARM64 模拟，非真实硬件；
 - eUICC latency（Table 4）为 analytical projection；
 - TEE/eUICC 为研究原型，非生产 GSMA 认证部署；
-- 安全性评估依赖外部 lattice-estimator，未 vendor。
+- 安全性评估依赖外部 lattice-estimator，未 vendor；
+- 高斯淹没采样用 Box-Muller 连续高斯取整近似，非严格离散高斯采样器（论文已说明有限 flooding 计算为 illustrative，不实例化渐近 negligible-distance 条件）。
 
 ## Troubleshooting
 
