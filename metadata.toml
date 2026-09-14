@@ -38,9 +38,9 @@ resources = "1 CPU, ~300 MB RAM (Valgrind), <10 MB disk"
 
 [[claims]]
 id = "claim3_security_estimation"
-paper = "Figure 4 / Section 7.1"
-runtime = "N/A（依赖外部 lattice-estimator，documented result）"
-resources = "N/A"
+paper = "Figure 4 / Section 7"
+runtime = "~1 min（依赖外部 lattice-estimator）"
+resources = "1 CPU, <1 GB RAM, <10 MB disk"
 
 [[claims]]
 id = "claim4_dos_early_reject"
