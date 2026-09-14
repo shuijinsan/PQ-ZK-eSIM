@@ -1,7 +1,7 @@
 Paper: Figure 7, Appendix D (Resistance to Real-World Attacks)
 
 Claim: Sparse-noise degradation of the flooding term is detected by the
-multi-norm check (ell_1 lower bound), rejecting low-density injections.
+multi-norm check (ell_2 lower bound), rejecting low-density injections.
 
 Experiment (QEMU ARM64 emulation):
   qemu-aarch64-static -L /usr/aarch64-linux-gnu \

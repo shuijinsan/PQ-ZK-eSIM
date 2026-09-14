@@ -31,7 +31,6 @@ command -v python3                >/dev/null 2>&1 || PKGS="$PKGS python3"
 command -v pip3                   >/dev/null 2>&1 || PKGS="$PKGS python3-pip"
 command -v aarch64-linux-gnu-gcc  >/dev/null 2>&1 || PKGS="$PKGS gcc-aarch64-linux-gnu"
 command -v qemu-aarch64-static    >/dev/null 2>&1 || PKGS="$PKGS qemu-user-static"
-command -v valgrind               >/dev/null 2>&1 || PKGS="$PKGS valgrind"
 command -v wget                   >/dev/null 2>&1 || PKGS="$PKGS wget"
 [ -d /usr/include/openssl ]                       || PKGS="$PKGS libssl-dev"
 if [ -n "$PKGS" ]; then

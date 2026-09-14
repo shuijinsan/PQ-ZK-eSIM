@@ -18,7 +18,6 @@
 - numpy
 - pandas
 - matplotlib
-- Valgrind             >= 3.20   （Callgrind，claim2 用）
 
 ## 安全性评估（外部工具，未 vendor）
 - lattice-estimator     commit d2bf9ca2709d784dd56d42032e60e760202a4107

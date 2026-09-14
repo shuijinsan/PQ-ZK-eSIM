@@ -30,7 +30,7 @@ PQ-ZK-eSIM 是格基零知识认证协议，把计算分给三方：
 - **eUICC** — 仅做稀疏三元加法（无 NTT、无高斯采样）；
 - **LPA**（不可信宿主）— 承担全部重格运算（盲加速器）。
 
-服务端通过四阶段流水线验证：滑动窗口 MAC 预过滤 → Merkle 路径校验 → 去掩码 → 带多范数界的格验证（验证关系 A·z_unmask − T·c_agg = W）。QEMU 模拟加解析投影确认工作负载拆分，eUICC 在线密码延迟投影约 4.2 ms（NIST Level 1）。
+服务端通过四阶段流水线验证：滑动窗口 MAC 预过滤 → Merkle 路径校验 → 去掩码 → 带多范数界的格验证（验证关系 A·z_unmask − T·c_agg = W）。QEMU 模拟加解析投影确认工作负载拆分，eUICC 在线密码延迟投影约 4.2 ms。
 
 ## 安全参数
 
@@ -41,13 +41,13 @@ PQ-ZK-eSIM 是格基零知识认证协议，把计算分给三方：
 | q | 8,380,417 | 模数（2²³ − 2¹³ + 1）|
 | κ | 35 | 挑战权重 |
 | σ_pub | 5,000 | 高斯淹没宽度 |
-| β_inf | 35,700 | y_pub 系数截断界 |
+| β_inf | 35,700 | ℓ∞ 上界 |
 | β_final / β_min | 260,000 / 200,000 | ℓ₂ 上 / 下界 |
 | β_L1 | 7,400,000 | L₁ 下界 |
 
 ## 核心性质
 
-- 抗量子不可伪造性（Module-SIS 归约）
+- 抗量子不可伪造性（Module-SIS 归约 + low-density decisional SIS 假设）
 - eUICC 无 NTT（仅 mκN ≈ 7.17×10⁴ 次三元加法）
 - 生物特征不暴露（TEE 内限定，仅公开 Merkle 根）
 - LPA 盲性（HKDF 派生密钥下的 PRF 掩码）
@@ -116,7 +116,6 @@ bash install.sh
 ## Troubleshooting
 
 - 缺依赖：对照 `infrastructure/requirements.txt` 逐项安装。
-- claim2 需要 Valgrind >= 3.20；如未装，其余 claim 不受影响。
 
 ## License
 

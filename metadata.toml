@@ -20,7 +20,6 @@ compiler = "gcc/g++ (C11/C++17)"
 cmake = ">= 3.22"
 crypto = ["OpenSSL 3.0.13", "liboqs 0.15.0"]
 python = "Python 3 + numpy/pandas/matplotlib"
-profiling = "Valgrind >= 3.20 (Callgrind, claim2)"
 security_estimator = "lattice-estimator (commit d2bf9ca) + fpylll (外部，未 vendor)"
 
 # —— 各 claim 的 runtime / resource（来自 claim.txt）——

@@ -13,7 +13,8 @@ Comparison rules (from each claim's Tolerance section):
   - "key"     column identifies rows; must match exactly (set and order).
   - "exact"   columns must match exactly (counts, integers).
   - "rate"    columns must match within 1e-3 (0.0/1.0 success/detection).
-  - "timing"  columns must match within +-50%.
+  - "timing"  columns must match within +-50% of the reference value.
+  - "speedup" a named row/column must exceed a minimum (e.g. Speedup > 1).
 """
 
 import csv
@@ -36,6 +37,8 @@ CLAIMS = {
         "dos_results.csv": {
             "key": "test",
             "timing": ["avg_us"],
+            "skip_timing": ["Speedup"],
+            "speedup": {"row": "Speedup", "col": "avg_us", "min": 1.0},
         },
     },
     "claim4_sliding_window": {
@@ -77,9 +80,10 @@ def within_tol(a, b, tol):
         return str(a).strip() == str(b).strip()
     if fa == fb:
         return True
-    if fb == 0:
-        return abs(fa - fb) <= tol
-    return abs(fa - fb) / abs(fb) <= tol
+    denom = max(abs(fa), abs(fb))
+    if denom == 0:
+        return True
+    return abs(fa - fb) / denom <= tol
 
 
 def key_of(row, key):
@@ -123,17 +127,18 @@ def compare_file(claim, name, spec):
     ok = True
     for er in exp_rows:
         rr = res_rows[exp_keys.index(key_of(er, key))]
+        k = key_of(er, key)
         for col in spec.get("exact", []):
             if str(er[col]).strip() != str(rr[col]).strip():
-                print(f"  [{name}] {col} (row {key_of(er, key)}) expected {er[col]}, got {rr[col]}")
+                print(f"  [{name}] {col} (row {k}) expected {er[col]}, got {rr[col]}")
                 ok = False
         for col in spec.get("rate", []):
             if not within_tol(er[col], rr[col], RATE_TOL):
-                print(f"  [{name}] {col} (row {key_of(er, key)}) expected {er[col]}, got {rr[col]}")
+                print(f"  [{name}] {col} (row {k}) expected {er[col]}, got {rr[col]}")
                 ok = False
         det = spec.get("detection")
         if det:
-            rho = float(key_of(er, key))
+            rho = float(k)
             val = float(rr[det])
             if rho <= 0.75 and val < 0.95:
                 print(f"  [{name}] {det} (rho={rho}) expected ~1.0, got {val}")
@@ -142,9 +147,20 @@ def compare_file(claim, name, spec):
                 print(f"  [{name}] {det} (rho={rho}) expected ~0.0, got {val}")
                 ok = False
         for col in spec.get("timing", []):
+            if k in spec.get("skip_timing", []):
+                continue
             if not within_tol(er[col], rr[col], TIMING_TOL):
-                print(f"  [{name}] {col} (row {key_of(er, key)}) expected {er[col]}, got {rr[col]} (out of +-50%)")
+                print(f"  [{name}] {col} (row {k}) expected {er[col]}, got {rr[col]} (out of +-50%)")
                 ok = False
+
+    sp = spec.get("speedup")
+    if sp:
+        for rr in res_rows:
+            if key_of(rr, key) == sp["row"]:
+                val = num(rr[sp["col"]])
+                if val is not None and val <= sp["min"]:
+                    print(f"  [{name}] {sp['col']} (row {sp['row']}) expected > {sp['min']}, got {val}")
+                    ok = False
 
     if ok:
         print(f"  [{name}] OK")
