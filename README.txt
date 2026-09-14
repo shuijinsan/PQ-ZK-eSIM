@@ -19,7 +19,7 @@ bash artifact/demo/run.sh
 PQ-ZK-eSIM 把抗量子认证的计算负担从 eUICC 卸载到 LPA/Server：eUICC 只做稀疏三元加法，NTT 和离散高斯采样由 LPA/Server 承担。本 Artifact 提供：
 
 - C 核心（prover/verifier/crypto/lattice/TEE），可在原生 x86 和 QEMU ARM64 编译运行；
-- 6 个 claim（对应论文 Figure 4/5/6/7/8 及 Table 6）；
+- 5 个 claim（对应论文 Figure 4/5/6/7/8）；
 - 端到端 demo（含真实 ACCEPT/REJECT）。
 
 ## 协议概览
@@ -89,11 +89,10 @@ bash install.sh
 | Claim | 命令 | 预计时间 |
 |---|---|---|
 | claim1_qemu_performance | `bash claims/claim1_qemu_performance/run.sh --quick` | ~2-3 min |
-| claim2_euicc_workload | `bash claims/claim2_euicc_workload/run.sh` | ~1-2 min |
-| claim3_security_estimation | （外部 lattice-estimator，documented result，无 run.sh） | — |
-| claim4_dos_early_reject | `bash claims/claim4_dos_early_reject/run.sh` | ~1 min |
-| claim5_sliding_window | `bash claims/claim5_sliding_window/run.sh --quick` | ~1-2 min |
-| claim6_sparse_noise | `bash claims/claim6_sparse_noise/run.sh --quick` | ~1-2 min |
+| claim2_security_estimation | （外部 lattice-estimator，documented result，无 run.sh） | — |
+| claim3_dos_early_reject | `bash claims/claim3_dos_early_reject/run.sh` | ~1 min |
+| claim4_sliding_window | `bash claims/claim4_sliding_window/run.sh --quick` | ~1-2 min |
+| claim5_sparse_noise | `bash claims/claim5_sparse_noise/run.sh --quick` | ~1-2 min |
 
 结果校验：`bash validate.sh`
 

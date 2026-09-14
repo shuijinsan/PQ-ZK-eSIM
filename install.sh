@@ -121,10 +121,9 @@ log "编译 C 核心"
 # ------------------------------------------------------------------
 log "准备运行目录"
 mkdir -p claims/claim1_qemu_performance/results \
-         claims/claim2_euicc_workload/results \
-         claims/claim4_dos_early_reject/results \
-         claims/claim5_sliding_window/results \
-         claims/claim6_sparse_noise/results
+         claims/claim3_dos_early_reject/results \
+         claims/claim4_sliding_window/results \
+         claims/claim5_sparse_noise/results
 
 log "安装完成"
 echo "  运行 demo : bash artifact/demo/run.sh"

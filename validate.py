@@ -32,20 +32,20 @@ CLAIMS = {
             "rowcount": True,
         },
     },
-    "claim4_dos_early_reject": {
+    "claim3_dos_early_reject": {
         "dos_results.csv": {
             "key": "test",
             "timing": ["avg_us"],
         },
     },
-    "claim5_sliding_window": {
+    "claim4_sliding_window": {
         "sliding_window_resync_results.csv": {
             "key": ["window_size", "sync_depth"],
             "rate": ["success_rate"],
             "timing": ["avg_mac_us", "avg_total_us"],
         },
     },
-    "claim6_sparse_noise": {
+    "claim5_sparse_noise": {
         "sparse_noise_attack_results.csv": {
             "key": "rho",
             "rate": ["false_reject_rate"],
