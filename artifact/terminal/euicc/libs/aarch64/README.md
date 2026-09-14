@@ -9,7 +9,7 @@ libs/aarch64/
 │   └── lib/         # libcrypto.a, libssl.a
 └── liboqs/
     ├── include/     # liboqs 头文件（oqs/*.h）
-    └── lib/         # liboqs.a, liboqs-internal.a
+    └── lib/         # liboqs.a（liboqs 0.15.0 合并为单个静态库）
 ```
 
 ## 如何获得
