@@ -150,6 +150,9 @@ static int mode_auth(const char *nvram_dir)
  * ================================================================ */
 int main(int argc, char *argv[])
 {
+    /* 让 stdout 行缓冲，避免管道下 stdout/stderr 输出乱序 */
+    setvbuf(stdout, NULL, _IOLBF, 0);
+
     const char *nvram_dir     = "/tmp/pqzk_euicc";
     int do_auth = 0, do_switch = 0;
 
