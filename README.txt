@@ -84,6 +84,24 @@ bash install.sh
 
 依赖清单见 `infrastructure/requirements.txt`，第三方库与许可证见 `infrastructure/THIRD_PARTY.md`。
 
+## 后端（SM-DP+ Verifier）
+
+认证结果由后端 verifier（`verify_engine()`）真实计算得到，非写死文本。后端为独立 FastAPI 服务：
+
+- **运行环境**：Python ≥ 3.9（venv），依赖 FastAPI/uvicorn/SQLAlchemy/PyMySQL/redis/cryptography（见 `infrastructure/requirements.txt`）。
+- **外部服务**：MySQL 8.0（`localhost:3306`，库 `pq_zk_esim_db`）+ Redis（`localhost:6379`，会话 TTL 300s）。
+- **端口**：监听 `0.0.0.0:8000`，接口 `POST /api/v1/auth/{register,challenge,verify}`，Swagger 文档 `/docs`。
+- **启动**：
+
+  ```bash
+  cd ~/pq_zk_esim_backend && source venv/bin/activate
+  nohup uvicorn main:app --host 0.0.0.0 --port 8000 > server.log 2>&1 &
+  ```
+
+- **调用关系**：`main.py` 的 `verify_engine()` 对应 C 端 `euicc/src/pq_zk_esim.c` 的 `PQC_VerifyEngine`；正向返回 200 ACCEPT，负向返回 403 REJECT。
+
+详细说明见根目录「SM-DP+ Verifier 调用关系与测试说明.md」。
+
 ## Claims 运行命令
 
 | Claim | 命令 | 预计时间 |

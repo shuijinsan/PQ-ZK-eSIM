@@ -53,8 +53,8 @@ paper = "Figure 7 / Appendix D"
 runtime = "~1-2 min"
 resources = "1 CPU, <100 MB RAM, <1 MB disk"
 
-# —— 后端（待补充）——
+# —— 后端（SM-DP+ Verifier）——
 [backend]
-dependency = "待补充"
-network = "待补充（端口/协议）"
-runtime = "待补充"
+dependency = "Python >= 3.9 (venv)；FastAPI/uvicorn/SQLAlchemy/PyMySQL/redis/cryptography；MySQL 8.0 + Redis-server"
+network = "TCP 8000 (0.0.0.0)；本机连通 MySQL:3306、Redis:6379；接口 /api/v1/auth/*（/docs 为 Swagger）"
+runtime = "uvicorn main:app --host 0.0.0.0 --port 8000（详见根目录 SM-DP+ Verifier 说明）"

@@ -10,4 +10,7 @@
 
 ## 后端依赖
 
-当前后端环境未提供，待补充后填入 requirements.txt 的「后端」部分。
+后端（SM-DP+ Verifier）环境见根目录「SM-DP+ Verifier 调用关系与测试说明.md」，依赖已填入 `requirements.txt` 的「后端」部分：
+- Python ≥ 3.9（venv）
+- FastAPI / uvicorn / SQLAlchemy / PyMySQL / redis / cryptography
+- MySQL 8.0（localhost:3306）、Redis-server（localhost:6379）
