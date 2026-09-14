@@ -23,7 +23,7 @@ Runtime: ~2-3 min (QEMU ARM64 emulation)
 Resources: 1 CPU core, <100 MB RAM, <10 MB disk
 
 Tolerance:
-  - Latency values: +-50% (QEMU/compiler dependent).
+  - Latency values: faster passes; slower up to +100% (2x) (QEMU/compiler dependent).
   - Deterministic (strict): the eUICC path performs no NTT and no Gaussian
     sampling. This is a code-level property (pqzk_vec_scalar_mul is sparse
     ternary; no NTT function is invoked on the eUICC path), not a timing

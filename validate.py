@@ -13,7 +13,9 @@ Comparison rules (from each claim's Tolerance section):
   - "key"     column identifies rows; must match exactly (set and order).
   - "exact"   columns must match exactly (counts, integers).
   - "rate"    columns must match within 1e-3 (0.0/1.0 success/detection).
-  - "timing"  columns must match within +-50% of the reference value.
+  - "timing"  columns are machine-dependent: a FASTER machine (lower
+              latency) always passes; a slower machine passes up to
+              TIMING_SLOW_TOL (100% slower, i.e. <= 2x).
   - "speedup" a named row/column must exceed a minimum (e.g. Speedup > 1).
 """
 
@@ -22,8 +24,11 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-TIMING_TOL = 0.50
 RATE_TOL = 1e-3
+# Asymmetric timing tolerance (QEMU emulation speed varies across machines):
+#   - faster  (got <= expected): always accepted -- a faster host is never a fail
+#   - slower  (got >  expected): accepted up to 100% slower (<= 2x)
+TIMING_SLOW_TOL = 1.0
 
 # Per-claim file spec. "rowcount" files only check header + row count
 # (raw per-trial latency traces are timing-only and too noisy to compare).
@@ -84,6 +89,18 @@ def within_tol(a, b, tol):
     if denom == 0:
         return True
     return abs(fa - fb) / denom <= tol
+
+
+def within_timing_tol(expected, got):
+    """Asymmetric timing tolerance (see TIMING_SLOW_TOL)."""
+    fe, fg = num(expected), num(got)
+    if fe is None or fg is None:
+        return str(expected).strip() == str(got).strip()
+    if fg <= fe:
+        return True                       # faster or equal: always OK
+    if fe <= 0:
+        return False                      # reference <= 0 but got is slower
+    return (fg - fe) / fe <= TIMING_SLOW_TOL
 
 
 def key_of(row, key):
@@ -149,8 +166,8 @@ def compare_file(claim, name, spec):
         for col in spec.get("timing", []):
             if k in spec.get("skip_timing", []):
                 continue
-            if not within_tol(er[col], rr[col], TIMING_TOL):
-                print(f"  [{name}] {col} (row {k}) expected {er[col]}, got {rr[col]} (out of +-50%)")
+            if not within_timing_tol(er[col], rr[col]):
+                print(f"  [{name}] {col} (row {k}) expected {er[col]}, got {rr[col]} (slower by > {int(TIMING_SLOW_TOL*100)}%)")
                 ok = False
 
     sp = spec.get("speedup")

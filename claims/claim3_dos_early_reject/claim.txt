@@ -17,6 +17,6 @@ Runtime: ~1 min
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk
 
 Tolerance:
-  - Speedup: +-50% (timing).
   - Deterministic: Speedup > 1 (MAC is strictly cheaper than full lattice
     verification).
+  - timing (avg_us): faster passes; slower up to +100% (2x).

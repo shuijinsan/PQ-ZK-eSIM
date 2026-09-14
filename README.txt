@@ -1,6 +1,6 @@
 # PQ-ZK-eSIM — Artifact Evaluation
 
-后量子零知识 eSIM 身份认证协议。本仓库是 ACSAC 2026 Artifact Evaluation 的提交物，供 reviewer 在陌生环境独立安装、运行，并复现论文《PQ-ZK-eSIM: Post-Quantum Zero-Knowledge Identity Authentication for eSIM》的主要实验结果。
+后量子零知识 eSIM 身份认证协议。本仓库是 ACSAC 2026 Artifact Evaluation 的提交物，可在陌生环境独立安装、运行，并复现论文《PQ-ZK-eSIM: Post-Quantum Zero-Knowledge Identity Authentication for eSIM》的主要实验结果。
 
 核心思想：把抗量子认证的计算负担从 eUICC 卸载到 LPA/Server —— eUICC 只做稀疏三元加法（无 NTT、无高斯采样），重格运算由不可信宿主 LPA 与 Server 承担；原始生物特征始终不离开 TEE。
 
@@ -109,9 +109,9 @@ bash validate.sh claim3_dos_early_reject   # 只校验某个 claim
 |---|---|---|
 | key（行标识列） | **精确匹配**（行集合 + 顺序） | 如 `rho`、`(window_size, sync_depth)` |
 | 确定性结果 | **严格判定** | `success_rate`（窗口内 1.0 / 窗口外 0.0）、`detection_rate`（ρ≤0.75 → 1.0，ρ=1.0 → 0.0）、`Speedup > 1`、运算计数 |
-| 时序结果 | **±50% 容差** | `avg_us` / `avg_total_us` 等延迟列 |
+| 时序结果 | **更快直接通过；更慢 ≤100%（2×）** | `avg_us` / `avg_total_us` 等延迟列 |
 
-**为什么这样认定**（依据论文）：确定性结果来自密码学 / 算法性质，必须严格复现（例如「eUICC 无 NTT」是 code-level 性质，不是时序测量）；时序结果仅用于刻画「工作负载拆分」的可行性剖面，论文明确说明 QEMU 是 *software workload/feasibility profile*、**非真实硬件测量**，且逐机器波动，故放宽为 ±50%。此外 claim1 的 500 次逐次时延抖动过大，只校验「表头 + 行数」，不比较具体 µs。
+**为什么这样认定**（依据论文）：确定性结果来自密码学 / 算法性质，必须严格复现（例如「eUICC 无 NTT」是 code-level 性质，不是时序测量）；时序结果仅用于刻画「工作负载拆分」的可行性剖面，论文明确说明 QEMU 是 *software workload/feasibility profile*、**非真实硬件测量**，且逐机器波动。因此时序采用**非对称容差**：机器更快（延迟更低）是更有利的方向，直接判通过；机器更慢（延迟更高）则允许慢至参考值的 2 倍（即 +100%），超过才判失败。此外 claim1 的 500 次逐次时延抖动过大，只校验「表头 + 行数」，不比较具体 µs。
 
 ---
 
