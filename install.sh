@@ -122,8 +122,8 @@ log "编译 C 核心"
 log "准备运行目录"
 mkdir -p claims/claim1_qemu_performance/results \
          claims/claim2_euicc_workload/results \
-         claims/claim4_security_estimation/results \
-         claims/claim5_desync_dos/results \
+         claims/claim4_dos_early_reject/results \
+         claims/claim5_sliding_window/results \
          claims/claim6_sparse_noise/results
 
 log "安装完成"

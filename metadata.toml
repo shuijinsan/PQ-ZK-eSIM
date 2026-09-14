@@ -32,31 +32,31 @@ resources = "1 CPU, <100 MB RAM, <10 MB disk"
 
 [[claims]]
 id = "claim2_euicc_workload"
-paper = "Figure 6 / Table 6 / Appendix C"
+paper = "Table 6 / Appendix C / Section 7.2"
 runtime = "~1-2 min"
 resources = "1 CPU, ~300 MB RAM (Valgrind), <10 MB disk"
 
 [[claims]]
-id = "claim3_euicc_projection"
-paper = "Table 4"
-runtime = "N/A（analytical projection，非可复现实验）"
-resources = "N/A"
-
-[[claims]]
-id = "claim4_security_estimation"
-paper = "Figure 4"
+id = "claim3_security_estimation"
+paper = "Figure 4 / Section 7.1"
 runtime = "N/A（依赖外部 lattice-estimator，documented result）"
 resources = "N/A"
 
 [[claims]]
-id = "claim5_desync_dos"
-paper = "Figure 7 + Figure 9"
+id = "claim4_dos_early_reject"
+paper = "Figure 8 / Appendix D"
+runtime = "~1 min"
+resources = "1 CPU, <100 MB RAM, <1 MB disk"
+
+[[claims]]
+id = "claim5_sliding_window"
+paper = "Figure 6 / Appendix D"
 runtime = "~1-2 min"
 resources = "1 CPU, <100 MB RAM, <1 MB disk"
 
 [[claims]]
 id = "claim6_sparse_noise"
-paper = "Figure 8"
+paper = "Figure 7 / Appendix D"
 runtime = "~1-2 min"
 resources = "1 CPU, <100 MB RAM, <1 MB disk"
 

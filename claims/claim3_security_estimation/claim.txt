@@ -1,4 +1,4 @@
-Paper: Figure 4, Section 7 (Concrete security / Module-SIS estimation)
+Paper: Figure 4, Section 7.1 (Concrete security / Module-SIS estimation)
 
 Claim: The Module-SIS security of PQ-ZK-eSIM was estimated with the
 lattice-estimator (github.com/malb/lattice-estimator). Key-recovery is the

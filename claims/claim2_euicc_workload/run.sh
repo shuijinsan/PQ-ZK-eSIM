@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claim 2: Figure 6 Callgrind profile (B-class: requires Valgrind >= 3.20).
+# Claim 2: Table 6 / Appendix C Callgrind profile (B-class: requires Valgrind >= 3.20).
 # Profiles a SINGLE authentication session (PERF_REPEAT=1) on the Release
 # (-O2) build, native x86 (Valgrind cannot run under QEMU ARM64).
 # Usage: bash claims/claim2/run.sh [--quick|--full]   (both equivalent)

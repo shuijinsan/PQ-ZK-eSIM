@@ -1,4 +1,4 @@
-Paper: Figure 6, Section 7.2 (Performance and Reliability)
+Paper: Table 6 / Appendix C, Section 7.2 (Performance and Reliability)
 
 Claim: Instruction-level profiling (Valgrind/Callgrind) of a single
 authentication session (Release -O2 build) shows the NTT transform

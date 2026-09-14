@@ -1,4 +1,4 @@
-Paper: Figure 9, Appendix D (Resistance to Real-World Attacks)
+Paper: Figure 8, Appendix D (Resistance to Real-World Attacks)
 
 Claim: A low-cost MAC pre-verification rejects forged/flooded commitments
 before the expensive lattice verification, giving an early-reject speedup.

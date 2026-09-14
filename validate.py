@@ -32,13 +32,13 @@ CLAIMS = {
             "rowcount": True,
         },
     },
-    "claim4_security_estimation": {
+    "claim4_dos_early_reject": {
         "dos_results.csv": {
             "key": "test",
             "timing": ["avg_us"],
         },
     },
-    "claim5_desync_dos": {
+    "claim5_sliding_window": {
         "sliding_window_resync_results.csv": {
             "key": ["window_size", "sync_depth"],
             "rate": ["success_rate"],
