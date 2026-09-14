@@ -19,6 +19,6 @@ Resources: 1 CPU core, <100 MB RAM, <1 MB disk
 Tolerance:
   - detection_rate: deterministic at the extremes -- 1.0 for rho <= 0.75
     (below the geometric threshold rho* = 0.78), 0.0 for rho = 1.0 (honest
-    noise). The rho = 0.90 row is the transition band and is not compared.
+    noise). The rho = 0.90 row falls in the transition band between the detected and undetected regimes.
   - false_reject_rate: deterministic (0.0 for honest runs).
   - timing: +-50%.
