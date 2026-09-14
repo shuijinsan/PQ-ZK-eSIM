@@ -1,0 +1,89 @@
+/*
+ * pqzk_nvram.c — eUICC NVRAM atomic read/write
+ * Atomicity: write-temp-file → rename (POSIX guarantee)
+ */
+
+#include "pqzk_internal.h"
+#include <stdio.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <errno.h>
+
+#define NVRAM_MAGIC "PQZK"
+static uint64_t nvram_write_count = 0;
+static uint64_t nvram_byte_count = 0;
+
+/* Build file path */
+static void build_path(const char *dir, const char *file, char *out, size_t sz)
+{
+    snprintf(out, sz, "%s/%s", dir, file);
+}
+
+/* ================================================================
+ * nvram_read
+ * ================================================================ */
+
+int nvram_read(const char *nvram_dir, nvram_state_t *state)
+{
+    char path[512];
+    build_path(nvram_dir, "euicc_state.bin", path, sizeof(path));
+
+    FILE *f = fopen(path, "rb");
+    if (!f) return -1;
+
+    size_t nr = fread(state, 1, sizeof(nvram_state_t), f);
+    fclose(f);
+
+    if (nr != sizeof(nvram_state_t)) return -1;
+    if (memcmp(state->magic, NVRAM_MAGIC, 4) != 0) return -1;
+
+
+    return 0;
+}
+
+/* ================================================================
+ * nvram_write_atomic
+ * tmpfile + fsync + rename
+ * ================================================================ */
+
+int nvram_write_atomic(const char *nvram_dir, const nvram_state_t *state)
+{
+    char path_final[512], path_tmp[512];
+    build_path(nvram_dir, "euicc_state.bin",     path_final, sizeof(path_final));
+    build_path(nvram_dir, "euicc_state.tmp",     path_tmp,   sizeof(path_tmp));
+
+    /* 1. write temp file */
+    FILE *f = fopen(path_tmp, "wb");
+    if (!f) return -1;
+
+    size_t nw = fwrite(state, 1, sizeof(nvram_state_t), f);
+    if (nw != sizeof(nvram_state_t)) { fclose(f); return -1; }
+
+    /* 2. fsync for durability before rename */
+    if (fflush(f) != 0 || fsync(fileno(f)) != 0) { fclose(f); return -1; }
+
+    fclose(f);
+
+    /* 3. atomic rename */
+    if (rename(path_tmp, path_final) != 0) return -1;
+
+    nvram_write_count++;
+    nvram_byte_count += nw;
+    return 0;
+}
+
+void nvram_reset_write_count(void) { nvram_write_count = 0; nvram_byte_count = 0; }
+uint64_t nvram_get_write_count(void) { return nvram_write_count; }
+
+int nvram_update_ctr_and_key(const char *nvram_dir, uint64_t new_ctr,
+                              const uint8_t new_k_sym[32])
+{
+    nvram_state_t state;
+    if (nvram_read(nvram_dir, &state) != 0) return -1;
+    state.ctr_local = new_ctr;
+    memcpy(state.k_sym, new_k_sym, 32);
+    return nvram_write_atomic(nvram_dir, &state);
+}
+uint64_t nvram_get_byte_count(void) { return nvram_byte_count; }

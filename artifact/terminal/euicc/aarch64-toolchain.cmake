@@ -1,0 +1,28 @@
+# Cross-compiling for ARM64 (aarch64-linux-gnu toolchain, Ubuntu multiarch)
+set(CMAKE_SYSTEM_NAME Linux)
+set(CMAKE_SYSTEM_PROCESSOR aarch64)
+
+set(TOOLCHAIN_PREFIX /usr/bin/aarch64-linux-gnu-)
+set(CMAKE_C_COMPILER ${TOOLCHAIN_PREFIX}gcc)
+set(CMAKE_CXX_COMPILER ${TOOLCHAIN_PREFIX}g++)
+
+set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
+set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
+set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+# aarch64 预编译依赖库，相对于本工具链文件所在目录（euicc/）
+set(AARCH64_DEPS ${CMAKE_CURRENT_LIST_DIR}/libs/aarch64)
+
+set(OPENSSL_ROOT_DIR ${AARCH64_DEPS}/openssl)
+set(OPENSSL_INCLUDE_DIR ${AARCH64_DEPS}/openssl/include)
+set(OPENSSL_CRYPTO_LIBRARY ${AARCH64_DEPS}/openssl/lib/libcrypto.a)
+set(OPENSSL_SSL_LIBRARY ${AARCH64_DEPS}/openssl/lib/libssl.a)
+
+set(liboqs_DIR ${AARCH64_DEPS}/liboqs)
+
+set(CMAKE_C_FLAGS " -I${AARCH64_DEPS}/liboqs/include -I${AARCH64_DEPS}/openssl/include" CACHE STRING "" FORCE)
+set(CMAKE_EXE_LINKER_FLAGS " -L${AARCH64_DEPS}/liboqs/lib -L${AARCH64_DEPS}/openssl/lib" CACHE STRING "" FORCE)
+
+# Use -O1 for QEMU compatibility
+set(CMAKE_C_FLAGS_RELEASE "-O1 -DNDEBUG" CACHE STRING "" FORCE)

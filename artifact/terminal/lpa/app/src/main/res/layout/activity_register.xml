@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:opencv="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="#FFFFFF">
+
+    <!-- Step indicator -->
+    <TextView
+        android:id="@+id/tv_step_indicator"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="步骤 1/7：用户信息录入"
+        android:textColor="#2563EB"
+        android:textStyle="bold"
+        android:layout_marginBottom="10dp" />
+
+    <TextView
+        android:id="@+id/tv_status_detail"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="请输入您的昵称"
+        android:textAlignment="center"
+        android:textColor="#4B5563"
+        android:background="@drawable/bg_badge_blue"
+        android:padding="12dp"
+        android:layout_marginBottom="10dp" />
+
+    <!-- ============ Step 1: User info ============ -->
+    <LinearLayout
+        android:id="@+id/layout_step_user_info"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/et_user_name"
+            android:layout_width="match_parent"
+            android:layout_height="56dp"
+            android:hint="请输入您的昵称"
+            android:textColor="#1F2937"
+            android:textSize="16sp"
+            android:paddingHorizontal="16dp"
+            android:background="@drawable/bg_input_field"
+            android:maxLength="20"
+            android:inputType="textPersonName" />
+    </LinearLayout>
+
+    <!-- ============ Step 2-6: Progress / init display ============ -->
+    <LinearLayout
+        android:id="@+id/layout_step_init"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center"
+        android:orientation="vertical"
+        android:visibility="gone">
+
+        <ProgressBar
+            android:id="@+id/progress_init"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:indeterminateTint="#2563EB" />
+
+        <TextView
+            android:id="@+id/tv_init_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/register_initializing"
+            android:layout_marginTop="16dp"
+            android:textColor="#6B7280"
+            android:textSize="14sp"
+            android:textAlignment="center" />
+
+        <TextView
+            android:id="@+id/tv_init_result"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="#10B981"
+            android:textSize="12sp"
+            android:visibility="gone" />
+    </LinearLayout>
+
+    <!-- ============ Step 5: Face camera ============ -->
+    <FrameLayout
+        android:id="@+id/layout_step_face"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:visibility="gone">
+
+        <org.opencv.android.JavaCameraView
+            android:id="@+id/register_camera_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            opencv:camera_id="front"
+            opencv:show_fps="false" />
+
+        <View
+            android:layout_width="260dp"
+            android:layout_height="260dp"
+            android:layout_gravity="center"
+            android:background="@drawable/face_scan_frame" />
+    </FrameLayout>
+
+    <!-- ============ Bottom button ============ -->
+    <Button
+        android:id="@+id/btn_next_step"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:text="下一步"
+        android:background="@drawable/btn_primary_gradient"
+        android:textColor="#FFFFFF"
+        android:layout_marginTop="20dp"
+        android:enabled="true" />
+</LinearLayout>

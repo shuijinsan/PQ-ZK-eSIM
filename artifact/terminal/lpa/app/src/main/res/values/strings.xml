@@ -1,0 +1,234 @@
+<resources>
+    <!-- ================================================================
+         PQ-ZK-eSIM — 中文默认字符串资源
+         专业术语 (eSIM, PQ-ZK, ML-KEM, TEE, JNI, Kyber, Merkle Tree,
+         Commitment, Challenge, Proof, Verification, LPA, eUICC) 不翻译
+         ================================================================ -->
+
+    <!-- App -->
+    <string name="app_name">PQZKEsim</string>
+    <string name="app_version">Version v2.0</string>
+    <string name="app_initializing">正在初始化安全模块…</string>
+    <string name="app_loading_pqc_lib">正在加载抗量子安全库…</string>
+    <string name="app_secure_env_ready">安全环境就绪</string>
+    <string name="app_apply_permission">正在申请必要权限…</string>
+    <string name="app_camera_permission_denied">相机权限被拒绝，部分功能不可用</string>
+
+    <!-- ================================================================
+         SplashActivity
+         ================================================================ -->
+
+    <!-- ================================================================
+         RegisterActivity (设备注册)
+         ================================================================ -->
+    <string name="register_step_indicator">步骤 %1$d/7：%2$s</string>
+    <string name="register_initializing">正在初始化…</string>
+    <string name="register_step_1_label">用户信息录入</string>
+    <string name="register_step_2_label">TEE 环境检测</string>
+    <string name="register_step_3_label">Kyber-768 主密钥生成</string>
+    <string name="register_step_4_label">指纹特征采集</string>
+    <string name="register_step_5_label">人脸特征采集</string>
+    <string name="register_step_6_label">安全绑定与落盘</string>
+    <string name="register_step_7_label">初始化</string>
+    <string name="register_step_user_info_hint">请输入您的昵称</string>
+    <string name="register_step_tee_check">正在检测 TEE 安全环境…</string>
+    <string name="register_step_tee_verifying">正在验证 TEE 安全环境…</string>
+    <string name="register_step_kyber_gen">正在生成抗量子密钥…</string>
+    <string name="register_step_kyber_gen_detail">正在生成 Kyber-768 主密钥…</string>
+    <string name="register_step_fingerprint_hint">请点击按钮采集指纹特征</string>
+    <string name="register_step_fingerprint_ready">准备采集指纹…</string>
+    <string name="register_step_face_hint">请正对摄像头完成人脸采集</string>
+    <string name="register_step_security_bind">正在执行安全绑定…</string>
+    <string name="register_step_security_bind_detail">正在融合生物特征并注册设备…</string>
+    <string name="register_step_done_title">初始化完成！</string>
+    <string name="register_step_done_status">✅ 所有安全模块已就绪</string>
+    <string name="register_step_done_result">设备已成功注册，请点击下方按钮进入主页</string>
+    <string name="register_btn_next">下一步</string>
+    <string name="register_btn_enter_main">进入主页</string>
+    <string name="register_btn_collect_fingerprint">开始采集指纹</string>
+    <string name="register_btn_preparing">准备中…</string>
+    <string name="register_btn_face_hint">请正对摄像头…</string>
+    <string name="register_btn_retry">重试</string>
+    <string name="register_btn_restart">重新开始</string>
+    <string name="register_toast_enter_name">请输入昵称</string>
+    <string name="register_toast_fingerprint_please">请在对话框中验证指纹…</string>
+    <string name="register_tee_ok">✅ TEE 环境正常，人脸模型已加载</string>
+    <string name="register_tee_model_fail">⚠️ 模型加载失败，人脸采集可能不可用</string>
+    <string name="register_tee_error">⚠️ TEE 检测异常: %1$s</string>
+    <string name="register_kyber_ok">✅ Kyber-768 主密钥已生成</string>
+    <string name="register_kyber_fail">⚠️ 密钥生成失败，将使用备用方案</string>
+    <string name="register_security_bind_ok">✅ 安全绑定完成 | r_bio + 主密钥 + 设备身份已落盘</string>
+    <string name="register_security_bind_fail">❌ 设备注册失败 (code=%1$d, verified=%2$s)</string>
+    <string name="register_security_bind_error">❌ 安全绑定异常: %1$s</string>
+    <string name="register_data_missing">❌ 生物特征数据缺失，请重试</string>
+    <string name="register_biometric_title">生物特征注册</string>
+    <string name="register_biometric_desc">请验证指纹以完成设备注册</string>
+    <string name="register_biometric_cancel">取消</string>
+    <string name="register_toast_fingerprint_mismatch">指纹不匹配，请重试</string>
+    <string name="register_toast_auth_error">认证错误: %1$s</string>
+    <string name="register_toast_fingerprint_failed">指纹特征提取失败，请重试</string>
+    <string name="register_toast_face_failed">人脸采集失败</string>
+    <string name="register_fingerprint_ok">指纹认证通过，正在提取特征…</string>
+
+    <!-- ================================================================
+         ProfileFragment (个人设置)
+         ================================================================ -->
+    <string name="profile_unnamed_user">未命名用户</string>
+    <string name="profile_security_level">抗量子国防级</string>
+    <string name="profile_user_id_label">用户ID</string>
+    <string name="profile_register_time_label">注册时间</string>
+    <string name="profile_device_count_label">绑定设备</string>
+    <string name="profile_menu_change_name">修改昵称</string>
+    <string name="profile_menu_change_avatar">修改头像</string>
+    <string name="profile_menu_biometric">生物认证管理</string>
+    <string name="profile_menu_language">语言设置</string>
+    <string name="profile_menu_logout">账号注销</string>
+    <string name="profile_dialog_change_name_title">修改昵称</string>
+    <string name="profile_dialog_change_avatar_title">更换头像</string>
+    <string name="profile_dialog_from_gallery">从相册选择</string>
+    <string name="profile_dialog_preset_avatar">切换预设头像</string>
+    <string name="profile_dialog_confirm">确定</string>
+    <string name="profile_dialog_cancel">取消</string>
+    <string name="profile_toast_crop_failed">裁剪失败: %1$s</string>
+    <string name="profile_toast_crop_lost">裁剪结果丢失，请重试</string>
+    <string name="profile_toast_crop_unknown">裁剪失败: 未知错误</string>
+    <string name="profile_toast_crop_unavailable">裁剪组件不可用，请重新安装应用</string>
+    <string name="profile_toast_crop_open_failed">打开裁剪失败: %1$s</string>
+    <string name="profile_toast_avatar_saved">头像已更新</string>
+    <string name="profile_toast_avatar_save_failed">保存头像失败</string>
+    <string name="profile_toast_cannot_read_image">无法读取裁剪结果</string>
+    <string name="profile_dialog_logout_title">注销</string>
+    <string name="profile_dialog_logout_message">确定要注销吗？所有本地数据将被清除。</string>
+    <string name="profile_device_count_format">%1$d台</string>
+
+    <!-- Language settings -->
+    <string name="lang_title">语言</string>
+    <string name="lang_zh_cn">中文</string>
+    <string name="lang_en">英语</string>
+    <string name="lang_current">当前语言: %1$s</string>
+
+    <!-- ================================================================
+         HomeFragment (主界面)
+         ================================================================ -->
+    <string name="home_system_status">系统状态</string>
+    <string name="home_system_ready">系统就绪</string>
+    <string name="home_tee_normal">TEE：正常</string>
+    <string name="home_master_key_generated">主密钥：已生成</string>
+    <string name="home_select_operator">选择运营商</string>
+    <string name="home_btn_start_auth">启动认证</string>
+    <string name="home_console_title">安全审计</string>
+    <string name="home_mock_mode_label">Mock 模式</string>
+    <string name="home_mock_mode_desc">模拟后端数据，离线验证完整激活流程</string>
+    <string name="home_face_scan_hint">请将面部对准扫描框</string>
+    <string name="home_biometric_title">身份验证</string>
+    <string name="home_biometric_cancel">取消</string>
+    <string name="home_toast_select_operator">请选择运营商</string>
+    <string name="home_log_operator_selected">📡 已选择运营商: %1$s [%2$s]</string>
+    <string name="home_log_camera_timeout">❌ 相机启动超时</string>
+    <string name="home_log_camera_ready">📷 相机已就绪，请将面部对准扫描框</string>
+    <string name="home_log_waiting_face">⏳ 等待人脸检测… (%1$dms)</string>
+    <string name="home_log_face_not_detected">❌ 未检测到有效人脸特征</string>
+    <string name="home_log_face_captured">✅ 人脸生物特征 r_bio 已获取</string>
+    <string name="home_log_biometric_mismatch">⚠️ 指纹不匹配，请重试</string>
+    <string name="home_log_biometric_error">❌ 认证错误: %1$s</string>
+    <string name="home_log_auth_success">✅ 抗量子安全链路已就绪</string>
+    <string name="home_log_mock_enabled">🟡 Mock 模式已开启 — 后端数据由本地模拟</string>
+    <string name="home_log_mock_disabled">🔵 Mock 模式已关闭 — 恢复真实后端通信</string>
+    <string name="home_log_model_ok">✅ 人脸检测模型就绪</string>
+    <string name="home_log_model_fail">❌ 人脸模型加载失败</string>
+    <string name="home_auth_success_label">认证成功</string>
+    <string name="home_timeline_phase_0">Commitment</string>
+    <string name="home_timeline_phase_1">Challenge</string>
+    <string name="home_timeline_phase_2">Proof</string>
+    <string name="home_timeline_phase_3">Verification</string>
+    <string name="home_opencv_init_failed">OpenCV初始化失败</string>
+    <string name="home_auth_biometric_failed">生物认证失败</string>
+    <string name="home_auth_network_error">网络错误</string>
+    <string name="home_auth_verify_failed">验证失败</string>
+    <string name="home_auth_verify_failed_detail">❌ 后端验证未通过 code=%1$d</string>
+
+    <!-- ================================================================
+         CommFragment (运营商通信)
+         ================================================================ -->
+    <string name="comm_title">运营商信息</string>
+    <string name="comm_subtitle">点击运营商查看已开通的 eSIM 服务</string>
+    <string name="comm_subtitle_detail">点击运营商卡片展开号码列表</string>
+    <string name="comm_expand_title">展开查看已开通号码</string>
+    <string name="comm_status_bound">已绑定</string>
+    <string name="comm_status_unbound">未开卡</string>
+    <string name="comm_status_not_activated">未开通</string>
+    <string name="comm_no_service">暂未开通 eSIM 服务</string>
+    <string name="comm_label_phone">手机号</string>
+    <string name="comm_label_iccid">ICCID</string>
+    <string name="comm_label_activated_time">开通时间</string>
+
+    <!-- ================================================================
+         Operator names (运营商名称 — 不翻译)
+         ================================================================ -->
+    <string name="operator_china_mobile">中国移动</string>
+    <string name="operator_china_unicom">中国联通</string>
+    <string name="operator_china_telecom">中国电信</string>
+
+    <!-- ================================================================
+         LogFragment (认证日志)
+         ================================================================ -->
+    <string name="log_title">认证日志</string>
+    <string name="log_btn_clear">清除全部</string>
+    <string name="log_empty">暂无认证日志</string>
+    <string name="log_dialog_clear_title">清除日志</string>
+    <string name="log_dialog_clear_message">确定要清除全部认证日志吗？</string>
+    <string name="log_dialog_confirm">确定</string>
+    <string name="log_dialog_cancel">取消</string>
+    <string name="log_status_success">成功</string>
+    <string name="log_status_failed">失败</string>
+
+    <!-- ================================================================
+         AuthLogItem (日志条目)
+         ================================================================ -->
+    <string name="log_item_session_prefix">会话: %1$s…</string>
+    <string name="log_item_phone_prefix">手机号: %1$s</string>
+    <string name="log_item_phone_none">手机号: 未分配</string>
+    <string name="log_item_duration_format">%1$d ms</string>
+
+    <!-- ================================================================
+         ActivationSuccessDialog (开通成功弹窗)
+         ================================================================ -->
+    <string name="dialog_success_title">eSIM 开通成功</string>
+    <string name="dialog_success_subtitle">您的数字身份已完成绑定</string>
+    <string name="dialog_success_label_phone">手机号</string>
+    <string name="dialog_success_label_time">开通时间</string>
+    <string name="dialog_success_label_operator">运营商</string>
+    <string name="dialog_success_btn_done">完成</string>
+
+    <!-- ================================================================
+         BottomNavigation (底部导航)
+         ================================================================ -->
+    <string name="nav_home">首页</string>
+    <string name="nav_comm">运营商</string>
+    <string name="nav_logs">日志</string>
+    <string name="nav_profile">我的</string>
+
+    <!-- ================================================================
+         ActivationViewModel (认证流程)
+         ================================================================ -->
+    <string name="auth_prepare_tee">验证设备GSMA证书…</string>
+    <string name="auth_generate_proof">生成承诺并预计算…</string>
+    <string name="auth_request_challenge">请求后端挑战参数…</string>
+    <string name="auth_verify_challenge">执行抗量子证明…</string>
+    <string name="auth_download_profile">下载eSIM Profile…</string>
+    <string name="auth_write_euicc">写入eUICC…</string>
+    <string name="auth_label_prepare_tee">验证设备GSMA证书…</string>
+    <string name="auth_label_generate_proof">生成承诺并预计算…</string>
+    <string name="auth_label_request_challenge">请求后端挑战参数…</string>
+    <string name="auth_label_verify_challenge">提交验证…</string>
+    <string name="auth_label_download_profile">下载eSIM Profile…</string>
+    <string name="auth_label_write_euicc">写入eUICC…</string>
+
+    <!-- ================================================================
+         Generic / Shared
+         ================================================================ -->
+    <string name="generic_confirm">确定</string>
+    <string name="generic_cancel">取消</string>
+    <string name="generic_arrow">></string>
+    <string name="generic_ok">确定</string>
+</resources>

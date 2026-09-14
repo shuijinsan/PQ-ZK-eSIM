@@ -1,0 +1,32 @@
+Paper: Figure 4, Section 7 (Concrete security / Module-SIS estimation)
+
+Claim: The Module-SIS security of PQ-ZK-eSIM was estimated with the
+lattice-estimator (github.com/malb/lattice-estimator). Key-recovery is the
+cheaper attack (cheaper than the binding/short-kernel direction) and
+exceeds NIST Level 1 on the lattice side; the overall level is 1,
+bottlenecked by the symmetric primitives (Table 2).
+
+Experiment:
+  lattice-estimator (external Python tool, NOT included in this repo) run
+  over the Module-SIS instance derived from the Table 3 parameters
+  (n=256, q=8380417, k=5, m=8, and the challenge/norm bounds).
+
+Input: the Module-SIS instance (parameter file / script) derived from
+src/internal/params.h.
+
+Expected output: the lattice-estimator report plotted as Figure 4
+(bits of security vs. attack / parameter axis).
+
+the estimation depends on the external
+lattice-estimator tool (and its fpylll backend), which is not vendored in
+this artifact. The figure is provided as a documented result rather than a
+reproducible experiment.
+
+Reproduction: install lattice-estimator (pin its commit; see below), then
+run the Module-SIS script. The estimator version/commit used to produce
+Figure 4 must be pinned for exact reproduction.
+
+Dependency: lattice-estimator, commit d2bf9ca2709d784dd56d42032e60e760202a4107
+("HE Parameters and Tests (#208)", 2026-05-26, github.com/malb/lattice-estimator),
+Python 3, fpylll.
+

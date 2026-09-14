@@ -1,0 +1,30 @@
+Paper: Figure 5, Section 7.2 (Performance and Reliability)
+
+Claim: PQ-ZK-eSIM splits the workload so the eUICC executes no NTT and no
+discrete-Gaussian sampling (its online work is 71,680 sparse ternary
+additions), while the LPA and Server absorb the heavy lattice computation.
+Per-phase timing under QEMU ARM64 emulation confirms this split.
+
+Experiment (QEMU ARM64 emulation):
+  qemu-aarch64-static -L /usr/aarch64-linux-gnu \
+      artifact/terminal/euicc/build/arm64/bench_pqzkesim_comprehensive --only phase
+  (500 authentication trials)
+
+Input: none (parameters are compile-time constants in src/internal/params.h)
+
+Expected output: phase_timing_results.csv
+  columns: trial, lpa_precompute_us, euicc_commit_us, challenge_gen_us,
+           tee_authtoken_us, euicc_mask_us, lpa_aggregate_us,
+           server_verify_us, total_us, euicc_total_us, lpa_total_us,
+           tee_total_us, server_total_us
+
+Runtime: ~2-3 min (QEMU ARM64 emulation)
+
+Resources: 1 CPU core, <100 MB RAM, <10 MB disk
+
+Tolerance:
+  - Latency values: +-50% (QEMU/compiler dependent).
+  - Deterministic (strict): the eUICC path performs no NTT and no Gaussian
+    sampling. This is a code-level property (pqzk_vec_scalar_mul is sparse
+    ternary; no NTT function is invoked on the eUICC path), not a timing
+    measurement.

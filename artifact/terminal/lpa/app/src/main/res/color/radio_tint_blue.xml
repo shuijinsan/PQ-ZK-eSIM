@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 选中 #1677FF / 未选中灰色，覆盖系统默认紫色 -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:color="#1677FF" android:state_checked="true" />
+    <item android:color="#9CA3AF" />
+</selector>

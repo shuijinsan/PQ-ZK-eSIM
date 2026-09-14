@@ -1,0 +1,22 @@
+Paper: Figure 9, Appendix D (Resistance to Real-World Attacks)
+
+Claim: A low-cost MAC pre-verification rejects forged/flooded commitments
+before the expensive lattice verification, giving an early-reject speedup.
+
+Experiment (QEMU ARM64 emulation):
+  qemu-aarch64-static -L /usr/aarch64-linux-gnu artifact/terminal/euicc/build/arm64/bench_pqzkesim --dos
+
+Input: none
+
+Expected output: dos_results.csv
+  columns: test, avg_us
+  rows:    MAC_W_Verification, Full_Lattice_Verification, Speedup
+
+Runtime: ~1 min
+
+Resources: 1 CPU core, <100 MB RAM, <1 MB disk
+
+Tolerance:
+  - Speedup: +-50% (timing).
+  - Deterministic: Speedup > 1 (MAC is strictly cheaper than full lattice
+    verification).

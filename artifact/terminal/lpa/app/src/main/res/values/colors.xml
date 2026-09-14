@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="pqc_primary">#1677FF</color>
+    <color name="pqc_primary_variant">#06B6D4</color>
+    <color name="pqc_success">#10B981</color>
+    <color name="pqc_error">#EF4444</color>
+    <color name="pqc_background">#FFFFFF</color>
+    <color name="pqc_text_main">#1F2937</color>
+    <color name="pqc_text_secondary">#6B7280</color>
+</resources>

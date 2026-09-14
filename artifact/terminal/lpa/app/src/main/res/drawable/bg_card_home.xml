@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 四周柔光阴影：负 inset 向左右下三向延伸，超出卡片边界 -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 环境光 — 左右各溢出 8dp，下方溢出 12dp -->
+    <item android:left="-8dp" android:right="-8dp" android:top="5dp" android:bottom="-12dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#00000000"
+                android:centerColor="#04000000"
+                android:centerY="0.82"
+                android:endColor="#00000000" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+    <!-- 直射 — 左右各溢出 4dp，下方溢出 6dp -->
+    <item android:left="-4dp" android:right="-4dp" android:top="2dp" android:bottom="-6dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="270"
+                android:startColor="#00000000"
+                android:centerColor="#07000000"
+                android:centerY="0.86"
+                android:endColor="#00000000" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+    <!-- 白色卡片主体 — 填充全宽，上浮 6dp -->
+    <item android:left="0dp" android:right="0dp" android:top="0dp" android:bottom="6dp">
+        <shape android:shape="rectangle">
+            <solid android:color="#FFFFFF" />
+            <corners android:radius="20dp" />
+        </shape>
+    </item>
+
+</layer-list>

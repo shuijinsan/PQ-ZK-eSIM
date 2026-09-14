@@ -1,0 +1,11 @@
+# PQ-ZK-eSIM Artifact — canonical 可复现环境
+
+OS:        Ubuntu 22.04 LTS
+Host:      x86_64
+CPU:       4+ cores
+RAM:       8 GB
+Disk:      20 GB
+Toolchain: AArch64 交叉编译（gcc-aarch64-linux-gnu）
+Emulation: QEMU ARM64（qemu-user-static）
+
+说明：先保证这一套 canonical 环境 100% 可运行，不追求多平台。

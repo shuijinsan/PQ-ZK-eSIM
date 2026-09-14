@@ -1,0 +1,67 @@
+# PQ-ZK-eSIM Artifact metadata（数据来自实验与后端）
+# 待最终一致性审核
+
+[artifact]
+name = "PQ-ZK-eSIM"
+description = "Post-quantum zero-knowledge eSIM authentication: prover/verifier, TEE simulation, QEMU ARM64 evaluation"
+badges = ["Available", "Functional", "Reproduced"]  # 待最终确认实际达到后再勾选
+
+[hardware]
+os = "Ubuntu 22.04 LTS"
+host = "x86_64"
+cpu = "4+ cores"
+ram = "8 GB"
+disk = "20 GB"
+emulation = "QEMU ARM64 (qemu-user-static)"
+toolchain = "AArch64 cross (gcc-aarch64-linux-gnu)"
+
+[software]
+compiler = "gcc/g++ (C11/C++17)"
+cmake = ">= 3.22"
+crypto = ["OpenSSL 3.0.13", "liboqs 0.15.0"]
+python = "Python 3 + numpy/pandas/matplotlib"
+profiling = "Valgrind >= 3.20 (Callgrind, claim2)"
+security_estimator = "lattice-estimator (commit d2bf9ca) + fpylll (外部，未 vendor)"
+
+# —— 各 claim 的 runtime / resource（来自 claim.txt）——
+[[claims]]
+id = "claim1_qemu_performance"
+paper = "Figure 5 / Section 7.2"
+runtime = "~2-3 min"
+resources = "1 CPU, <100 MB RAM, <10 MB disk"
+
+[[claims]]
+id = "claim2_euicc_workload"
+paper = "Figure 6 / Table 6 / Appendix C"
+runtime = "~1-2 min"
+resources = "1 CPU, ~300 MB RAM (Valgrind), <10 MB disk"
+
+[[claims]]
+id = "claim3_euicc_projection"
+paper = "Table 4"
+runtime = "N/A（analytical projection，非可复现实验）"
+resources = "N/A"
+
+[[claims]]
+id = "claim4_security_estimation"
+paper = "Figure 4"
+runtime = "N/A（依赖外部 lattice-estimator，documented result）"
+resources = "N/A"
+
+[[claims]]
+id = "claim5_desync_dos"
+paper = "Figure 7 + Figure 9"
+runtime = "~1-2 min"
+resources = "1 CPU, <100 MB RAM, <1 MB disk"
+
+[[claims]]
+id = "claim6_sparse_noise"
+paper = "Figure 8"
+runtime = "~1-2 min"
+resources = "1 CPU, <100 MB RAM, <1 MB disk"
+
+# —— 后端（待补充）——
+[backend]
+dependency = "待补充"
+network = "待补充（端口/协议）"
+runtime = "待补充"

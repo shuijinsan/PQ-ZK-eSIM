@@ -1,0 +1,10 @@
+# 访问与运行方式
+
+获取代码：    git clone <repo-url>
+安装依赖：    bash install.sh
+冒烟测试：    bash artifact/demo/run.sh
+运行各实验：  bash claims/claimX/run.sh [--quick|--full]
+校验结果：    bash claims/validate.sh
+
+第一屏三连（README 应让 reviewer 一眼看到）：
+  git clone <repo>  →  bash install.sh  →  bash artifact/demo/run.sh

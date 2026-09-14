@@ -1,0 +1,466 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    fragment_home.xml — PQ-ZK-eSIM Home
+    Apple Human Interface style: white background, PQC tech blue (#2563EB) primary,
+    20dp rounded cards, light shadows.
+    All View IDs preserved — business logic unchanged.
+-->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF">
+
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/home_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true"
+        android:scrollbars="none"
+        android:clipChildren="false"
+        android:clipToPadding="false">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
+
+            <!-- ════════════════════════════════════════════
+                 Section 1 — System Status + TEE / Master Key
+                 ════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_home"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
+
+                <!-- ── 上方：System Status ── -->
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/home_system_status"
+                    android:textColor="#9CA3AF"
+                    android:textSize="11sp"
+                    android:letterSpacing="0.06" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/tv_reg_status"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/home_system_ready"
+                        android:textColor="#111827"
+                        android:textSize="17sp"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <FrameLayout
+                        android:layout_width="52dp"
+                        android:layout_height="52dp">
+                        <ProgressBar
+                            android:id="@+id/auth_progress"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="52dp"
+                            android:layout_height="52dp"
+                            android:indeterminate="false"
+                            android:max="100"
+                            android:progress="0"
+                            android:progressDrawable="@drawable/progress_ring_home" />
+                        <TextView
+                            android:id="@+id/tv_progress_pct"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="center"
+                            android:text="0%"
+                            android:textColor="#111827"
+                            android:textSize="12sp"
+                            android:fontFamily="sans-serif-medium" />
+                    </FrameLayout>
+                </LinearLayout>
+
+                <!-- ── 分隔 ── -->
+                <View
+                    android:layout_width="match_parent"
+                    android:layout_height="1dp"
+                    android:background="#EEEEEE"
+                    android:layout_marginVertical="14dp" />
+
+                <!-- ── 下方：TEE / 主密钥 ── -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="vertical">
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/shape_dot_green" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/home_tee_normal"
+                            android:textColor="#1F2937"
+                            android:textSize="13sp"
+                            android:fontFamily="sans-serif-medium" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="1dp"
+                        android:layout_height="36dp"
+                        android:background="#E5E7EB" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:gravity="center"
+                        android:orientation="vertical">
+                        <View
+                            android:layout_width="10dp"
+                            android:layout_height="10dp"
+                            android:background="@drawable/shape_dot_green" />
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:text="@string/home_master_key_generated"
+                            android:textColor="#1F2937"
+                            android:textSize="13sp"
+                            android:fontFamily="sans-serif-medium" />
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ════════════════════════════════════════════
+                 Section 2 — 运营商选择
+                 ════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_home"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/home_select_operator"
+                    android:textColor="#6B7280"
+                    android:textSize="12sp"
+                    android:letterSpacing="0.04"
+                    android:layout_marginBottom="12dp" />
+
+                <RadioGroup
+                    android:id="@+id/rg_operator"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal">
+
+                    <RadioButton
+                        android:id="@+id/rb_cmcc"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/operator_china_mobile"
+                        android:textColor="#374151"
+                        android:textSize="14sp"
+                        android:buttonTint="@color/radio_tint_blue"
+                        android:paddingVertical="4dp" />
+
+                    <RadioButton
+                        android:id="@+id/rb_cucc"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/operator_china_unicom"
+                        android:textColor="#374151"
+                        android:textSize="14sp"
+                        android:buttonTint="@color/radio_tint_blue"
+                        android:paddingVertical="4dp" />
+
+                    <RadioButton
+                        android:id="@+id/rb_ct"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:text="@string/operator_china_telecom"
+                        android:textColor="#374151"
+                        android:textSize="14sp"
+                        android:buttonTint="@color/radio_tint_blue"
+                        android:paddingVertical="4dp" />
+                </RadioGroup>
+            </LinearLayout>
+
+            <!-- ════════════════════════════════════════════
+                 Section 5 — Timeline
+                 ════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="16dp"
+                android:paddingHorizontal="4dp"
+                android:paddingVertical="12dp"
+                android:clipChildren="false"
+                android:clipToPadding="false">
+
+                <!-- 节点行：clipChildren=false 允许圆点扩散动画不截断 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center"
+                    android:clipChildren="false"
+                    android:clipToPadding="false">
+
+                    <View android:id="@+id/tl_node_0"
+                        android:layout_width="14dp" android:layout_height="14dp"
+                        android:background="@drawable/shape_circle_gray" />
+                    <View android:id="@+id/tl_line_0"
+                        android:layout_width="0dp" android:layout_height="2dp"
+                        android:layout_weight="1" android:background="#E5E7EB" />
+                    <View android:id="@+id/tl_node_1"
+                        android:layout_width="14dp" android:layout_height="14dp"
+                        android:background="@drawable/shape_circle_gray" />
+                    <View android:id="@+id/tl_line_1"
+                        android:layout_width="0dp" android:layout_height="2dp"
+                        android:layout_weight="1" android:background="#E5E7EB" />
+                    <View android:id="@+id/tl_node_2"
+                        android:layout_width="14dp" android:layout_height="14dp"
+                        android:background="@drawable/shape_circle_gray" />
+                    <View android:id="@+id/tl_line_2"
+                        android:layout_width="0dp" android:layout_height="2dp"
+                        android:layout_weight="1" android:background="#E5E7EB" />
+                    <View android:id="@+id/tl_node_3"
+                        android:layout_width="14dp" android:layout_height="14dp"
+                        android:background="@drawable/shape_circle_gray" />
+                </LinearLayout>
+
+                <!-- 标签行 -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="6dp">
+
+                    <TextView android:id="@+id/tl_name_0"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="Commitment"
+                        android:textColor="#9CA3AF" android:textSize="10sp"
+                        android:gravity="center" android:fontFamily="sans-serif-medium" />
+                    <TextView android:id="@+id/tl_name_1"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="Challenge"
+                        android:textColor="#9CA3AF" android:textSize="10sp"
+                        android:gravity="center" android:fontFamily="sans-serif-medium" />
+                    <TextView android:id="@+id/tl_name_2"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="Proof"
+                        android:textColor="#9CA3AF" android:textSize="10sp"
+                        android:gravity="center" android:fontFamily="sans-serif-medium" />
+                    <TextView android:id="@+id/tl_name_3"
+                        android:layout_width="0dp" android:layout_height="wrap_content"
+                        android:layout_weight="1" android:text="Verification"
+                        android:textColor="#9CA3AF" android:textSize="10sp"
+                        android:gravity="center" android:fontFamily="sans-serif-medium" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- ════════════════════════════════════════════
+                 Section 6 — Mock 模式开关
+                 ════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_card_home"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:padding="14dp"
+                android:layout_marginBottom="16dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_mock_mode_label"
+                        android:textColor="#D97706"
+                        android:textSize="14sp"
+                        android:fontFamily="sans-serif-medium" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="@string/home_mock_mode_desc"
+                        android:textColor="#9CA3AF"
+                        android:textSize="12sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <androidx.appcompat.widget.SwitchCompat
+                    android:id="@+id/switch_mock_mode"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content" />
+            </LinearLayout>
+
+            <!-- ════════════════════════════════════════════
+                 Section 7 — 启动认证按钮
+                 ════════════════════════════════════════════ -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_run_test"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:layout_marginBottom="16dp"
+                android:text="@string/home_btn_start_auth"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="0.02"
+                android:stateListAnimator="@null"
+                app:backgroundTint="#1677FF"
+                app:cornerRadius="20dp"
+                app:rippleColor="#0D5ECC" />
+
+            <!-- ════════════════════════════════════════════
+                 Section 8 — Console
+                 ════════════════════════════════════════════ -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:layout_marginBottom="24dp">
+
+                <!-- Console Header -->
+                <LinearLayout
+                    android:id="@+id/btn_console_toggle"
+                    android:layout_width="match_parent"
+                    android:layout_height="44dp"
+                    android:background="@drawable/bg_console_header_home"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:paddingHorizontal="16dp"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="●"
+                        android:textColor="#6B7280"
+                        android:textSize="10sp" />
+                    <TextView
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:text="@string/home_console_title"
+                        android:textColor="#374151"
+                        android:textSize="13sp"
+                        android:fontFamily="sans-serif-medium" />
+                    <TextView
+                        android:id="@+id/tv_console_arrow"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="▼"
+                        android:textColor="#9CA3AF"
+                        android:textSize="10sp" />
+                </LinearLayout>
+
+                <!-- Console Body -->
+                <LinearLayout
+                    android:id="@+id/layout_console"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:background="@drawable/bg_console_body_home"
+                    android:visibility="gone"
+                    android:orientation="vertical">
+
+                    <ScrollView
+                        android:id="@+id/scroll_audit"
+                        android:layout_width="match_parent"
+                        android:layout_height="200dp"
+                        android:padding="12dp"
+                        android:scrollbars="vertical"
+                        android:fadeScrollbars="false"
+                        android:nestedScrollingEnabled="true">
+
+                        <TextView
+                            android:id="@+id/tv_audit_log"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="> PQ-ZK Console Ready\n"
+                            android:textColor="#374151"
+                            android:textSize="11sp"
+                            android:typeface="monospace"
+                            android:lineSpacingExtra="2dp" />
+                    </ScrollView>
+                </LinearLayout>
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Camera Overlay — floats above content -->
+    <FrameLayout
+        android:id="@+id/camera_container"
+        android:layout_width="240dp"
+        android:layout_height="320dp"
+        android:layout_gravity="center"
+        android:background="@drawable/bg_camera_rounded"
+        android:clipToOutline="true"
+        android:visibility="gone"
+        android:elevation="8dp">
+
+        <org.opencv.android.JavaCameraView
+            android:id="@+id/java_camera_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <RelativeLayout
+            android:id="@+id/face_scan_overlay"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:visibility="gone">
+
+            <View
+                android:id="@+id/scan_window"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/face_scan_frame" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true"
+                android:layout_marginTop="16dp"
+                android:text="@string/home_face_scan_hint"
+                android:textColor="#80FFFFFF"
+                android:textSize="11sp" />
+        </RelativeLayout>
+    </FrameLayout>
+
+</FrameLayout>

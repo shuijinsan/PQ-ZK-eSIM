@@ -1,0 +1,208 @@
+<resources>
+    <!-- ================================================================
+         PQ-ZK-eSIM — English string resources
+         Technical terms (eSIM, PQ-ZK, ML-KEM, TEE, JNI, Kyber, Merkle Tree,
+         Commitment, Challenge, Proof, Verification, LPA, eUICC) preserved
+         ================================================================ -->
+
+    <!-- App -->
+    <string name="app_name">PQZKEsim</string>
+    <string name="app_version">Version v2.0</string>
+    <string name="app_initializing">Initializing security module…</string>
+    <string name="app_loading_pqc_lib">Loading post-quantum security library…</string>
+    <string name="app_secure_env_ready">Secure environment ready</string>
+    <string name="app_apply_permission">Requesting required permissions…</string>
+    <string name="app_camera_permission_denied">Camera permission denied. Some features unavailable.</string>
+
+    <!-- RegisterActivity -->
+    <string name="register_step_indicator">Step %1$d/7: %2$s</string>
+    <string name="register_initializing">Initializing…</string>
+    <string name="register_step_1_label">User Information</string>
+    <string name="register_step_2_label">TEE Environment Check</string>
+    <string name="register_step_3_label">Kyber-768 Key Generation</string>
+    <string name="register_step_4_label">Fingerprint Collection</string>
+    <string name="register_step_5_label">Face Feature Collection</string>
+    <string name="register_step_6_label">Security Binding &amp; Storage</string>
+    <string name="register_step_7_label">Initialization</string>
+    <string name="register_step_user_info_hint">Enter your nickname</string>
+    <string name="register_step_tee_check">Checking TEE secure environment…</string>
+    <string name="register_step_tee_verifying">Verifying TEE secure environment…</string>
+    <string name="register_step_kyber_gen">Generating post-quantum keys…</string>
+    <string name="register_step_kyber_gen_detail">Generating Kyber-768 master key…</string>
+    <string name="register_step_fingerprint_hint">Tap the button to collect fingerprint</string>
+    <string name="register_step_fingerprint_ready">Ready to collect fingerprint…</string>
+    <string name="register_step_face_hint">Face the camera to complete face capture</string>
+    <string name="register_step_security_bind">Performing security binding…</string>
+    <string name="register_step_security_bind_detail">Fusing biometrics and registering device…</string>
+    <string name="register_step_done_title">Initialization Complete!</string>
+    <string name="register_step_done_status">✅ All security modules ready</string>
+    <string name="register_step_done_result">Device registered successfully. Tap the button below to enter the main screen</string>
+    <string name="register_btn_next">Next</string>
+    <string name="register_btn_enter_main">Enter Main</string>
+    <string name="register_btn_collect_fingerprint">Collect Fingerprint</string>
+    <string name="register_btn_preparing">Preparing…</string>
+    <string name="register_btn_face_hint">Face the camera…</string>
+    <string name="register_btn_retry">Retry</string>
+    <string name="register_btn_restart">Restart</string>
+    <string name="register_toast_enter_name">Please enter a nickname</string>
+    <string name="register_toast_fingerprint_please">Please verify fingerprint in the dialog…</string>
+    <string name="register_tee_ok">✅ TEE environment OK, face model loaded</string>
+    <string name="register_tee_model_fail">⚠️ Model loading failed, face capture may be unavailable</string>
+    <string name="register_tee_error">⚠️ TEE check error: %1$s</string>
+    <string name="register_kyber_ok">✅ Kyber-768 master key generated</string>
+    <string name="register_kyber_fail">⚠️ Key generation failed, fallback will be used</string>
+    <string name="register_security_bind_ok">✅ Security binding complete | r_bio + master key + device identity stored</string>
+    <string name="register_security_bind_fail">❌ Device registration failed (code=%1$d, verified=%2$s)</string>
+    <string name="register_security_bind_error">❌ Security binding error: %1$s</string>
+    <string name="register_data_missing">❌ Biometric data missing, please retry</string>
+    <string name="register_biometric_title">Biometric Registration</string>
+    <string name="register_biometric_desc">Verify fingerprint to complete device registration</string>
+    <string name="register_biometric_cancel">Cancel</string>
+    <string name="register_toast_fingerprint_mismatch">Fingerprint mismatch, please retry</string>
+    <string name="register_toast_auth_error">Auth error: %1$s</string>
+    <string name="register_toast_fingerprint_failed">Fingerprint extraction failed, please retry</string>
+    <string name="register_toast_face_failed">Face capture failed</string>
+    <string name="register_fingerprint_ok">Fingerprint verified, extracting features…</string>
+
+    <!-- ProfileFragment -->
+    <string name="profile_unnamed_user">Unnamed User</string>
+    <string name="profile_security_level">Post-Quantum Defense Grade</string>
+    <string name="profile_user_id_label">User ID</string>
+    <string name="profile_register_time_label">Registered</string>
+    <string name="profile_device_count_label">Bound Devices</string>
+    <string name="profile_menu_change_name">Change Nickname</string>
+    <string name="profile_menu_change_avatar">Change Avatar</string>
+    <string name="profile_menu_biometric">Biometric Settings</string>
+    <string name="profile_menu_language">Language</string>
+    <string name="profile_menu_logout">Logout</string>
+    <string name="profile_dialog_change_name_title">Change Nickname</string>
+    <string name="profile_dialog_change_avatar_title">Change Avatar</string>
+    <string name="profile_dialog_from_gallery">Choose from Gallery</string>
+    <string name="profile_dialog_preset_avatar">Switch Preset Avatar</string>
+    <string name="profile_dialog_confirm">Confirm</string>
+    <string name="profile_dialog_cancel">Cancel</string>
+    <string name="profile_toast_crop_failed">Crop failed: %1$s</string>
+    <string name="profile_toast_crop_lost">Crop result lost, please retry</string>
+    <string name="profile_toast_crop_unknown">Crop failed: Unknown error</string>
+    <string name="profile_toast_crop_unavailable">Crop component unavailable, please reinstall</string>
+    <string name="profile_toast_crop_open_failed">Failed to open cropper: %1$s</string>
+    <string name="profile_toast_avatar_saved">Avatar updated</string>
+    <string name="profile_toast_avatar_save_failed">Failed to save avatar</string>
+    <string name="profile_toast_cannot_read_image">Cannot read crop result</string>
+    <string name="profile_dialog_logout_title">Logout</string>
+    <string name="profile_dialog_logout_message">Are you sure you want to logout? All local data will be cleared.</string>
+    <string name="profile_device_count_format">%1$d</string>
+
+    <!-- Language settings -->
+    <string name="lang_title">Language</string>
+    <string name="lang_zh_cn">Chinese</string>
+    <string name="lang_en">English</string>
+    <string name="lang_current">Current language: %1$s</string>
+
+    <!-- HomeFragment -->
+    <string name="home_system_status">SYSTEM STATUS</string>
+    <string name="home_system_ready">System Ready</string>
+    <string name="home_tee_normal">TEE: Normal</string>
+    <string name="home_master_key_generated">Master Key: Generated</string>
+    <string name="home_select_operator">Select Operator</string>
+    <string name="home_btn_start_auth">Start Authentication</string>
+    <string name="home_console_title">Security Audit</string>
+    <string name="home_mock_mode_label">Mock Mode</string>
+    <string name="home_mock_mode_desc">Simulate backend data, verify full activation flow offline</string>
+    <string name="home_face_scan_hint">Align face within the scan frame</string>
+    <string name="home_biometric_title">Identity Verification</string>
+    <string name="home_biometric_cancel">Cancel</string>
+    <string name="home_toast_select_operator">Please select an operator</string>
+    <string name="home_log_operator_selected">📡 Operator selected: %1$s [%2$s]</string>
+    <string name="home_log_camera_timeout">❌ Camera startup timeout</string>
+    <string name="home_log_camera_ready">📷 Camera ready, align face within scan frame</string>
+    <string name="home_log_waiting_face">⏳ Waiting for face detection… (%1$dms)</string>
+    <string name="home_log_face_not_detected">❌ No valid face features detected</string>
+    <string name="home_log_face_captured">✅ Face biometric r_bio captured</string>
+    <string name="home_log_biometric_mismatch">⚠️ Fingerprint mismatch, please retry</string>
+    <string name="home_log_biometric_error">❌ Auth error: %1$s</string>
+    <string name="home_log_auth_success">✅ Post-quantum secure link established</string>
+    <string name="home_log_mock_enabled">🟡 Mock mode enabled — backend data from local simulation</string>
+    <string name="home_log_mock_disabled">🔵 Mock mode disabled — real backend communication restored</string>
+    <string name="home_log_model_ok">✅ Face detection model ready</string>
+    <string name="home_log_model_fail">❌ Face model loading failed</string>
+    <string name="home_auth_success_label">Authentication Successful</string>
+    <string name="home_timeline_phase_0">Commitment</string>
+    <string name="home_timeline_phase_1">Challenge</string>
+    <string name="home_timeline_phase_2">Proof</string>
+    <string name="home_timeline_phase_3">Verification</string>
+    <string name="home_opencv_init_failed">OpenCV initialization failed</string>
+    <string name="home_auth_biometric_failed">Biometric Authentication Failed</string>
+    <string name="home_auth_network_error">Network Error</string>
+    <string name="home_auth_verify_failed">Verification Failed</string>
+    <string name="home_auth_verify_failed_detail">❌ Backend verification failed, code=%1$d</string>
+
+    <!-- CommFragment -->
+    <string name="comm_title">Operator Information</string>
+    <string name="comm_subtitle">Tap an operator to view activated eSIM services</string>
+    <string name="comm_subtitle_detail">Tap an operator card to expand number list</string>
+    <string name="comm_expand_title">Expand to View Numbers</string>
+    <string name="comm_status_bound">Bound</string>
+    <string name="comm_status_unbound">Not Activated</string>
+    <string name="comm_status_not_activated">Not Activated</string>
+    <string name="comm_no_service">eSIM service not yet activated</string>
+    <string name="comm_label_phone">Phone Number</string>
+    <string name="comm_label_iccid">ICCID</string>
+    <string name="comm_label_activated_time">Activation Time</string>
+
+    <!-- Operator names -->
+    <string name="operator_china_mobile">China Mobile</string>
+    <string name="operator_china_unicom">China Unicom</string>
+    <string name="operator_china_telecom">China Telecom</string>
+
+    <!-- LogFragment -->
+    <string name="log_title">Auth Log</string>
+    <string name="log_btn_clear">Clear All</string>
+    <string name="log_empty">No auth logs</string>
+    <string name="log_dialog_clear_title">Clear Logs</string>
+    <string name="log_dialog_clear_message">Clear all auth logs?</string>
+    <string name="log_dialog_confirm">Confirm</string>
+    <string name="log_dialog_cancel">Cancel</string>
+    <string name="log_status_success">Success</string>
+    <string name="log_status_failed">Failed</string>
+
+    <!-- AuthLogItem -->
+    <string name="log_item_session_prefix">Session: %1$s…</string>
+    <string name="log_item_phone_prefix">Phone: %1$s</string>
+    <string name="log_item_phone_none">Phone: Unassigned</string>
+    <string name="log_item_duration_format">%1$d ms</string>
+
+    <!-- ActivationSuccessDialog -->
+    <string name="dialog_success_title">eSIM Activation Successful</string>
+    <string name="dialog_success_subtitle">Your digital identity has been bound</string>
+    <string name="dialog_success_label_phone">Phone Number</string>
+    <string name="dialog_success_label_time">Activation Time</string>
+    <string name="dialog_success_label_operator">Operator</string>
+    <string name="dialog_success_btn_done">Done</string>
+
+    <!-- BottomNavigation -->
+    <string name="nav_home">Home</string>
+    <string name="nav_comm">Comm</string>
+    <string name="nav_logs">Logs</string>
+    <string name="nav_profile">Profile</string>
+
+    <!-- ActivationViewModel -->
+    <string name="auth_prepare_tee">Verifying device GSMA certificate…</string>
+    <string name="auth_generate_proof">Generating commitments and precomputing…</string>
+    <string name="auth_request_challenge">Requesting backend challenge…</string>
+    <string name="auth_verify_challenge">Executing post-quantum proof…</string>
+    <string name="auth_download_profile">Downloading eSIM Profile…</string>
+    <string name="auth_write_euicc">Writing to eUICC…</string>
+    <string name="auth_label_prepare_tee">Verifying device GSMA certificate…</string>
+    <string name="auth_label_generate_proof">Generating commitments and precomputing…</string>
+    <string name="auth_label_request_challenge">Requesting backend challenge…</string>
+    <string name="auth_label_verify_challenge">Submitting verification…</string>
+    <string name="auth_label_download_profile">Downloading eSIM Profile…</string>
+    <string name="auth_label_write_euicc">Writing to eUICC…</string>
+
+    <!-- Generic / Shared -->
+    <string name="generic_confirm">Confirm</string>
+    <string name="generic_cancel">Cancel</string>
+    <string name="generic_arrow">&gt;</string>
+    <string name="generic_ok">OK</string>
+</resources>

@@ -1,0 +1,24 @@
+Paper: Figure 8, Appendix D (Resistance to Real-World Attacks)
+
+Claim: Sparse-noise degradation of the flooding term is detected by the
+multi-norm check (ell_1 lower bound), rejecting low-density injections.
+
+Experiment (QEMU ARM64 emulation):
+  qemu-aarch64-static -L /usr/aarch64-linux-gnu \
+      artifact/terminal/euicc/build/arm64/bench_pqzkesim_comprehensive --only sparse
+
+Input: none
+
+Expected output: sparse_noise_attack_results.csv
+  columns: rho, detection_rate, false_reject_rate, avg_total_us
+
+Runtime: ~1-2 min
+
+Resources: 1 CPU core, <100 MB RAM, <1 MB disk
+
+Tolerance:
+  - detection_rate: deterministic at the extremes -- 1.0 for rho <= 0.75
+    (below the geometric threshold rho* = 0.78), 0.0 for rho = 1.0 (honest
+    noise). The rho = 0.90 row is the transition band and is not compared.
+  - false_reject_rate: deterministic (0.0 for honest runs).
+  - timing: +-50%.

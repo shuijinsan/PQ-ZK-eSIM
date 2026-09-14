@@ -1,0 +1,20 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Base application theme. -->
+    <style name="Base.Theme.PQZKEsim" parent="Theme.Material3.DayNight.NoActionBar">
+        <item name="colorPrimary">#1677FF</item>
+        <item name="colorPrimaryVariant">#0D5ECC</item>
+    </style>
+
+    <!-- BottomNavigationView 文字样式（夜间模式适配） -->
+    <style name="BottomNavTextActive">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">#60A5FA</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <style name="BottomNavTextInactive">
+        <item name="android:textSize">11sp</item>
+        <item name="android:textColor">#6B7280</item>
+        <item name="android:fontFamily">sans-serif</item>
+    </style>
+</resources>

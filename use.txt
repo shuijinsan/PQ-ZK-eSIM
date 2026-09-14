@@ -1,0 +1,16 @@
+Intended use:
+  - Academic research
+  - Artifact reproduction
+  - Security protocol evaluation
+
+Limitations (disclosed, not hidden):
+
+  - No proprietary commercial eUICC hardware is used.
+  - Cortex-A53 results are obtained through ARM64 QEMU emulation.
+  - The eUICC latency reported in Table 4 is an analytical projection,
+    not an on-card measurement.
+  - The TEE/eUICC integration is a research prototype/model,
+    not a production GSMA-certified deployment.
+  - The Artifact does not provide real biometric-dataset validation
+    of the conditional min-entropy assumption.
+  - The Artifact is not intended for production deployment.

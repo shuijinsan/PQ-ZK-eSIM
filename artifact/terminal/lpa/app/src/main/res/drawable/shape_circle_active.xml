@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Active timeline node — PQC blue fill with glow stroke -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <solid android:color="#1677FF" />
+    <stroke android:width="2dp" android:color="#85B8FF" />
+</shape>

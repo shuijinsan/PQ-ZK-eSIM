@@ -1,0 +1,10 @@
+# 约束与限制（如实说明，不隐藏）
+
+- 仅在 Ubuntu 22.04 LTS (x86_64) 上验证，未测试其他平台。
+- eUICC 运行在 QEMU ARM64 模拟环境，非真实硬件。
+- eUICC latency（Table 4）为 analytical projection，非 on-card 实测。
+- 安全性评估（claim 安全性）依赖外部 lattice-estimator 工具，未 vendor，
+  需 reviewer 自行安装并固定 commit（见 requirements.txt）。
+- Android 前端（artifact/terminal/lpa/）不参与 reviewer 的实验复现，仅作参考。
+- 后端环境信息待补充（见 README.txt）。
+- 不提供真实生物特征数据集对条件最小熵假设的验证。

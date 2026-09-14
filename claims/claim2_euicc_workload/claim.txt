@@ -1,0 +1,32 @@
+Paper: Figure 6, Section 7.2 (Performance and Reliability)
+
+Claim: Instruction-level profiling (Valgrind/Callgrind) of a single
+authentication session (Release -O2 build) shows the NTT transform
+(ntt_core) is the most instruction-heavy function (~156M instructions),
+reflecting the modular-arithmetic cost of the LPA/Server-side NTT. The
+eUICC's own work (poly_mul_scalar_coeff / pqzk_vec_scalar_mul) is cheaper
+in instruction count and remains NTT-free (code-level, claim1).
+
+Experiment (native x86, single session; Valgrind cannot run under QEMU):
+  cmake --build build --target bench_pqzkesim      (Release -O2)
+  # single session: build bench_pqzkesim with PERF_REPEAT=1
+  valgrind --tool=callgrind --callgrind-out-file=/tmp/cg.out \
+      artifact/terminal/euicc/build/bench_pqzkesim --perf
+  parse callgrind.out for per-function exclusive Ir (top project functions)
+
+Input: none
+
+Expected output: callgrind_top_functions.csv
+  columns: function, instructions
+
+Runtime: ~1-2 min (single session under Valgrind)
+
+Resources: 1 CPU core, ~300 MB RAM (Valgrind), <10 MB disk
+
+Classification: B (requires Valgrind >= 3.20; the top-function list is
+compiler/version-dependent).
+
+Tolerance:
+  - Deterministic (ranking): ntt_core is the #1 function; the eUICC path
+    performs no NTT (code-level, claim1).
+  - Instruction counts: not compared (toolchain/version-dependent).

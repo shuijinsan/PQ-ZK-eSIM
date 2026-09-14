@@ -1,0 +1,28 @@
+# ============================================================
+# PQ-ZK-eSIM Artifact — 依赖清单（reviewer 需要安装的软件与版本）
+# 依据：THIRD_PARTY.md + build.sh + 各 claim run.sh + 实际代码
+# ============================================================
+
+## 终端 C 核心编译（artifact/terminal/euicc/）
+- gcc / g++            （C11 / C++17）
+- CMake                >= 3.22
+- gcc-aarch64-linux-gnu （AArch64 交叉编译工具链）
+- qemu-user-static     （提供 qemu-aarch64-static，ARM64 模拟执行）
+
+## 密码学库
+- OpenSSL              3.0.13   （libcrypto / libssl）
+- liboqs               0.15.0   （ML-KEM-768 / ML-DSA-65）
+
+## 实验与绘图（claims/ + scripts/）
+- Python 3
+- numpy
+- pandas
+- matplotlib
+- Valgrind             >= 3.20   （Callgrind，claim2 用）
+
+## 安全性评估（外部工具，未 vendor）
+- lattice-estimator     commit d2bf9ca2709d784dd56d42032e60e760202a4107
+- fpylll               （lattice-estimator 后端）
+
+## 后端
+（后端环境信息待补充，见 README.txt）
