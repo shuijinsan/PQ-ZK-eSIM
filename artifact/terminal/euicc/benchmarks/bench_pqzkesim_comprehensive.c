@@ -18,6 +18,7 @@
 extern int mode_switch(const char*,const uint8_t[PQZK_MNO_ID_BYTES],const uint8_t[PQZK_MNO_ID_BYTES]);
 
 static double get_time_us(void){struct timespec ts;clock_gettime(CLOCK_MONOTONIC,&ts);return(double)ts.tv_sec*1e6+(double)ts.tv_nsec/1e3;}
+static void sleep_1ms(void){struct timespec ts={0,1000000L};nanosleep(&ts,NULL);}
 static long get_rss_kb(void) {
     FILE* fp = fopen("/proc/self/status", "r");
     if (!fp) return 0;
@@ -88,7 +89,7 @@ static PQ_ZK_ErrorCode run_one_trial(
     t0=get_time_us();
     poly_vec_t M_mask;PQC_GenerateMask(k_sym_nvram,c_seed,ctr_local,R_dyn,&M_mask);
     poly_vec_t zmm,zu;pqzk_vec_sub(&resp_z,&M_mask,&zmm, PQ_ZK_M);
-    for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=zmm.coeffs[i];if(v>PQ_ZK_Q_VAL/2)v-=PQ_ZK_Q_VAL;zu.coeffs[i]=v;}
+    for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=zmm.coeffs[i];if (v > PQ_ZK_Q_VAL / 2) v -= PQ_ZK_Q_VAL;}
     norm_precheck(&zu,params,ov,un,l1);
     PQ_ZK_ErrorCode vrc=PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&resp_z,c_seed,R_dyn,&M_mask,params);
     timings[6]=get_time_us()-t0;
@@ -142,17 +143,20 @@ static void run_sparse_noise_attack_experiment(void){
             double t0=get_time_us();
             poly_vec_t rz;PQC_LPA_Aggregate(&zsm,&ya,&rz);
             poly_vec_t Mm;PQC_GenerateMask(k_sym,cs,ctr,Rd,&Mm);
-            poly_vec_t zmm,zu;pqzk_vec_sub(&rz,&Mm,&zmm,PQ_ZK_M);
+            poly_vec_t zmm; pqzk_vec_sub(&rz, &Mm, &zmm, PQ_ZK_M);
             int32_t inf=0;int64_t l2=0,l1=0;
             for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){
-                int32_t v=zmm.coeffs[i];if(v>PQ_ZK_Q_VAL/2)v-=PQ_ZK_Q_VAL;zu.coeffs[i]=v;
+                int32_t v=zmm.coeffs[i];if (v > PQ_ZK_Q_VAL / 2) v -= PQ_ZK_Q_VAL;
                 int32_t av=v<0?-v:v;if(av>inf)inf=av;l2+=(int64_t)v*v;l1+=av;
             }
             int f_l2lo=l2<(int64_t)params.beta_min*params.beta_min;
             int f_l2hi=l2>(int64_t)params.beta_final*params.beta_final;
             int f_inf=inf>(int32_t)PQ_ZK_BETA_INF;
             int f_l1=params.beta_l1>0&&l1<(int64_t)params.beta_l1;
-            if(f_l2lo)l2lo++;if(f_l2hi)l2hi++;if(f_inf)linf++;if(f_l1)l1lo++;
+            if (f_l2lo) l2lo++;
+            if (f_l2hi) l2hi++;
+            if (f_inf)  linf++;
+            if (f_l1)   l1lo++;
             if(f_l2lo||f_l2hi||f_inf||f_l1)detected++;
 
             PQ_ZK_ErrorCode vr=PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&rz,cs,Rd,&Mm,&params);
@@ -344,21 +348,21 @@ static void run_memory_experiment(void){
         PQC_eUICC_Init(nd,eid,16,&sk_s,k_sym,32,c,k_tee,32,salt,R_bio,cred_kyc,64);
         nvram_state_t st;nvram_read(nd,&st);uint64_t ctr=st.ctr_local;
         poly_vec_t Wp,Ws,W;uint8_t sy[PQ_ZK_SEED_BYTES],MW[PQ_ZK_MAC_BYTES];
-        usleep(1000); rb[0][r]=get_rss_kb(); usleep(1000); PQC_PreCompute(&Wp,sy); usleep(1000); ra[0][r]=get_rss_kb(); usleep(1000);
-        usleep(1000); rb[1][r]=get_rss_kb(); usleep(1000); PQC_eUICC_Commit(nd,&Ws,MW); usleep(1000); ra[1][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[0][r]=get_rss_kb(); sleep_1ms(); PQC_PreCompute(&Wp,sy); sleep_1ms(); ra[0][r]=get_rss_kb(); sleep_1ms();
+        sleep_1ms(); rb[1][r]=get_rss_kb(); sleep_1ms(); PQC_eUICC_Commit(nd,&Ws,MW); sleep_1ms(); ra[1][r]=get_rss_kb(); sleep_1ms();
         pqzk_vec_add(&Ws,&Wp,&W, PQ_ZK_K);
         uint8_t cs[PQ_ZK_SEED_BYTES];pqzk_rand_bytes(cs,PQ_ZK_SEED_BYTES);poly_t ca;
-        usleep(1000); rb[2][r]=get_rss_kb(); usleep(1000); PQC_GenChallenge(&W,cs,&ca); usleep(1000); ra[2][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[2][r]=get_rss_kb(); sleep_1ms(); PQC_GenChallenge(&W,cs,&ca); sleep_1ms(); ra[2][r]=get_rss_kb(); sleep_1ms();
         uint8_t cb[8];write_le64(cb,ctr);uint8_t Rd[32];
         pqzk_iov_t rv[]={{R_bio,32},{cb,8},{NULL,0}};pqzk_sha3_256_iov(rv,Rd);
         uint8_t tok[PQ_ZK_MAC_BYTES];
-        usleep(1000); rb[3][r]=get_rss_kb(); usleep(1000); build_auth_token(k_tee,&ca,ctr,Rd,tok); usleep(1000); ra[3][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[3][r]=get_rss_kb(); sleep_1ms(); build_auth_token(k_tee,&ca,ctr,Rd,tok); sleep_1ms(); ra[3][r]=get_rss_kb(); sleep_1ms();
         poly_vec_t zsm;
-        usleep(1000); rb[4][r]=get_rss_kb(); usleep(1000); PQC_ComputeZ_and_Mask(nd,&ca,cs,Rd,tok,&zsm); usleep(1000); ra[4][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[4][r]=get_rss_kb(); sleep_1ms(); PQC_ComputeZ_and_Mask(nd,&ca,cs,Rd,tok,&zsm); sleep_1ms(); ra[4][r]=get_rss_kb(); sleep_1ms();
         poly_vec_t yp,rz;PQC_RegenerateYpub(sy,&yp);
-        usleep(1000); rb[5][r]=get_rss_kb(); usleep(1000); PQC_LPA_Aggregate(&zsm,&yp,&rz); usleep(1000); ra[5][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[5][r]=get_rss_kb(); sleep_1ms(); PQC_LPA_Aggregate(&zsm,&yp,&rz); sleep_1ms(); ra[5][r]=get_rss_kb(); sleep_1ms();
         poly_vec_t Mm;PQC_GenerateMask(k_sym,cs,ctr,Rd,&Mm);
-        usleep(1000); rb[6][r]=get_rss_kb(); usleep(1000); PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&rz,cs,Rd,&Mm,&params); usleep(1000); ra[6][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[6][r]=get_rss_kb(); sleep_1ms(); PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&rz,cs,Rd,&Mm,&params); sleep_1ms(); ra[6][r]=get_rss_kb(); sleep_1ms();
         if(ra[6][r]>peak)peak=ra[6][r];}
     for(int i=0;i<7;i++){long sb=0,sa=0;for(int r=0;r<trials;r++){sb+=rb[i][r];sa+=ra[i][r];}long ab=sb/trials,aa=sa/trials;fprintf(csv,"%s,%ld,%ld,%ld,%ld\n",pn[i],ab,aa,aa-ab,peak);}
     long lpa_rss=0, euicc_rss=0, server_rss=0;

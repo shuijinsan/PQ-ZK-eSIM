@@ -37,19 +37,19 @@ static void hash_node(const uint8_t left[PQZK_MERKLE_HASH_BYTES],
                       uint8_t       out[PQZK_MERKLE_HASH_BYTES])
 {
     pqzk_iov_t iov[] = {
-            { left,  PQZK_MERKLE_HASH_BYTES },
-            { right, PQZK_MERKLE_HASH_BYTES },
-            { NULL, 0 }
+        { left,  PQZK_MERKLE_HASH_BYTES },
+        { right, PQZK_MERKLE_HASH_BYTES },
+        { NULL, 0 }
     };
     pqzk_sha3_256_iov(iov, out);
 }
 
 int PQC_MerkleTree_Build(
-        const uint8_t feature_blocks[][PQZK_MERKLE_HASH_BYTES],
-        size_t         n_blocks,
-        const uint8_t  salt[32],
-        const uint8_t  did[16],
-        merkle_tree_t *tree_out)
+    const uint8_t feature_blocks[][PQZK_MERKLE_HASH_BYTES],
+    size_t         n_blocks,
+    const uint8_t  salt[32],
+    const uint8_t  did[16],
+    merkle_tree_t *tree_out)
 {
     if (!feature_blocks || n_blocks == 0 || !tree_out) return -1;
     if (n_blocks > PQZK_MERKLE_MAX_LEAVES)             return -2;
@@ -67,10 +67,10 @@ int PQC_MerkleTree_Build(
                                ? feature_blocks[i]
                                : feature_blocks[n_blocks - 1];
         pqzk_iov_t leaf_iov[] = {
-                { salt,  32                     },
-                { did,   16                     },
-                { block, PQZK_MERKLE_HASH_BYTES },
-                { NULL, 0 }
+            { salt,  32                     },
+            { did,   16                     },
+            { block, PQZK_MERKLE_HASH_BYTES },
+            { NULL, 0 }
         };
         pqzk_sha3_256_iov(leaf_iov, tree_out->nodes[0][i]);
     }
@@ -119,10 +119,10 @@ int PQC_MerkleTree_GetPath(const merkle_tree_t *tree, uint32_t M1,
 }
 
 int PQC_MerkleTree_VerifyPath(
-        const uint8_t        leaf_hash[PQZK_MERKLE_HASH_BYTES],
-        const merkle_path_t *path,
-        const uint8_t        expected_root[PQZK_MERKLE_HASH_BYTES],
-        const uint8_t        salt[32])
+    const uint8_t        leaf_hash[PQZK_MERKLE_HASH_BYTES],
+    const merkle_path_t *path,
+    const uint8_t        expected_root[PQZK_MERKLE_HASH_BYTES],
+    const uint8_t        salt[32])
 {
     if (!leaf_hash || !path || !expected_root) return -1;
     if (path->depth == 0 || path->depth > PQZK_MERKLE_MAX_DEPTH) return -1;

@@ -69,7 +69,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="手机号: +86 138-0001-0001"
+            android:text="Phone Number: +86 138-0001-0001"
             android:textColor="#6B7280"
             android:textSize="10sp"
             android:fontFamily="monospace" />

@@ -36,35 +36,59 @@ static void poly_mul_scalar_coeff(const int32_t *a, int pos, int coeff_val,
  * ================================================================ */
 void pqzk_sample_in_ball(const uint8_t hash[32], poly_t *c)
 {
-    uint8_t buf[PQ_ZK_N * 3];
-    pqzk_shake256(hash, 32, buf, sizeof(buf));
-    memset(c->coeffs, 0, sizeof(c->coeffs));
-
-    int32_t perm[PQ_ZK_N];
-    for (int i = 0; i < PQ_ZK_N; i++) perm[i] = (int32_t)i;
-
-    size_t pos_off  = 0;
-    size_t sign_off = (size_t)(2 * PQ_ZK_N);
-
-    for (int i = PQ_ZK_N - 1; i >= PQ_ZK_N - PQ_ZK_CHALLENGE_WEIGHT; i--) {
-        uint32_t rv;
-        uint32_t threshold = (uint32_t)(0x10000 / (uint32_t)(i + 1))
-                             * (uint32_t)(i + 1);
-        do {
-            if (pos_off + 1 >= sizeof(buf)) pos_off = 0;
-            rv = (uint32_t)buf[pos_off]
-               | ((uint32_t)buf[pos_off + 1] << 8);
-            pos_off += 2;
-        } while (rv >= threshold);
-
-        int j = (int)(rv % (uint32_t)(i + 1));
-        int32_t tmp = perm[i]; perm[i] = perm[j]; perm[j] = tmp;
-
-        if (sign_off >= sizeof(buf)) sign_off = PQ_ZK_N;
-        int32_t sign = (buf[sign_off] & 0x01) ? 1 : -1;
-        sign_off++;
-        c->coeffs[perm[i]] = sign;
+    /*
+     * FIPS-204 / ML-DSA-style SampleInBall with the protocol-specific
+     * weight kappa=35.  SHAKE256 is treated as an XOF stream: the first
+     * 64 bits provide signs and subsequent bytes select positions using
+     * rejection sampling exactly as in the reference poly_challenge path.
+     */
+    size_t cap = 512;
+    uint8_t *buf = (uint8_t *)malloc(cap);
+    if (!buf) {
+        memset(c->coeffs, 0, sizeof(c->coeffs));
+        return;
     }
+    if (pqzk_shake256(hash, 32, buf, cap) != 0) {
+        memset(c->coeffs, 0, sizeof(c->coeffs));
+        free(buf);
+        return;
+    }
+
+    memset(c->coeffs, 0, sizeof(c->coeffs));
+    uint64_t signs = read_le64(buf);
+    size_t pos = 8;
+
+    for (int i = PQ_ZK_N - PQ_ZK_CHALLENGE_WEIGHT; i < PQ_ZK_N; i++) {
+        uint8_t b;
+        do {
+            if (pos >= cap) {
+                size_t new_cap = cap * 2;
+                uint8_t *new_buf = (uint8_t *)realloc(buf, new_cap);
+                if (!new_buf) {
+                    secure_zero(buf, cap);
+                    free(buf);
+                    memset(c->coeffs, 0, sizeof(c->coeffs));
+                    return;
+                }
+                buf = new_buf;
+                if (pqzk_shake256(hash, 32, buf, new_cap) != 0) {
+                    secure_zero(buf, new_cap);
+                    free(buf);
+                    memset(c->coeffs, 0, sizeof(c->coeffs));
+                    return;
+                }
+                cap = new_cap;
+            }
+            b = buf[pos++];
+        } while (b > (uint8_t)i);
+
+        c->coeffs[i] = c->coeffs[b];
+        c->coeffs[b] = 1 - 2 * (int32_t)(signs & 1u);
+        signs >>= 1;
+    }
+
+    secure_zero(buf, cap);
+    free(buf);
 }
 
 /* ================================================================
@@ -147,26 +171,53 @@ void pqzk_parse_poly_vec(const uint8_t *stream, size_t stream_len,
 static void sample_uniform_matrix_poly(const uint8_t seed[32], int row, int col,
                                        int32_t out[PQ_ZK_N])
 {
-    uint8_t domain[38];
-    uint8_t buf[384];
-    uint32_t block = 0;
+    /* Seed-expand one matrix polynomial with SHAKE128, then apply the
+     * same 23-bit rejection rule used for q=8380417. */
+    uint8_t domain[34];
+    size_t cap = 1024;
+    uint8_t *buf = (uint8_t *)malloc(cap);
     int filled = 0;
+    size_t pos = 0;
+
     memcpy(domain, seed, 32);
     domain[32] = (uint8_t)row;
     domain[33] = (uint8_t)col;
-    while (filled < PQ_ZK_N) {
-        write_le32(domain + 34, block++);
-        pqzk_shake256(domain, sizeof(domain), buf, sizeof(buf));
-        for (size_t pos = 0; pos + 3 <= sizeof(buf) && filled < PQ_ZK_N; pos += 3) {
-            uint32_t v = ((uint32_t)buf[pos]
-                        | ((uint32_t)buf[pos + 1] << 8)
-                        | ((uint32_t)buf[pos + 2] << 16)) & 0x7FFFFFu;
-            if (v >= PQ_ZK_Q_VAL) continue;
-            out[filled++] = (int32_t)v;
-        }
+    if (!buf || pqzk_shake128(domain, sizeof(domain), buf, cap) != 0) {
+        if (buf) free(buf);
+        memset(out, 0, (size_t)PQ_ZK_N * sizeof(out[0]));
+        return;
     }
+
+    while (filled < PQ_ZK_N) {
+        if (pos + 3 > cap) {
+            size_t new_cap = cap * 2;
+            uint8_t *new_buf = (uint8_t *)realloc(buf, new_cap);
+            if (!new_buf) {
+                secure_zero(buf, cap);
+                free(buf);
+                memset(out, 0, (size_t)PQ_ZK_N * sizeof(out[0]));
+                return;
+            }
+            buf = new_buf;
+            if (pqzk_shake128(domain, sizeof(domain), buf, new_cap) != 0) {
+                secure_zero(buf, new_cap);
+                free(buf);
+                memset(out, 0, (size_t)PQ_ZK_N * sizeof(out[0]));
+                return;
+            }
+            cap = new_cap;
+        }
+        uint32_t v = ((uint32_t)buf[pos]
+                    | ((uint32_t)buf[pos + 1] << 8)
+                    | ((uint32_t)buf[pos + 2] << 16)) & 0x7FFFFFu;
+        pos += 3;
+        if (v >= PQ_ZK_Q_VAL) continue;
+        out[filled++] = (int32_t)v;
+    }
+
     secure_zero(domain, sizeof(domain));
-    secure_zero(buf, sizeof(buf));
+    secure_zero(buf, cap);
+    free(buf);
 }
 
 void pqzk_gen_matrix_A(const uint8_t seed[32], poly_vec_t *A_rows,

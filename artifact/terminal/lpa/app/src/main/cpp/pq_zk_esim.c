@@ -1,6 +1,6 @@
 /* pq_zk_esim.c — v5.1
  * PQ-ZK-eSIM protocol implementation
- * K=5, M=8, q=8380417, kappa=35, sigma=5000
+ * K=3, M=8, q=8380417, kappa=35, sigma=5000
  * int32_t coefficients, int64_t intermediates (anti-overflow)
  */
 
@@ -19,20 +19,28 @@
  * Internal utilities
  * ================================================================ */
 
-/* sample_binomial_B1 -- centered binomial B_1 (Paper Table 1): Pr[+1]=1/4, Pr[0]=1/2, Pr[-1]=1/4 */static void sample_binomial_B1(const uint8_t seed[32], poly_vec_t *v){    int total = PQ_ZK_M * PQ_ZK_N;    uint8_t buf[PQ_ZK_M * PQ_ZK_N * 2];    uint8_t expanded[40];    memcpy(expanded, seed, 32);    for (int block = 0; block * 32 < total * 2; block++) {        write_le64(expanded + 32, (uint64_t)block);        pqzk_sha3_256(expanded, 40, buf + block * 32);    }    for (int i = 0; i < total; i++) {        int a = (buf[2*i] >> 0) & 1;        int b = (buf[2*i] >> 1) & 1;        v->coeffs[i] = a - b;    }    secure_zero(buf, sizeof(buf));}
-static void sample_ternary(const uint8_t seed[32], poly_vec_t *y_sec)
+/* Uniform ternary sampler: each coefficient is exactly uniform in {-1,0,1}.
+ * Bytes >= 252 are rejected so reduction modulo 3 is unbiased. */
+static void sample_uniform_ternary(const uint8_t seed[32], poly_vec_t *out)
 {
-    uint8_t buf[PQ_ZK_M * PQ_ZK_N];
-    pqzk_shake256(seed, 32, buf, sizeof(buf));
-    for (int i = 0; i < PQ_ZK_M * PQ_ZK_N; i++) {
-        uint8_t b = buf[i] & 0x03;
-        if      (b == 2) y_sec->coeffs[i] =  1;
-        else if (b == 3) y_sec->coeffs[i] = -1;
-        else             y_sec->coeffs[i] =  0;
+    uint32_t block = 0;
+    int filled = 0;
+    uint8_t domain[36];
+    uint8_t buf[512];
+    memcpy(domain, seed, 32);
+    while (filled < PQ_ZK_M * PQ_ZK_N) {
+        write_le32(domain + 32, block++);
+        pqzk_shake256(domain, sizeof(domain), buf, sizeof(buf));
+        for (size_t i = 0; i < sizeof(buf) && filled < PQ_ZK_M * PQ_ZK_N; i++) {
+            uint8_t x = buf[i];
+            if (x >= 252) continue;
+            int t = (int)(x % 3);
+            out->coeffs[filled++] = (t == 0) ? -1 : (t == 1 ? 0 : 1);
+        }
     }
+    secure_zero(domain, sizeof(domain));
     secure_zero(buf, sizeof(buf));
 }
-
 /* ================================================================
  * Serialization — int32_t, 4 bytes per coefficient LE
  * ================================================================ */
@@ -54,9 +62,9 @@ void PQC_DecodePolyVec(const uint8_t *in_bytes, poly_vec_t *out_poly, int vec_di
     if (!in_bytes || !out_poly) return;
     for (int i = 0; i < vec_dim * PQ_ZK_N; i++) {
         uint32_t v = (uint32_t)in_bytes[i * 4]
-                     | ((uint32_t)in_bytes[i * 4 + 1] << 8)
-                     | ((uint32_t)in_bytes[i * 4 + 2] << 16)
-                     | ((uint32_t)in_bytes[i * 4 + 3] << 24);
+                   | ((uint32_t)in_bytes[i * 4 + 1] << 8)
+                   | ((uint32_t)in_bytes[i * 4 + 2] << 16)
+                   | ((uint32_t)in_bytes[i * 4 + 3] << 24);
         out_poly->coeffs[i] = (int32_t)v;
     }
 }
@@ -78,9 +86,9 @@ void PQC_DecodePoly(const uint8_t *in_bytes, poly_t *out_poly)
     if (!in_bytes || !out_poly) return;
     for (int i = 0; i < PQ_ZK_N; i++) {
         uint32_t v = (uint32_t)in_bytes[i * 4]
-                     | ((uint32_t)in_bytes[i * 4 + 1] << 8)
-                     | ((uint32_t)in_bytes[i * 4 + 2] << 16)
-                     | ((uint32_t)in_bytes[i * 4 + 3] << 24);
+                   | ((uint32_t)in_bytes[i * 4 + 1] << 8)
+                   | ((uint32_t)in_bytes[i * 4 + 2] << 16)
+                   | ((uint32_t)in_bytes[i * 4 + 3] << 24);
         out_poly->coeffs[i] = (int32_t)v;
     }
 }
@@ -104,8 +112,8 @@ static void decode_polyvec_24bit(const uint8_t *in, poly_vec_t *out, int vec_dim
     for (int i = 0; i < total; i++) {
         int j = i * 3;
         uint32_t v = (uint32_t)in[j]
-                     | ((uint32_t)in[j+1] << 8)
-                     | ((uint32_t)in[j+2] << 16);
+                   | ((uint32_t)in[j+1] << 8)
+                   | ((uint32_t)in[j+2] << 16);
         out->coeffs[i] = (int32_t)(v % PQ_ZK_Q_VAL);
     }
 }
@@ -115,7 +123,7 @@ static void decode_polyvec_24bit(const uint8_t *in, poly_vec_t *out, int vec_dim
     (8 + PQZK_MERKLE_MAX_DEPTH * (PQZK_MERKLE_HASH_BYTES + 1))
 
 static int serialize_merkle_path(const merkle_path_t *path,
-                                 uint8_t *buf, size_t buf_len)
+                                  uint8_t *buf, size_t buf_len)
 {
     if (!path || !buf) return -1;
     size_t needed = 8 + (size_t)path->depth * (PQZK_MERKLE_HASH_BYTES + 1);
@@ -133,7 +141,7 @@ static int serialize_merkle_path(const merkle_path_t *path,
 }
 
 /* ================================================================
- * Key Generation — K=5, M=8 rectangular MSIS
+ * Key Generation — K=3, M=8 systematic MLWE public key
  * ================================================================ */
 
 void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s)
@@ -141,7 +149,7 @@ void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s)
     if (!pk_t || !sk_s) return;
     uint8_t sk_seed[32];
     pqzk_rand_bytes(sk_seed, 32);
-    sample_binomial_B1(sk_seed, sk_s);
+    sample_uniform_ternary(sk_seed, sk_s);
     memcpy(pk_t, PQZK_MATRIX_A_SEED, 32);
 
     poly_vec_t A_rows[PQ_ZK_K];
@@ -192,16 +200,16 @@ void PQC_eUICC_Init(const char* nvram_dir,
 }
 
 PQ_ZK_ErrorCode PQC_Register(
-        const char    *nvram_dir,
-        const uint8_t  feature_blocks[][PQZK_MERKLE_HASH_BYTES],
-        size_t         n_blocks,
-        const uint8_t  k_sym[32],
-        const uint8_t  k_tee[32],
-        uint64_t       initial_ctr,
-        const uint8_t  mno_id[PQZK_MNO_ID_BYTES],
-        uint8_t        pk_t_out[PQ_ZK_PUBLICKEY_BYTES],
-        uint8_t        R_bio_out[32],
-        uint8_t        salt_out[32])
+    const char    *nvram_dir,
+    const uint8_t  feature_blocks[][PQZK_MERKLE_HASH_BYTES],
+    size_t         n_blocks,
+    const uint8_t  k_sym[32],
+    const uint8_t  k_tee[32],
+    uint64_t       initial_ctr,
+    const uint8_t  mno_id[PQZK_MNO_ID_BYTES],
+    uint8_t        pk_t_out[PQ_ZK_PUBLICKEY_BYTES],
+    uint8_t        R_bio_out[32],
+    uint8_t        salt_out[32])
 {
     if (!nvram_dir || !feature_blocks || !k_sym ||
         !k_tee || !mno_id || !pk_t_out || !R_bio_out || !salt_out)
@@ -284,7 +292,7 @@ void PQC_RegenerateYpub(const uint8_t seed_y[PQ_ZK_SEED_BYTES], poly_vec_t *y_pu
 }
 
 void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec,
-                      uint8_t MAC_W[PQ_ZK_MAC_BYTES])
+                       uint8_t MAC_W[PQ_ZK_MAC_BYTES])
 {
     if (!nvram_dir || !W_sec || !MAC_W) return;
     nvram_state_t state;
@@ -293,7 +301,7 @@ void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec,
     uint8_t ysec_seed[32];
     pqzk_rand_bytes(ysec_seed, 32);
     poly_vec_t y_sec;
-    sample_ternary(ysec_seed, &y_sec);
+    sample_uniform_ternary(ysec_seed, &y_sec);
     secure_zero(ysec_seed, 32);
 
     poly_vec_t A_rows[PQ_ZK_K];
@@ -306,10 +314,10 @@ void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec,
     PQC_EncodePolyVec(W_sec, wsec_bytes, PQ_ZK_K);
     write_le64(ctr_bytes, state.ctr_local);
     pqzk_iov_t mac_iov[] = {
-            { state.eid, NVRAM_EID_LEN },
-            { wsec_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
-            { ctr_bytes,  8 },
-            { NULL, 0 }
+        { state.eid, NVRAM_EID_LEN },
+        { wsec_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
+        { ctr_bytes,  8 },
+        { NULL, 0 }
     };
     /* HKDF: derive K_MAC from K_sym (Paper Table 2, Algorithm 4) */
     uint8_t k_mac[32];
@@ -337,9 +345,9 @@ void PQC_GenChallenge(const poly_vec_t *comm_W,
     uint8_t W_bytes[PQ_ZK_POLYVEC_BYTES];
     PQC_EncodePolyVec(comm_W, W_bytes, PQ_ZK_K);
     pqzk_iov_t iov[] = {
-            { nonce,   PQ_ZK_SEED_BYTES },
-            { W_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
-            { NULL, 0 }
+        { nonce,   PQ_ZK_SEED_BYTES },
+        { W_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
+        { NULL, 0 }
     };
     uint8_t hash[32];
     pqzk_sha3_256_iov(iov, hash);
@@ -351,15 +359,15 @@ void PQC_GenChallenge(const poly_vec_t *comm_W,
  * ================================================================ */
 
 PQ_ZK_ErrorCode TEE_GenerateAuthToken(
-        const char          *nvram_dir,
-        const poly_t        *c_agg,
-        const uint8_t        R_bio[PQZK_MERKLE_HASH_BYTES],
-        const merkle_tree_t *tree,
-        uint32_t             M1,
-        const uint8_t        k_tee[PQ_ZK_TEE_KEY_BYTES],
-        uint8_t              R_dynamic_out[PQ_ZK_SEED_BYTES],
-        merkle_path_t       *M2_out,
-        uint8_t              AuthToken_out[PQ_ZK_MAC_BYTES])
+    const char          *nvram_dir,
+    const poly_t        *c_agg,
+    const uint8_t        R_bio[PQZK_MERKLE_HASH_BYTES],
+    const merkle_tree_t *tree,
+    uint32_t             M1,
+    const uint8_t        k_tee[PQ_ZK_TEE_KEY_BYTES],
+    uint8_t              R_dynamic_out[PQ_ZK_SEED_BYTES],
+    merkle_path_t       *M2_out,
+    uint8_t              AuthToken_out[PQ_ZK_MAC_BYTES])
 {
     if (!nvram_dir || !c_agg || !R_bio || !tree ||
         !k_tee || !R_dynamic_out || !M2_out || !AuthToken_out)
@@ -374,9 +382,9 @@ PQ_ZK_ErrorCode TEE_GenerateAuthToken(
     write_le64(ctr_le8, nvram_st.ctr_local);
 
     pqzk_iov_t rdyn_iov[] = {
-            { R_bio,   PQZK_MERKLE_HASH_BYTES },
-            { ctr_le8, 8 },
-            { NULL, 0 }
+        { R_bio,   PQZK_MERKLE_HASH_BYTES },
+        { ctr_le8, 8 },
+        { NULL, 0 }
     };
     if (pqzk_sha3_256_iov(rdyn_iov, R_dynamic_out) != 0)
         return PQ_ZK_ERR_MAC_FAIL;
@@ -388,10 +396,10 @@ PQ_ZK_ErrorCode TEE_GenerateAuthToken(
     PQC_EncodePoly(c_agg, cagg_bytes);
 
     pqzk_iov_t auth_iov[] = {
-            { cagg_bytes,    PQ_ZK_POLY_BYTES },
-            { ctr_le8,       8 },
-            { R_dynamic_out, PQ_ZK_SEED_BYTES },
-            { NULL, 0 }
+        { cagg_bytes,    PQ_ZK_POLY_BYTES },
+        { ctr_le8,       8 },
+        { R_dynamic_out, PQ_ZK_SEED_BYTES },
+        { NULL, 0 }
     };
     if (pqzk_aes256_cmac(k_tee, auth_iov, AuthToken_out) != 0)
         return PQ_ZK_ERR_MAC_FAIL;
@@ -405,12 +413,12 @@ PQ_ZK_ErrorCode TEE_GenerateAuthToken(
  * ================================================================ */
 
 PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
-        const char*    nvram_dir,
-        const poly_t  *c_agg,
-        const uint8_t  c_seed[PQ_ZK_SEED_BYTES],
-        const uint8_t  R_dynamic[PQ_ZK_SEED_BYTES],
-        const uint8_t  AuthToken[PQ_ZK_MAC_BYTES],
-        poly_vec_t    *z_sec_masked)
+    const char*    nvram_dir,
+    const poly_t  *c_agg,
+    const uint8_t  c_seed[PQ_ZK_SEED_BYTES],
+    const uint8_t  R_dynamic[PQ_ZK_SEED_BYTES],
+    const uint8_t  AuthToken[PQ_ZK_MAC_BYTES],
+    poly_vec_t    *z_sec_masked)
 {
     if (!nvram_dir || !c_agg || !c_seed || !R_dynamic ||
         !AuthToken || !z_sec_masked)
@@ -426,10 +434,10 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
     write_le64(ctr_bytes, state.ctr_local);
 
     pqzk_iov_t auth_iov[] = {
-            { cagg_bytes, PQ_ZK_POLY_BYTES },
-            { ctr_bytes,  8 },
-            { R_dynamic,  PQ_ZK_SEED_BYTES },
-            { NULL, 0 }
+        { cagg_bytes, PQ_ZK_POLY_BYTES },
+        { ctr_bytes,  8 },
+        { R_dynamic,  PQ_ZK_SEED_BYTES },
+        { NULL, 0 }
     };
     uint8_t expected_token[PQ_ZK_MAC_BYTES];
     pqzk_aes256_cmac(state.k_tee, auth_iov, expected_token);
@@ -483,7 +491,7 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
     pqzk_vec_add(&y_sec, &S_c_agg, &z_sec, PQ_ZK_M);
 
     /* M_mask = Parse(PRF(K_sym, c_seed||ctr_session||R_dynamic)), M=8 dim */
-    size_t mask_stream_len = (size_t)PQ_ZK_M * PQ_ZK_N * 3;
+    size_t mask_stream_len = ((size_t)PQ_ZK_M * PQ_ZK_N + 128u) * 3u;
     uint8_t *mask_stream = (uint8_t *)malloc(mask_stream_len);
     if (!mask_stream) {
         secure_zero(&state, sizeof(state));
@@ -496,7 +504,7 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
     uint8_t k_prf[32];
     pqzk_hkdf_expand(state.k_sym, "PRF", 3, k_prf);
     pqzk_prf(k_prf, c_seed, ctr_session, R_dynamic,
-             mask_stream, mask_stream_len);
+              mask_stream, mask_stream_len);
 
     poly_vec_t M_mask;
     pqzk_parse_poly_vec(mask_stream, mask_stream_len, &M_mask);
@@ -530,7 +538,7 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
  * ================================================================ */
 
 void PQC_LPA_Aggregate(const poly_vec_t *z_sec_masked,
-                       const poly_vec_t *y_pub, poly_vec_t *resp_z)
+                        const poly_vec_t *y_pub, poly_vec_t *resp_z)
 {
     if (!z_sec_masked || !y_pub || !resp_z) return;
     pqzk_vec_add(z_sec_masked, y_pub, resp_z, PQ_ZK_M);
@@ -541,13 +549,13 @@ void PQC_LPA_Aggregate(const poly_vec_t *z_sec_masked,
  * ================================================================ */
 
 void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES],
-                      const uint8_t c_seed[PQ_ZK_SEED_BYTES],
-                      uint64_t ctr_session,
-                      const uint8_t R_dynamic[PQ_ZK_SEED_BYTES],
-                      poly_vec_t *M_mask)
+                       const uint8_t c_seed[PQ_ZK_SEED_BYTES],
+                       uint64_t ctr_session,
+                       const uint8_t R_dynamic[PQ_ZK_SEED_BYTES],
+                       poly_vec_t *M_mask)
 {
     if (!K_sym || !c_seed || !R_dynamic || !M_mask) return;
-    size_t stream_len = (size_t)PQ_ZK_M * PQ_ZK_N * 3;
+    size_t stream_len = ((size_t)PQ_ZK_M * PQ_ZK_N + 128u) * 3u;
     uint8_t *stream = (uint8_t *)malloc(stream_len);
     if (!stream) return;
     uint8_t k_prf[32];
@@ -559,14 +567,14 @@ void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES],
 }
 
 PQ_ZK_ErrorCode PQC_VerifyEngine(
-        const uint8_t    mat_A_seed[32],
-        const uint8_t    pk_t[PQ_ZK_PUBLICKEY_BYTES],
-        const poly_vec_t *comm_W,
-        const poly_vec_t *resp_z,
-        const uint8_t    nonce_s[32],
-        const uint8_t    R_dynamic[32],
-        const poly_vec_t *M_mask,
-        const beta_params_t *beta_params)
+    const uint8_t    mat_A_seed[32],
+    const uint8_t    pk_t[PQ_ZK_PUBLICKEY_BYTES],
+    const poly_vec_t *comm_W,
+    const poly_vec_t *resp_z,
+    const uint8_t    nonce_s[32],
+    const uint8_t    R_dynamic[32],
+    const poly_vec_t *M_mask,
+    const beta_params_t *beta_params)
 {
     if (!mat_A_seed || !pk_t || !comm_W || !resp_z ||
         !nonce_s || !R_dynamic || !M_mask || !beta_params)
@@ -641,7 +649,7 @@ PQ_ZK_ErrorCode PQC_VerifyEngine(
  * ================================================================ */
 
 static void evolve_key_n_steps(const uint8_t k_in[32], const uint8_t d_seed[32],
-                               const uint8_t *eid, size_t eid_len, uint32_t n, uint8_t k_out[32])
+    const uint8_t *eid, size_t eid_len, uint32_t n, uint8_t k_out[32])
 {
     uint8_t tmp[32];
     memcpy(tmp, k_in, 32);
@@ -656,17 +664,17 @@ static void evolve_key_n_steps(const uint8_t k_in[32], const uint8_t d_seed[32],
 }
 
 static void compute_mac_w(const uint8_t k_try[32], const poly_vec_t *W_sec,
-                          uint64_t ctr_window, const uint8_t *eid, uint8_t mac_out[PQ_ZK_MAC_BYTES])
+    uint64_t ctr_window, const uint8_t *eid, uint8_t mac_out[PQ_ZK_MAC_BYTES])
 {
     uint8_t wsec_bytes[PQ_ZK_POLYVEC_BYTES];
     uint8_t ctr_bytes[8];
     PQC_EncodePolyVec(W_sec, wsec_bytes, PQ_ZK_K);
     write_le64(ctr_bytes, ctr_window);
     pqzk_iov_t iov[] = {
-            { eid, NVRAM_EID_LEN },
-            { wsec_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
-            { ctr_bytes,  8 },
-            { NULL, 0 }
+        { eid, NVRAM_EID_LEN },
+        { wsec_bytes, (size_t)PQ_ZK_K * PQ_ZK_N * 4 },
+        { ctr_bytes,  8 },
+        { NULL, 0 }
     };
     /* HKDF: derive K_MAC from k_try */
     uint8_t k_mac[32];
@@ -678,9 +686,9 @@ static void compute_mac_w(const uint8_t k_try[32], const poly_vec_t *W_sec,
 }
 
 PQ_ZK_ErrorCode PQC_Server_SlidingWindowSync(
-        const server_state_t *srv, const poly_vec_t *W_sec,
-        const uint8_t MAC_W[PQ_ZK_MAC_BYTES], uint32_t window_size,
-        uint64_t *ctr_session_out, uint8_t k_synced_out[32])
+    const server_state_t *srv, const poly_vec_t *W_sec,
+    const uint8_t MAC_W[PQ_ZK_MAC_BYTES], uint32_t window_size,
+    uint64_t *ctr_session_out, uint8_t k_synced_out[32])
 {
     if (!srv || !W_sec || !MAC_W || !ctr_session_out || !k_synced_out)
         return PQ_ZK_ERR_INVALID_PARAM;
@@ -719,7 +727,7 @@ PQ_ZK_ErrorCode PQC_Server_SlidingWindowSync(
 }
 
 PQ_ZK_ErrorCode PQC_Server_CommitSync(
-        server_state_t *srv_state_out, uint64_t ctr_session, const uint8_t k_synced[32])
+    server_state_t *srv_state_out, uint64_t ctr_session, const uint8_t k_synced[32])
 {
     if (!srv_state_out || !k_synced) return PQ_ZK_ERR_INVALID_PARAM;
     memcpy(srv_state_out->k_sym, k_synced, 32);

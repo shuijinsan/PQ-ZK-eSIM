@@ -7,7 +7,6 @@
 
     <style name="Theme.PQZKEsim" parent="Base.Theme.PQZKEsim" />
 
-    <!-- BottomNavigationView 文字样式：紧凑排版，图标与文字间距小 -->
     <style name="BottomNavTextActive">
         <item name="android:textSize">11sp</item>
         <item name="android:textColor">#1677FF</item>
@@ -24,13 +23,11 @@
         <item name="android:includeFontPadding">false</item>
     </style>
 
-    <!-- ActivationSuccessDialog 窗口动画 -->
     <style name="ActivationSuccessDialogAnimation" parent="android:style/Theme.Dialog">
         <item name="android:windowEnterAnimation">@anim/dialog_fade_in</item>
         <item name="android:windowExitAnimation">@anim/dialog_fade_out</item>
     </style>
 
-    <!-- ActivationSuccessDialog 全屏透明主题：无背景、无 dim、无标题栏 -->
     <style name="TransparentDialogTheme" parent="Theme.AppCompat.Dialog">
         <item name="android:windowBackground">@android:color/transparent</item>
         <item name="android:windowNoTitle">true</item>

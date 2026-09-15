@@ -2,8 +2,6 @@
 #include <string>
 #include <cstring>
 #include <android/log.h>
-#include <android/bitmap.h> // 用于处理 Bitmap
-#include <opencv2/opencv.hpp> // OpenCV 头文件
 #include <opencv2/objdetect.hpp>
 #include "pq_zk_esim.h"
 #include "pqzk_internal.h"
@@ -23,15 +21,12 @@
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
 
-cv::CascadeClassifier face_detector;// 定义全局检测器变量
-static std::mutex face_detector_mutex;       // 保护 face_detector 的跨线程访问
+cv::CascadeClassifier face_detector;
+static std::mutex face_detector_mutex;
 
-// 定义双向兼容宏
 #define JNI_MAIN(name) Java_com_yourcompany_pqzkesim_MainActivity_##name
 #define JNI_GLOBAL(name) Java_com_yourcompany_pqzkesim_NativeLib_##name
 
-// ===================== 【严格对齐头文件】工具函数 =====================
-// seed_y 内存加密（防明文泄露，严格用PQ_ZK_SEED_BYTES）
 #define SEED_ENCRYPT_MASK 0xA5
 static void encrypt_seed_y(uint8_t* seed) {
     for (int i = 0; i < PQ_ZK_SEED_BYTES; i++) {
@@ -39,7 +34,6 @@ static void encrypt_seed_y(uint8_t* seed) {
     }
 }
 
-// 【补充】向量加法 W = W_sec + W_pub（严格对齐环运算：结果 mod q）
 static void poly_vec_add(const poly_vec_t* a, const poly_vec_t* b, poly_vec_t* out) {
     for (int i = 0; i < PQ_ZK_K * PQ_ZK_N; i++) {
         int32_t v = a->coeffs[i] + b->coeffs[i];
@@ -49,7 +43,6 @@ static void poly_vec_add(const poly_vec_t* a, const poly_vec_t* b, poly_vec_t* o
     }
 }
 
-// 错误码定义（与上层对齐）
 #define ERROR_PARAM_NULL 1001
 #define ERROR_EID_LEN 1002
 #define ERROR_SK_LEN 1003
@@ -58,45 +51,35 @@ static void poly_vec_add(const poly_vec_t* a, const poly_vec_t* b, poly_vec_t* o
 
 static jint internal_PQC_1Reg(JNIEnv *env, jstring nvram_dir, jbyteArray out_t) {
 
-    // ========== 原有参数校验（无新增参数） ==========
     if (nvram_dir == nullptr || out_t == nullptr) {
-        LOGE("错误：参数为空");
+        LOGE("Error: null parameter");
         return -1;
     }
 
     const char *path = env->GetStringUTFChars(nvram_dir, nullptr);
     jbyte *t_ptr = env->GetByteArrayElements(out_t, nullptr);
 
-    // ========== 2. 安全初始化：改用堆内存（避免栈溢出） ==========
-    // 使用 malloc 分配大结构体，防止指纹识别回调触发的栈溢出闪退
     poly_vec_t *sk_s = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     if (sk_s == nullptr) {
-        LOGE("内存分配失败");
+        LOGE("Memory allocation failed");
         env->ReleaseByteArrayElements(out_t, t_ptr, JNI_ABORT);
         env->ReleaseStringUTFChars(nvram_dir, path);
         return -2;
     }
 
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];
-    // 生成真实密钥对
     PQC_GenKeyPair(pk_t, sk_s);
 
-    // 安全清零初始化（替代硬编码Dummy值，符合规范）
-    // 1. EID：GSMA标准eUICC设备ID（16字节，唯一标识）
     uint8_t eid[NVRAM_EID_LEN] = {
             0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,
             0x99,0xAA,0xBB,0xCC,0xDD,0xEE,0xFF,0x01
     };
-// 2. K_sym：预共享对称密钥（安全随机生成）
     uint8_t k_sym[NVRAM_SYM_LEN];
     pqzk_rand_bytes(k_sym, NVRAM_SYM_LEN);
-// 3. K_TEE-eUICC：内部总线密钥（安全随机生成）
     uint8_t k_tee[NVRAM_TEE_LEN];
     pqzk_rand_bytes(k_tee, NVRAM_TEE_LEN);
-// 4. 初始计数器（分工3.0：初始值=1）
     uint64_t initial_ctr = 1;
 
-    // ========== 调用底层初始化（函数无返回值） ==========
     PQC_eUICC_Init(
             path,
             eid, NVRAM_EID_LEN,
@@ -109,17 +92,14 @@ static jint internal_PQC_1Reg(JNIEnv *env, jstring nvram_dir, jbyteArray out_t) 
             nullptr, 0
     );
 
-    // 拷贝结果
     memcpy(t_ptr, pk_t, PQ_ZK_PUBLICKEY_BYTES);
 
-    // ========== 4. 安全释放内存（新增 sk_s 释放，防止内存泄漏） ==========
-    free(sk_s); // 使用完手动释放堆内存
+    free(sk_s);
 
-    // ========== 安全释放内存 ==========
     env->ReleaseByteArrayElements(out_t, t_ptr, 0);
     env->ReleaseStringUTFChars(nvram_dir, path);
 
-    LOGD("PQC_Reg 初始化完成且已安全释放堆内存");
+    LOGD("PQC_Reg initialization complete; heap memory securely released");
     return PQ_ZK_SUCCESS;
 }
 
@@ -129,36 +109,30 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeInitDetector(JNIEnv *env, jobject 
                                                            jstring model_path) {
     if (model_path == nullptr) return JNI_FALSE;
 
-    // 将 Java String 转换为 C 字符串
     const char *path = env->GetStringUTFChars(model_path, nullptr);
 
-    // 加载 OpenCV 模型到全局变量 face_detector
     std::lock_guard<std::mutex> lock(face_detector_mutex);
     bool success = face_detector.load(path);
 
     if (success) {
-        LOGD("人脸检测模型加载成功: %s", path);
+        LOGD("Face detector model loaded successfully: %s", path);
     } else {
-        LOGE("人脸检测模型加载失败！路径: %s", path);
+        LOGE("Face detector model failed to load; path: %s", path);
     }
 
     env->ReleaseStringUTFChars(model_path, path);
     return success ? JNI_TRUE : JNI_FALSE;
 }
 /**
- * 入口 A：供 MainActivity 使用 (维持现状，不破坏原有自动化测试流程)
- * 对应 Java 层：private external fun PQC_Reg(...)
  */
 JNIEXPORT jint JNICALL
 JNI_MAIN(PQC_1Reg)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyteArray out_t) {
-    // 调用内部静态函数
     return internal_PQC_1Reg(env, nvram_dir, out_t);
 }
 
-// 1. 对应 NativeLib.extractFaceFeature
 JNIEXPORT jbyteArray JNICALL
 JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
-    LOGD("NativeLib: 调用 extractFaceFeature");
+    LOGD("NativeLib: Calling extractFaceFeature");
 
     jbyteArray feature = env->NewByteArray(32);
     if (!bitmap) {
@@ -166,7 +140,6 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
         return feature;
     }
 
-    // ---- 1. 锁定 Bitmap 像素 ----
     AndroidBitmapInfo info;
     if (AndroidBitmap_getInfo(env, bitmap, &info) != ANDROID_BITMAP_RESULT_SUCCESS) {
         LOGE("extractFaceFeature: AndroidBitmap_getInfo failed");
@@ -179,7 +152,6 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
         return feature;
     }
 
-    // ---- 2. 转换为 OpenCV Mat ----
     cv::Mat frame;
     if (info.format == ANDROID_BITMAP_FORMAT_RGBA_8888) {
         cv::Mat tmp(info.height, info.width, CV_8UC4, pixels);
@@ -196,15 +168,12 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
 
     if (frame.empty()) return feature;
 
-    // ---- 3. 预处理 ----
     cv::equalizeHist(frame, frame);
     cv::GaussianBlur(frame, frame, cv::Size(3, 3), 0);
-    // 与 processFaceAndGetRbio 对齐：对比度增强，保证注册/认证特征亮度口径一致
     cv::Mat enhanced;
     cv::addWeighted(frame, 1.5, cv::Mat::zeros(frame.size(), frame.type()), 0, 0, enhanced);
     frame = enhanced;
 
-    // ---- 4. 人脸检测 ----
     std::vector<cv::Rect> faces;
     {
         std::lock_guard<std::mutex> lock(face_detector_mutex);
@@ -215,13 +184,11 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
     uint8_t template_hash[32] = {0};
 
     if (!faces.empty()) {
-        // 选最大人脸
         cv::Rect largest = faces[0];
         for (const auto &f : faces) {
             if (f.area() > largest.area()) largest = f;
         }
 
-        // 边界裁剪
         largest.x = std::max(0, largest.x);
         largest.y = std::max(0, largest.y);
         largest.width  = std::min(largest.width,  frame.cols - largest.x);
@@ -231,18 +198,15 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
         cv::Mat resized;
         cv::resize(faceROI, resized, cv::Size(64, 64));
 
-        // 统计特征
         cv::Scalar mean, stddev;
         double minVal, maxVal;
         cv::meanStdDev(resized, mean, stddev);
         cv::minMaxLoc(resized, &minVal, &maxVal);
 
-        // 边缘特征
         cv::Mat edges;
         cv::Canny(resized, edges, 50, 150);
         int edgeCount = cv::countNonZero(edges);
 
-        // 填充 32 字节特征
         template_hash[0]  = (uint8_t)mean[0];
         template_hash[1]  = (uint8_t)(stddev[0] * 10);
         template_hash[2]  = (uint8_t)minVal;
@@ -250,7 +214,6 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
         template_hash[4]  = (uint8_t)(edgeCount % 255);
         template_hash[5]  = (uint8_t)(largest.width & 0xFF);
 
-        // 分块均值
         int blockSize = 16;
         for (int i = 6; i < 32; i++) {
             int row = (i - 6) / 4;
@@ -265,7 +228,6 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
             }
         }
     } else {
-        // 无人脸时基于全图统计生成降级特征
         cv::Scalar mean = cv::mean(frame);
         for (int i = 0; i < 32; i++) {
             template_hash[i] = (uint8_t)(mean[0] + (i * 11) % 64);
@@ -278,7 +240,6 @@ JNI_GLOBAL(extractFaceFeature)(JNIEnv *env, jobject thiz, jobject bitmap) {
     return feature;
 }
 
-// ---- 人脸同人校验：保存注册时的人脸模板（32 字节）----
 JNIEXPORT jint JNICALL
 JNI_GLOBAL(saveFaceTemplate)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyteArray face_feature) {
     if (!nvram_dir || !face_feature) return -1;
@@ -305,7 +266,6 @@ JNI_GLOBAL(saveFaceTemplate)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyte
     return ret;
 }
 
-// ---- 人脸同人校验：比对当前特征与注册模板（1=同一人，0=不是）----
 JNIEXPORT jint JNICALL
 JNI_GLOBAL(verifyFace)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyteArray fresh_feature) {
     if (!nvram_dir || !fresh_feature) return 0;
@@ -325,13 +285,11 @@ JNI_GLOBAL(verifyFace)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyteArray 
     if (!fresh) { env->ReleaseStringUTFChars(nvram_dir, path); return 0; }
 
     int64_t total = 0;
-    // 1) 亮度/边缘全局统计（跳过 byte[1] 的 stddev 截断噪声、byte[5] 的方向相关值）
     int gidx[4] = {0, 2, 3, 4};
     for (int k = 0; k < 4; k++) {
         int d = (int)(uint8_t)stored[gidx[k]] - (int)(uint8_t)fresh[gidx[k]];
         total += (d < 0) ? -d : d;
     }
-    // 2) 16 个分块均值（byte[6..21]）排序后比较，容忍 90°/镜像带来的分块重排
     uint8_t a[16], b[16];
     for (int i = 0; i < 16; i++) { a[i] = stored[6 + i]; b[i] = (uint8_t)fresh[6 + i]; }
     for (int i = 1; i < 16; i++) { uint8_t t = a[i]; int j = i - 1; while (j >= 0 && a[j] > t) { a[j+1] = a[j]; j--; } a[j+1] = t; }
@@ -350,8 +308,6 @@ JNI_GLOBAL(verifyFace)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyteArray 
     return (mean_diff <= threshold) ? 1 : 0;
 }
 
-// 2. 对应 NativeLib.getDeviceStaticSalt
-// 首次调用时使用 pqzk_rand_bytes 生成真随机盐值并缓存，确保进程内一致性
 JNIEXPORT jbyteArray JNICALL
 JNI_GLOBAL(getDeviceStaticSalt)(JNIEnv *env, jobject thiz) {
     static uint8_t cached_salt[32] = {0};
@@ -368,7 +324,6 @@ JNI_GLOBAL(getDeviceStaticSalt)(JNIEnv *env, jobject thiz) {
     return salt;
 }
 
-// 3. 对应 NativeLib.calculateMerkleRoot
 JNIEXPORT jbyteArray JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_buildMerkleRoot(
         JNIEnv *env, jobject thiz,
@@ -381,7 +336,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_buildMerkleRoot(
         return nullptr;
     }
 
-    // 👉 1. 准备 feature blocks
     uint8_t features[PQZK_MERKLE_MAX_LEAVES][PQZK_MERKLE_HASH_BYTES];
 
     for (int i = 0; i < n; i++) {
@@ -399,27 +353,23 @@ Java_com_yourcompany_pqzkesim_NativeLib_buildMerkleRoot(
         env->DeleteLocalRef(row);  // prevent local ref table exhaustion
     }
 
-    // 👉 2. 获取 salt
     uint8_t salt[32];
     env->GetByteArrayRegion(saltArray, 0, 32, (jbyte *) salt);
 
-    // 👉 3. 构建 Merkle Tree
     merkle_tree_t tree;
-    uint8_t did[16] = {0}; // 默认DID，实际应用中应从设备获取
+    uint8_t did[16] = {0};
     int res = PQC_MerkleTree_Build(features, n, salt, did, &tree);
 
     if (res != 0) {
         return nullptr;
     }
 
-    // 👉 4. 返回 root（R_bio）
     jbyteArray result = env->NewByteArray(32);
     env->SetByteArrayRegion(result, 0, 32, (jbyte *) tree.root);
 
     return result;
 }
 
-// 4. 对应 NativeLib.pqcPreCompute — 算法自检（无参调用，执行真实预计算路径）
 JNIEXPORT jint JNICALL
 JNI_GLOBAL(pqcPreCompute)(JNIEnv *env, jobject thiz) {
     LOGD("NativeLib: pqcPreCompute self-test");
@@ -429,10 +379,8 @@ JNI_GLOBAL(pqcPreCompute)(JNIEnv *env, jobject thiz) {
     memset(&W_pub, 0, sizeof(W_pub));
     memset(seed_y, 0, sizeof(seed_y));
 
-    // 执行真实预计算算法（栈上分配，验证算法路径可用）
     PQC_PreCompute(&W_pub, seed_y);
 
-    // 校验输出非全零（基本正确性断言）
     int non_zero = 0;
     for (int i = 0; i < PQ_ZK_SEED_BYTES; i++) {
         if (seed_y[i] != 0) non_zero++;
@@ -452,7 +400,6 @@ JNI_GLOBAL(pqcPreCompute)(JNIEnv *env, jobject thiz) {
     return (jint)PQ_ZK_ERR_INVALID_PARAM;
 }
 
-// 5. 对应 NativeLib.nativeRegisterDevice
 JNIEXPORT jint JNICALL
 JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jbyteArray salt, jstring nvram_dir) {
     if (r_bio == nullptr || salt == nullptr || nvram_dir == nullptr) return -1;
@@ -461,7 +408,6 @@ JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jb
     jbyte *rbio_ptr = env->GetByteArrayElements(r_bio, nullptr);
     jbyte *salt_ptr = env->GetByteArrayElements(salt, nullptr);
 
-    // 1. 生成真实 MSIS 密钥对
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];
     poly_vec_t *sk_s = (poly_vec_t *) malloc(sizeof(poly_vec_t));
     if (!sk_s) {
@@ -472,13 +418,11 @@ JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jb
     }
     PQC_GenKeyPair(pk_t, sk_s);
 
-    // 2. GSMA 标准 eUICC 设备标识（16 字节）
     uint8_t eid[NVRAM_EID_LEN] = {
             0x11,0x22,0x33,0x44,0x55,0x66,0x77,0x88,
             0x99,0xAA,0xBB,0xCC,0xDD,0xEE,0xFF,0x01
     };
 
-    // 使用真随机密钥替代硬编码
     uint8_t k_sym[NVRAM_SYM_LEN];
     pqzk_rand_bytes(k_sym, NVRAM_SYM_LEN);
     uint8_t k_tee[NVRAM_TEE_LEN];
@@ -486,7 +430,6 @@ JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jb
 
     uint64_t initial_ctr = 1;
 
-    // 3. 初始化 eUICC NVRAM：salt 存原始随机盐，R_bio 存生物特征根哈希
     PQC_eUICC_Init(
             path,
             eid, NVRAM_EID_LEN,
@@ -494,12 +437,11 @@ JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jb
             k_sym, NVRAM_SYM_LEN,
             initial_ctr,
             k_tee, NVRAM_TEE_LEN,
-            (const uint8_t *) salt_ptr,  // salt = 原始随机盐
+            (const uint8_t *) salt_ptr,
             (const uint8_t *) rbio_ptr,  // R_bio = Merkle root
             nullptr, 0
     );
 
-    // 3.1 保存公钥 pk_t（供后端注册 public_key_t 使用）
     char pk_path[256];
     snprintf(pk_path, sizeof(pk_path), "%s/pk_t.bin", path);
     FILE *pk_file = fopen(pk_path, "wb");
@@ -511,7 +453,6 @@ JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jb
     secure_zero(k_sym, sizeof(k_sym));
     secure_zero(k_tee, sizeof(k_tee));
 
-    // 4. 创建注册状态标记文件，供 isRegistered() 检测
     char state_path[256];
     snprintf(state_path, sizeof(state_path), "%s/pqzk_state.bin", path);
     FILE *state_file = fopen(state_path, "w");
@@ -519,7 +460,7 @@ JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jb
         const char *mark = "PQZK_REGISTERED";
         fwrite(mark, 1, strlen(mark), state_file);
         fclose(state_file);
-        LOGD("注册状态文件创建成功: %s", state_path);
+        LOGD("Registration state file created: %s", state_path);
     }
 
     free(sk_s);
@@ -527,11 +468,10 @@ JNI_GLOBAL(nativeRegisterDevice)(JNIEnv *env, jobject thiz, jbyteArray r_bio, jb
     env->ReleaseByteArrayElements(salt, salt_ptr, JNI_ABORT);
     env->ReleaseStringUTFChars(nvram_dir, path);
 
-    LOGD("PQC_RegisterDevice 完成：真实随机密钥 + 完整 EID + R_bio + 原始盐已写入 NVRAM");
+    LOGD("PQC_RegisterDevice complete: random keys, EID, R_bio, and salt stored in NVRAM");
     return PQ_ZK_SUCCESS;
 }
 
-// 6. 对应 NativeLib.pqcComputeAndAggregate — 算法自检（Challenge + Aggregate 管道）
 JNIEXPORT jbyteArray JNICALL
 JNI_GLOBAL(pqcComputeAndAggregate)(JNIEnv *env, jobject thiz, jbyteArray c_seed, jbyteArray m1) {
     LOGD("NativeLib: pqcComputeAndAggregate self-test");
@@ -541,7 +481,6 @@ JNI_GLOBAL(pqcComputeAndAggregate)(JNIEnv *env, jobject thiz, jbyteArray c_seed,
         return env->NewByteArray(4);
     }
 
-    // ---- 1. 读取输入 ----
     jsize seed_len = env->GetArrayLength(c_seed);
     jsize m1_len   = env->GetArrayLength(m1);
     uint8_t seed_buf[PQ_ZK_SEED_BYTES] = {0};
@@ -555,15 +494,12 @@ JNI_GLOBAL(pqcComputeAndAggregate)(JNIEnv *env, jobject thiz, jbyteArray c_seed,
         env->GetByteArrayRegion(m1, 0, n, (jbyte *)m1_buf);
     }
 
-    // ---- 2. 从 c_seed 派生测试承诺向量 W ----
     poly_vec_t W_test;
     pqzk_sample_gauss_vec(seed_buf, PQ_ZK_SEED_BYTES, &W_test);
 
-    // ---- 3. PQC_GenChallenge：生成挑战多项式 c_agg ----
     poly_t c_agg;
     PQC_GenChallenge(&W_test, seed_buf, &c_agg);
 
-    // ---- 4. 从 m1 派生测试向量 z_masked / y_pub ----
     poly_vec_t z_masked, y_pub;
     uint8_t zm_seed[PQ_ZK_SEED_BYTES], yp_seed[PQ_ZK_SEED_BYTES];
     pqzk_sha3_256(m1_buf, (size_t)(m1_len > 32 ? 32 : m1_len), zm_seed);
@@ -571,11 +507,9 @@ JNI_GLOBAL(pqcComputeAndAggregate)(JNIEnv *env, jobject thiz, jbyteArray c_seed,
     pqzk_sample_gauss_vec(zm_seed, PQ_ZK_SEED_BYTES, &z_masked);
     pqzk_sample_gauss_vec(yp_seed, PQ_ZK_SEED_BYTES, &y_pub);
 
-    // ---- 5. PQC_LPA_Aggregate：聚合 z_final = z_masked + y_pub ----
     poly_vec_t resp_z;
     PQC_LPA_Aggregate(&z_masked, &y_pub, &resp_z);
 
-    // ---- 6. 编码输出 (M*N*4 = 8192 字节) ----
     const jsize out_len = PQ_ZK_M * PQ_ZK_N * 4;
     jbyteArray result = env->NewByteArray(out_len);
     uint8_t *out_buf = (uint8_t *)malloc(out_len);
@@ -585,7 +519,6 @@ JNI_GLOBAL(pqcComputeAndAggregate)(JNIEnv *env, jobject thiz, jbyteArray c_seed,
         free(out_buf);
     }
 
-    // ---- 7. 安全清零 ----
     secure_zero(&W_test,   sizeof(W_test));
     secure_zero(&c_agg,    sizeof(c_agg));
     secure_zero(&z_masked, sizeof(z_masked));
@@ -598,7 +531,6 @@ JNI_GLOBAL(pqcComputeAndAggregate)(JNIEnv *env, jobject thiz, jbyteArray c_seed,
     return result;
 }
 
-// 7. 对应 NativeLib.getEID — 返回 eUICC 设备标识 (32-char hex)
 JNIEXPORT jstring JNICALL
 JNI_GLOBAL(getEID)(JNIEnv *env, jobject thiz) {
     static uint8_t cached_eid[16] = {0};
@@ -618,7 +550,6 @@ JNI_GLOBAL(getEID)(JNIEnv *env, jobject thiz) {
     return env->NewStringUTF(hex);
 }
 
-// 8. 对应 NativeLib.getLastAuthTime — 返回上次认证时间 (ISO-8601)
 JNIEXPORT jstring JNICALL
 JNI_GLOBAL(getLastAuthTime)(JNIEnv *env, jobject thiz) {
     static char cached_time[20] = {0};
@@ -635,102 +566,86 @@ JNI_GLOBAL(getLastAuthTime)(JNIEnv *env, jobject thiz) {
     return env->NewStringUTF(cached_time);
 }
 
-// 9. 对应 NativeLib.isRegistered
 JNIEXPORT jint JNICALL
 JNI_GLOBAL(isRegistered)(JNIEnv *env, jobject thiz, jstring nvram_dir) {
-    // 1. 安全校验参数
     if (nvram_dir == nullptr) {
-        LOGE("错误：nvram_dir 参数为空");
+        LOGE("Error: nvram_dir is null");
         return JNI_FALSE;
     }
 
-    // 2. 将 Java String 转换为 C 字符串
     const char *dir_path = env->GetStringUTFChars(nvram_dir, nullptr);
     if (dir_path == nullptr) {
-        LOGE("错误：路径字符串转换失败");
+        LOGE("Error: path string conversion failed");
         return JNI_FALSE;
     }
 
-    // 3. 拼接注册状态文件完整路径
-    char nvram_path[256]; // 足够容纳路径
+    char nvram_path[256];
     snprintf(nvram_path, sizeof(nvram_path), "%s/pqzk_state.bin", dir_path);
 
-    // 4. 安全创建文件夹（如果不存在）
     struct stat st;
     if (stat(dir_path, &st) != 0) {
         if (mkdir(dir_path, 0755) != 0) {
-            LOGE("创建文件夹失败: %s", dir_path);
-            env->ReleaseStringUTFChars(nvram_dir, dir_path); // 释放内存
+            LOGE("Failed to create directory: %s", dir_path);
+            env->ReleaseStringUTFChars(nvram_dir, dir_path);
             return JNI_FALSE;
         }
-        LOGD("文件夹创建成功: %s", dir_path);
+        LOGD("Directory created: %s", dir_path);
     }
 
-    // 5. 检查注册状态文件是否存在
     FILE *file = fopen(nvram_path, "r");
     if (file != NULL) {
-        LOGD("检测到注册文件，返回已注册: %s", nvram_path);
+        LOGD("Registration state found; returning registered: %s", nvram_path);
         fclose(file);
-        env->ReleaseStringUTFChars(nvram_dir, dir_path); // 释放内存
+        env->ReleaseStringUTFChars(nvram_dir, dir_path);
         return JNI_TRUE;
     }
 
-    LOGD("未检测到注册文件，返回未注册: %s", nvram_path);
-    env->ReleaseStringUTFChars(nvram_dir, dir_path); // 释放内存
+    LOGD("No registration state found; returning unregistered: %s", nvram_path);
+    env->ReleaseStringUTFChars(nvram_dir, dir_path);
     return JNI_FALSE;
 }
 
 /**
- * 1. 注册接口 (PQC_Reg) - 严格遵循 12 参数初始化
  */
 // ============================================================
-// OpenCV 人脸特征提取接口
 // ============================================================
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
         JNIEnv *env, jobject thiz, jlong matAddr, jbyteArray outRbio) {
 
-    // 1. 获取 Mat 对象指针
     cv::Mat &frame = *(cv::Mat *) matAddr;
     if (frame.empty()) {
-        LOGE("输入图像为空");
+        LOGE("Input image is empty");
         return -1;
     }
 
-    // 2. 完整的图像预处理
     cv::Mat gray;
     cv::cvtColor(frame, gray, cv::COLOR_RGBA2GRAY);
 
-    // 2.1 直方图均衡化，提高对比度
     cv::equalizeHist(gray, gray);
 
-    // 2.2 高斯模糊降噪
     cv::GaussianBlur(gray, gray, cv::Size(3, 3), 0);
 
-    // 2.3 对比度增强
     cv::Mat enhanced;
     cv::addWeighted(gray, 1.5, cv::Mat::zeros(gray.size(), gray.type()), 0, 0, enhanced);
     gray = enhanced;
 
-    // 3. 检测人脸（极度放宽阈值，确保检测到人脸）
     std::vector<cv::Rect> faces;
     {
         std::lock_guard<std::mutex> lock(face_detector_mutex);
         face_detector.detectMultiScale(
                 gray,
                 faces,
-                1.01, // 缩放因子（极度调松到1.01，最大化检测率）
-                0,   // 最小邻居数（设为0，完全不做校验）
-                0,   // 标志
-                cv::Size(10, 10) // 最小人脸尺寸（设为10x10，允许极小的人脸）
+                1.01,
+                0,
+                0,
+                cv::Size(10, 10)
         );
     }
 
-    LOGD("检测到 %d 个人脸", (int) faces.size());
+    LOGD("Detected %d faces", (int) faces.size());
 
-    // 4. 如果检测到人脸
     if (!faces.empty()) {
-        // 选择最大的人脸
         cv::Rect largestFace = faces[0];
         for (const cv::Rect &face: faces) {
             if (face.area() > largestFace.area()) {
@@ -738,33 +653,27 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
             }
         }
 
-        LOGD("最大人脸位置: x=%d, y=%d, width=%d, height=%d, area=%d",
+        LOGD("Largest face location: x=%d, y=%d, width=%d, height=%d, area=%d",
              largestFace.x, largestFace.y, largestFace.width, largestFace.height,
              largestFace.area());
 
-        // 5. 完全放宽扫描框：使用整个图像区域，避免越界
         int scanBoxLeft = 0;
         int scanBoxTop = 0;
         int scanBoxRight = frame.cols;
         int scanBoxBottom = frame.rows;
 
-        // 确保扫描框覆盖整个图像
         scanBoxRight = std::min(frame.cols, scanBoxRight);
         scanBoxBottom = std::min(frame.rows, scanBoxBottom);
 
-        LOGD("扫描框区域: left=%d, top=%d, right=%d, bottom=%d",
+        LOGD("Scan region: left=%d, top=%d, right=%d, bottom=%d",
              scanBoxLeft, scanBoxTop, scanBoxRight, scanBoxBottom);
-        LOGD("人脸区域: left=%d, top=%d, right=%d, bottom=%d",
+        LOGD("Face region: left=%d, top=%d, right=%d, bottom=%d",
              largestFace.x, largestFace.y, largestFace.x + largestFace.width,
              largestFace.y + largestFace.height);
 
-        // 6. 确保人脸尺寸足够大且比例合理 - 完全移除限制
-        // 7. 确保人脸宽高比合理 - 完全移除限制
-        // 8. 确保人脸完整（不被边界截断）- 完全移除限制
 
-        // 9. 确保人脸主要部分在扫描框内（已放宽限制）
         /*
-        int faceMargin = largestFace.width * 0.05; // 人脸边缘留出5%的余量（从10%调松）
+        int faceMargin = largestFace.width * 0.05;
         int faceLeft = largestFace.x + faceMargin;
         int faceTop = largestFace.y + faceMargin;
         int faceRight = largestFace.x + largestFace.width - faceMargin;
@@ -772,13 +681,11 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
         
         if (faceLeft < scanBoxLeft || faceTop < scanBoxTop || 
             faceRight > scanBoxRight || faceBottom > scanBoxBottom) {
-            LOGE("人脸部分在扫描框外，跳过");
+            LOGE("Face is partially outside the scan area; skipping");
             return -7;
         }
         */
 
-        // 9. 提取人脸区域（移除所有安全校验，直接使用 largestFace）
-        // 直接使用检测到的人脸区域，不做任何校验
         if (largestFace.x < 0) {
             largestFace.x = 0;
         }
@@ -794,22 +701,17 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
 
         cv::Mat faceROI = gray(largestFace);
 
-        // 10. 生成特征（增强特征提取）
         uint8_t template_hash[32];
 
-        // 基于人脸区域生成更丰富的特征
         cv::Mat resized;
         cv::resize(faceROI, resized, cv::Size(64, 64));
 
-        // 直接使用 resized，不再检查是否有效
 
-        // 10.1 计算多个统计特征
         cv::Scalar mean, stddev;
         double minVal = 0.0, maxVal = 0.0;
         cv::meanStdDev(resized, mean, stddev);
         cv::minMaxLoc(resized, &minVal, &maxVal);
 
-        // 10.2 计算边缘特征
         cv::Mat edges;
         cv::Canny(resized, edges, 50, 150);
         int edgeCount = 0;
@@ -817,15 +719,12 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
             edgeCount = cv::countNonZero(edges);
         }
 
-        // 10.3 计算纹理特征
         double gradMean = 128.0;
         try {
             cv::Mat gradX, gradY, gradMag;
-            // 使用 CV_64F 类型确保与 magnitude 兼容
             cv::Sobel(resized, gradX, CV_64F, 1, 0, 3);
             cv::Sobel(resized, gradY, CV_64F, 0, 1, 3);
 
-            // 确保 gradX 和 gradY 尺寸和类型完全一致
             if (!gradX.empty() && !gradY.empty() &&
                 gradX.size() == gradY.size() &&
                 gradX.type() == gradY.type() &&
@@ -836,11 +735,10 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
                 }
             }
         } catch (const cv::Exception &e) {
-            LOGE("梯度计算异常: %s", e.what());
+            LOGE("Gradient computation error: %s", e.what());
             gradMean = 128.0;
         }
 
-        // 10.4 填充特征数组（更丰富的特征）
         template_hash[0] = static_cast<uint8_t>(mean[0]);
         template_hash[1] = static_cast<uint8_t>(stddev[0] * 10);
         template_hash[2] = static_cast<uint8_t>(minVal);
@@ -848,14 +746,12 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
         template_hash[4] = static_cast<uint8_t>(edgeCount % 255);
         template_hash[5] = static_cast<uint8_t>(gradMean);
 
-        // 填充剩余特征（使用不同区域的均值）
         int blockSize = 16;
         for (int i = 6; i < 32; i++) {
             int row = (i - 6) / 4;
             int col = (i - 6) % 4;
             int startX = col * blockSize;
             int startY = row * blockSize;
-            // 安全校验 block 区域
             if (startX >= 0 && startY >= 0 &&
                 startX + blockSize <= resized.cols &&
                 startY + blockSize <= resized.rows) {
@@ -863,12 +759,10 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
                 double blockMean = cv::mean(block)[0];
                 template_hash[i] = static_cast<uint8_t>(blockMean);
             } else {
-                // 确保至少有一些非零值，避免特征全零
                 template_hash[i] = static_cast<uint8_t>(128 + (i % 100));
             }
         }
 
-        // 确保至少有一半的特征值非零，提高特征质量
         int nonZeroCount = 0;
         for (int i = 0; i < 32; i++) {
             if (template_hash[i] != 0) {
@@ -876,7 +770,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
             }
         }
 
-        // 如果非零特征太少，填充一些随机值
         if (nonZeroCount < 16) {
             for (int i = 0; i < 32; i++) {
                 if (template_hash[i] == 0) {
@@ -885,45 +778,39 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeProcessFaceAndGetRbio(
             }
         }
 
-        // 11. 输出特征
         env->SetByteArrayRegion(outRbio, 0, 32, (jbyte *) template_hash);
-        LOGD("特征提取成功：完整人脸");
+        LOGD("Feature extraction succeeded: complete face");
         return 0; // SUCCESS
     } else {
-        LOGE("未检测到人脸");
+        LOGE("No face detected");
         return -3;
     }
 }
 
 
 // ============================================================
-// 2. JNI 入口 1：为 MainActivity 保留 (维持你现在的结构)
 // ============================================================
 //extern "C" JNIEXPORT jint JNICALL
 //        JNI_MAIN(PQC_1Reg)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyteArray out_t) {
-// 直接调用内部核心逻辑
 //return internal_PQC_Reg(env, nvram_dir, out_t);
 //}
 
 // ============================================================
-// 3. JNI 入口 2：为 NativeLib 提供 (让注册页也能调用)
 // ============================================================
 //extern "C" JNIEXPORT jint JNICALL
 //        JNI_GLOBAL(PQC_1Reg)(JNIEnv *env, jobject thiz, jstring nvram_dir, jbyteArray out_t) {
-// 同样调用内部核心逻辑
 //return internal_PQC_Reg(env, nvram_dir, out_t);
 //}
 
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_PQC_1eUICC_1Commit(
         JNIEnv *env, jobject thiz,
-        jstring nvram_dir,          // 安全存储路径
-        jbyteArray out_w_sec,       // 输出：内部承诺W_sec
-        jbyteArray out_mac_w)       // 输出：MAC_W
+        jstring nvram_dir,
+        jbyteArray out_w_sec,
+        jbyteArray out_mac_w)
 {
-    // 参数校验
     if (out_w_sec == nullptr || out_mac_w == nullptr) {
-        LOGE("参数为空");
+        LOGE("Null parameter");
         return PQ_ZK_ERR_INVALID_PARAM;
     }
 
@@ -931,58 +818,48 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1eUICC_1Commit(
     jbyte *w_sec_buf = env->GetByteArrayElements(out_w_sec, nullptr);
     jbyte *mac_buf = env->GetByteArrayElements(out_mac_w, nullptr);
 
-    // 【核心】调用头文件标准接口：生成W_sec + MAC_W
     poly_vec_t w_sec;
     uint8_t mac_w[PQ_ZK_MAC_BYTES];
     PQC_eUICC_Commit(path, &w_sec, mac_w);
 
-    // 编码输出（严格用头文件Encode函数，W_sec 为 K 维承诺向量）
     PQC_EncodePolyVec(&w_sec, (uint8_t *) w_sec_buf, PQ_ZK_K);
     memcpy(mac_buf, mac_w, PQ_ZK_MAC_BYTES);
 
-    // 释放内存
     env->ReleaseByteArrayElements(out_mac_w, mac_buf, 0);
     env->ReleaseByteArrayElements(out_w_sec, w_sec_buf, 0);
     env->ReleaseStringUTFChars(nvram_dir, path);
 
-    LOGD("PQC_eUICC_Commit 完成：W_sec + MAC_W 已生成");
+    LOGD("PQC_eUICC_Commit complete: W_sec and MAC_W generated");
     return PQ_ZK_SUCCESS;
 }
 
 /**
- * 2. 预计算接口 (PQC_PreCompute)
  */
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_PQC_1PreCompute(
-        JNIEnv *env,        // 固定参数1
-        jobject thiz,       // 固定参数2
+        JNIEnv *env,
+        jobject thiz,
         jbyteArray in_w_sec,
         jbyteArray out_w_total,
         jbyteArray out_seed_y
 ) {
-    // 参数空校验
     if (in_w_sec == nullptr || out_w_total == nullptr || out_seed_y == nullptr) {
         return PQ_ZK_ERR_INVALID_PARAM;
     }
 
-    // 获取JNI数组指针（标准jbyte*，无类型冲突）
     jbyte *sec_buf = env->GetByteArrayElements(in_w_sec, nullptr);
     jbyte *total_buf = env->GetByteArrayElements(out_w_total, nullptr);
     jbyte *seed_buf = env->GetByteArrayElements(out_seed_y, nullptr);
 
-    // 定义算法结构体（严格对齐头文件）
     poly_vec_t w_sec;
     poly_vec_t w_pub;
     poly_vec_t w_total;
     uint8_t seed_y[PQ_ZK_SEED_BYTES];
 
-    // 解码内部承诺 W_sec（K 维承诺向量）
     PQC_DecodePolyVec((const uint8_t *) sec_buf, &w_sec, PQ_ZK_K);
 
-    // 调用原生算法：生成 W_pub + seed_y
     PQC_PreCompute(&w_pub, seed_y);
 
-    // 核心：总承诺 W = (W_sec + W_pub) mod q
     for (int i = 0; i < PQ_ZK_K * PQ_ZK_N; i++) {
         int32_t v = w_sec.coeffs[i] + w_pub.coeffs[i];
         v %= PQ_ZK_Q_VAL;
@@ -990,16 +867,13 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1PreCompute(
         w_total.coeffs[i] = v;
     }
 
-    // 编码总承诺并输出（K 维）
     PQC_EncodePolyVec(&w_total, (uint8_t *) total_buf, PQ_ZK_K);
 
-    // seed_y 内存加密（防泄露）
     for (int i = 0; i < PQ_ZK_SEED_BYTES; i++) {
         seed_y[i] ^= 0xA5;
     }
     memcpy(seed_buf, seed_y, PQ_ZK_SEED_BYTES);
 
-    // 释放资源
     env->ReleaseByteArrayElements(in_w_sec, sec_buf, JNI_ABORT);
     env->ReleaseByteArrayElements(out_w_total, total_buf, 0);
     env->ReleaseByteArrayElements(out_seed_y, seed_buf, 0);
@@ -1008,7 +882,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1PreCompute(
 }
 
 /**
- * 3. 挑战生成接口 (PQC_GenChallenge)
  */
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_PQC_1GenChallenge(
@@ -1032,8 +905,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1GenChallenge(
 }
 
 /**
- * 4. 掩码协同计算 (PQC_ComputeZ_and_Mask)
- * 修正：返回值接收、参数类型匹配
  */
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_PQC_1ComputeZ_1and_1Mask(
@@ -1052,7 +923,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1ComputeZ_1and_1Mask(
     PQC_DecodePoly((const uint8_t *) c_raw, &c_agg);
 
     poly_vec_t z_sec_masked;
-    // 修正：返回值类型为 PQ_ZK_ErrorCode
     PQ_ZK_ErrorCode code = PQC_ComputeZ_and_Mask(
             path,
             &c_agg,
@@ -1079,50 +949,37 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1ComputeZ_1and_1Mask(
 }
 
 /**
- * 5. 新增：LPA 大噪声聚合 (PQC_LPA_Aggregate)
- * 先 RegenerateYpub 再进行聚合
  */
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_PQC_1LPA_1Aggregate(
         JNIEnv *env, jobject thiz, jbyteArray z_masked_in, jbyteArray seed_y,
         jbyteArray out_z_final) {
 
-    // 1. 安全检查：确保输入输出不为空
     if (z_masked_in == nullptr || seed_y == nullptr || out_z_final == nullptr) {
         LOGE("LPA_Aggregate: Input/Output array is null!");
         return -1;
     }
 
-    // 2. 获取内存指针
     jbyte *zin_ptr = env->GetByteArrayElements(z_masked_in, nullptr);
     jbyte *seed_ptr = env->GetByteArrayElements(seed_y, nullptr);
     jbyte *zout_ptr = env->GetByteArrayElements(out_z_final, nullptr);
 
-    // 打印计算前日志
     LOGD("LPA_Aggregate: Starting aggregation...");
 
     poly_vec_t z_sec_masked, y_pub, resp_z;
 
-    // 5.1 反序列化 eUICC 传来的掩码结果
     PQC_DecodePolyVec((const uint8_t *) zin_ptr, &z_sec_masked, PQ_ZK_M);
 
-    // 5.2 [规范 5.0] 恢复外部大方差盲化因子 y_pub
     PQC_RegenerateYpub((const uint8_t *) seed_ptr, &y_pub);
 
-    // 5.3 核心真实计算 z = z_sec_masked + y_pub (mod q)
-    // 此处执行多项式加法，体现了抗量子算法的同态特性
     PQC_LPA_Aggregate(&z_sec_masked, &y_pub, &resp_z);
 
-    // 5.4 序列化最终结果
     PQC_EncodePolyVec(&resp_z, (uint8_t *) zout_ptr, PQ_ZK_M);
 
-    // --- 透明化通信日志推送 ---
-    // 获取 z 的前 8 字节用于展示计算的真实性
     char hex_dump[17];
     for (int i = 0; i < 8; i++) sprintf(&hex_dump[i * 2], "%02x", (uint8_t) zout_ptr[i]);
     LOGD("LPA_Aggregate Success. Final response z[0-7]: %s", hex_dump);
 
-    // 3. 释放资源
     env->ReleaseByteArrayElements(out_z_final, zout_ptr, 0);
     env->ReleaseByteArrayElements(seed_y, seed_ptr, JNI_ABORT);
     env->ReleaseByteArrayElements(z_masked_in, zin_ptr, JNI_ABORT);
@@ -1135,20 +992,16 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1Get_1Current_1Ctr(
         jobject thiz,
         jstring nvram_dir
 ) {
-    // 转换路径字符串
     const char *nvram_path = env->GetStringUTFChars(nvram_dir, nullptr);
     if (nvram_path == nullptr) {
         return 0;
     }
 
-    // 读取NVRAM状态（调用 nvram_read）
     nvram_state_t state;
     int ret = nvram_read(nvram_path, &state);
 
-    // 释放字符串
     env->ReleaseStringUTFChars(nvram_dir, nvram_path);
 
-    // 读取成功 → 返回真实计数器；失败 → 返回0
     if (ret == 0) {
         return (jlong) state.ctr_local;
     }
@@ -1156,15 +1009,8 @@ Java_com_yourcompany_pqzkesim_NativeLib_PQC_1Get_1Current_1Ctr(
 }
 
 // ================================================================
-// Phase 0-6  高效聚合 JNI 桥接层
-// 设计原则：
-//   1. 最大限度复用 crypto/ 和 include/pq_zk_esim.h 已有能力
-//   2. 单次 JNI 调用完成多个协议阶段，减少边界穿越损耗
-//   3. 所有敏感数据在 native 层零拷贝处理，避免 Java 堆暴露
-//   4. 使用堆分配 (malloc) 避免大结构体的栈溢出
 // ================================================================
 
-// ---- 辅助：NVRAM 状态读取封装（含错误处理） ----
 static int safe_nvram_read(const char *nvram_dir, nvram_state_t *state) {
     if (!nvram_dir || !state) return PQ_ZK_ERR_INVALID_PARAM;
     if (nvram_read(nvram_dir, state) != 0) {
@@ -1174,7 +1020,6 @@ static int safe_nvram_read(const char *nvram_dir, nvram_state_t *state) {
     return PQ_ZK_SUCCESS;
 }
 
-// ---- 辅助：Base64 编码（用于 master orchestrator 返回值） ----
 static const char BASE64_TABLE[] =
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
@@ -1194,7 +1039,6 @@ static int base64_encode(const uint8_t *data, size_t len, char *out) {
     return (int)j;
 }
 
-// ---- 辅助：字节数组转 hex 字符串 ----
 static void bytes_to_hex(const uint8_t *data, size_t len, char *out) {
     for (size_t i = 0; i < len; i++) {
         sprintf(out + i * 2, "%02x", data[i]);
@@ -1202,7 +1046,6 @@ static void bytes_to_hex(const uint8_t *data, size_t len, char *out) {
     out[len * 2] = '\0';
 }
 
-// ---- 读取注册信息（供后端 /api/v1/auth/register 使用）----
 JNIEXPORT jstring JNICALL
 JNI_GLOBAL(nativeGetRegisterInfo)(JNIEnv *env, jobject thiz, jstring nvram_dir) {
     const char *EMPTY = "{}";
@@ -1224,7 +1067,6 @@ JNI_GLOBAL(nativeGetRegisterInfo)(JNIEnv *env, jobject thiz, jstring nvram_dir) 
     bytes_to_hex(state.R_bio, 32, r_bio_hex);
     bytes_to_hex(state.salt, 32, salt_hex);
 
-    // 读取公钥 pk_t（注册时保存到 pk_t.bin）
     size_t pk_hex_len = PQ_ZK_PUBLICKEY_BYTES * 2 + 1;
     char *pk_hex = (char *) malloc(pk_hex_len);
     char *json = (char *) malloc(pk_hex_len + 512);
@@ -1253,7 +1095,6 @@ JNI_GLOBAL(nativeGetRegisterInfo)(JNIEnv *env, jobject thiz, jstring nvram_dir) 
     return result;
 }
 
-// ---- 辅助：计算 R_dynamic = SHA3-256(R_bio,dom || ctr_le8)（对齐论文 Algorithm 4）----
 static int compute_r_dynamic(const uint8_t r_bio[32], uint64_t ctr, uint8_t r_dynamic_out[32]) {
     if (!r_bio || !r_dynamic_out) return -1;
     uint8_t ctr_le8[8];
@@ -1267,9 +1108,6 @@ static int compute_r_dynamic(const uint8_t r_bio[32], uint64_t ctr, uint8_t r_dy
 }
 
 // ================================================================
-// Phase 0: GSMA 证书验证 + 设备证明
-// 输入：nvramDir, domainId
-// 返回：JSON 字符串 {eid, cert_valid, mno_id, pk_t_hex}
 // ================================================================
 JNIEXPORT jstring JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativePhase0_1GSMAVerify(
@@ -1281,24 +1119,20 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase0_1GSMAVerify(
     nvram_state_t state;
     int ret = safe_nvram_read(path, &state);
 
-    // 构建 JSON 结果（pk_hex 约 7745 字节，总 JSON 约 8KB）
     char json[9216];
     if (ret == PQ_ZK_SUCCESS) {
         char eid_hex[33];
         bytes_to_hex(state.eid, NVRAM_EID_LEN, eid_hex);
 
         char pk_hex[PQ_ZK_PUBLICKEY_BYTES * 2 + 1];
-        // 从 NVRAM 重建公钥
         poly_vec_t sk_s;
         PQC_DecodePolyVec(state.sk_s, &sk_s, PQ_ZK_M);
         uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];
-        // 使用矩阵种子 + sk_s 重建 T = A * sk_s
         memcpy(pk_t, PQZK_MATRIX_A_SEED, 32);
         poly_vec_t A_rows[PQ_ZK_K];
         pqzk_gen_matrix_A(PQZK_MATRIX_A_SEED, A_rows, PQ_ZK_K, PQ_ZK_M);
         poly_vec_t T;
         pqzk_mat_vec_mul(A_rows, &sk_s, &T, PQ_ZK_K, PQ_ZK_M);
-        // 24-bit 编码 T
         for (int i = 0; i < PQ_ZK_K * PQ_ZK_N; i++) {
             uint32_t v = (uint32_t)((int64_t)T.coeffs[i] % PQ_ZK_Q_VAL + PQ_ZK_Q_VAL) % PQ_ZK_Q_VAL;
             int j = i * 3;
@@ -1308,10 +1142,9 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase0_1GSMAVerify(
         }
         bytes_to_hex(pk_t, PQ_ZK_PUBLICKEY_BYTES, pk_hex);
 
-        // 模拟证书验证
         uint8_t root_ca_pk[PQZK_GSMA_CA_PK_BYTES];
         PQZK_GSMA_GetRootCAPK(root_ca_pk);
-        int cert_valid = 1; // 设备已注册即视为证书有效
+        int cert_valid = 1;
 
         snprintf(json, sizeof(json),
             "{\"eid\":\"%s\",\"cert_valid\":%d,\"mno_id\":\"%s\",\"pk_t_hex\":\"%s\",\"ctr\":%lu}",
@@ -1329,9 +1162,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase0_1GSMAVerify(
 }
 
 // ================================================================
-// Phase 1-2 聚合：承诺生成 + 预计算 + 计数器 + R_dynamic
-// 【关键优化】合并 PQC_eUICC_Commit + PQC_PreCompute + 计数器读取 + R_dynamic 计算
-// 节省 3 次 JNI 边界穿越 → 1 次
 // ================================================================
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativePhase12_1CommitPrecompute(
@@ -1340,7 +1170,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase12_1CommitPrecompute(
     jbyteArray outWSec, jbyteArray outMacW, jbyteArray outWTotal,
     jbyteArray outSeedY, jbyteArray outRDynamic, jlongArray outCtr) {
 
-    // ---- 参数校验 ----
     if (!nvramDir || !rBio || !outWSec || !outMacW || !outWTotal ||
         !outSeedY || !outRDynamic || !outCtr) {
         LOGE("Phase12: null parameter");
@@ -1357,7 +1186,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase12_1CommitPrecompute(
     jlong *ctr_buf   = env->GetLongArrayElements(outCtr, nullptr);
     jbyte *rbio_ptr  = env->GetByteArrayElements(rBio, nullptr);
 
-    // ---- 所有栈变量提前声明（C++ 不允许 goto 跨越声明） ----
     uint8_t mac_w[PQ_ZK_MAC_BYTES];
     uint8_t seed_y[PQ_ZK_SEED_BYTES];
     poly_vec_t w_total;
@@ -1369,7 +1197,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase12_1CommitPrecompute(
 
     int result = PQ_ZK_ERR_INVALID_PARAM;
 
-    // ---- 堆分配大结构体 ----
     poly_vec_t *w_sec  = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     poly_vec_t *w_pub  = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     nvram_state_t *state = (nvram_state_t *)malloc(sizeof(nvram_state_t));
@@ -1382,14 +1209,12 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase12_1CommitPrecompute(
     // ---- Step 1: eUICC Commit → W_sec + MAC_W ----
     PQC_eUICC_Commit(path, w_sec, mac_w);
 
-    // 编码 W_sec (K 维承诺向量: K*N*4 = 5120 字节)
     PQC_EncodePolyVec(w_sec, (uint8_t *)wsec_buf, PQ_ZK_K);
     memcpy(macw_buf, mac_w, PQ_ZK_MAC_BYTES);
 
     // ---- Step 2: PreCompute → W_pub + seed_y ----
     PQC_PreCompute(w_pub, seed_y);
 
-    // 计算 W_total = (W_sec + W_pub) mod q
     for (int i = 0; i < PQ_ZK_K * PQ_ZK_N; i++) {
         int32_t v = w_sec->coeffs[i] + w_pub->coeffs[i];
         v %= PQ_ZK_Q_VAL;
@@ -1398,20 +1223,17 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase12_1CommitPrecompute(
     }
     PQC_EncodePolyVec(&w_total, (uint8_t *)wtot_buf, PQ_ZK_K);
 
-    // seed_y 加密后输出
     for (int i = 0; i < PQ_ZK_SEED_BYTES; i++) {
         seed_y[i] ^= SEED_ENCRYPT_MASK;
     }
     memcpy(seedy_buf, seed_y, PQ_ZK_SEED_BYTES);
 
-    // ---- Step 3: 读取 NVRAM 计数器 ----
     if (safe_nvram_read(path, state) != PQ_ZK_SUCCESS) {
         result = PQ_ZK_ERR_NOT_INITIALIZED;
         goto cleanup;
     }
     ctr_buf[0] = (jlong)state->ctr_local;
 
-    // ---- Step 4: 计算 R_dynamic = SHA3-256(R_bio,dom || ctr) ----
     if (compute_r_dynamic((const uint8_t *)rbio_ptr,
                           state->ctr_local, r_dynamic) != 0) {
         result = PQ_ZK_ERR_MAC_FAIL;
@@ -1423,7 +1245,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase12_1CommitPrecompute(
     LOGD("Phase12: Commit+PreCompute done, W_sec/MAC_W/W_total/seed_y/R_dynamic/ctr ready");
 
 cleanup:
-    // ---- 安全释放 ----
     if (w_sec)  { secure_zero(w_sec, sizeof(poly_vec_t)); free(w_sec); }
     if (w_pub)  { secure_zero(w_pub, sizeof(poly_vec_t)); free(w_pub); }
     if (state)  { secure_zero(state, sizeof(nvram_state_t)); free(state); }
@@ -1445,11 +1266,7 @@ cleanup:
 }
 
 // ================================================================
-// Phase 3-5 聚合：挑战 + TEE AuthToken + 掩码计算 + LPA 聚合
-// 【关键优化】合并 PQC_GenChallenge + TEE_GenerateAuthToken +
 //            PQC_ComputeZ_and_Mask + PQC_RegenerateYpub + PQC_LPA_Aggregate
-// 节省 4 次 JNI 边界穿越 → 1 次
-// 同时将 AuthToken 生成从 Kotlin 层移入 native 层（协议合规）
 // ================================================================
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
@@ -1460,7 +1277,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
     jbyteArray outAuthToken, jbyteArray outM2,
     jbyteArray outZFinal) {
 
-    // ---- 参数校验 ----
     if (!nvramDir || !commW || !cSeed || !seedY ||
         !outCAgg || !outRDynamic || !outAuthToken || !outM2 || !outZFinal) {
         LOGE("Phase345: null parameter");
@@ -1479,7 +1295,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
 
     int result = PQ_ZK_ERR_INVALID_PARAM;
 
-    // ---- 堆分配大结构体 ----
     poly_vec_t  *W_decoded  = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     poly_t      *c_agg      = (poly_t *)malloc(sizeof(poly_t));
     poly_vec_t  *z_masked   = (poly_vec_t *)malloc(sizeof(poly_vec_t));
@@ -1488,7 +1303,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
     merkle_tree_t *tree     = (merkle_tree_t *)malloc(sizeof(merkle_tree_t));
     nvram_state_t *state    = (nvram_state_t *)malloc(sizeof(nvram_state_t));
     
-    // 在函数开头声明所有局部变量，避免goto跨越初始化
     uint8_t  r_dynamic[PQ_ZK_SEED_BYTES];
     merkle_path_t m2_path;
     uint8_t  auth_token[PQ_ZK_MAC_BYTES];
@@ -1502,25 +1316,21 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
         goto cleanup;
     }
 
-    // ---- Step 1: 解码承诺 W + 生成挑战 c_agg ----
     PQC_DecodePolyVec((const uint8_t *)w_ptr, W_decoded, PQ_ZK_K);
     PQC_GenChallenge(W_decoded, (const uint8_t *)cs_ptr, c_agg);
     PQC_EncodePoly(c_agg, (uint8_t *)cagg_ptr);
 
-    // ---- Step 2: 读取 NVRAM 状态 + 加载 Merkle 树 ----
     if (safe_nvram_read(path, state) != PQ_ZK_SUCCESS) {
         result = PQ_ZK_ERR_NOT_INITIALIZED;
         goto cleanup;
     }
 
-    // 加载 Merkle 树（若未注册则使用空树）
     if (PQC_LoadTree(path, tree) != PQ_ZK_SUCCESS) {
-        // 空树
         memset(tree, 0, sizeof(*tree));
         tree->n_leaves = 1;
         tree->depth = 0;
         memcpy(tree->root, state->R_bio, 32);
-        memcpy(tree->nodes[0][0], state->R_bio, 32);  // depth=0：叶子哈希即根
+        memcpy(tree->nodes[0][0], state->R_bio, 32);
         memcpy(tree->salt, state->salt, 32);
         LOGD("Phase345: using placeholder Merkle tree (no biometric registered)");
     }
@@ -1532,13 +1342,13 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
 
     tee_ret = TEE_GenerateAuthToken(
         path, c_agg,
-        state->R_bio,          // 根生物特征哈希
+        state->R_bio,
         tree,
-        (uint32_t)m1Index,     // 选中的叶子索引
-        state->k_tee,          // TEE 内部密钥
-        r_dynamic,             // 输出：动态随机数
-        &m2_path,              // 输出：Merkle 路径 M2
-        auth_token             // 输出：AuthToken
+        (uint32_t)m1Index,
+        state->k_tee,
+        r_dynamic,
+        &m2_path,
+        auth_token
     );
 
     if (tee_ret != PQ_ZK_SUCCESS) {
@@ -1547,11 +1357,9 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
         goto cleanup;
     }
 
-    // 输出 R_dynamic, AuthToken
     memcpy(rdyn_ptr, r_dynamic, PQ_ZK_SEED_BYTES);
     memcpy(auth_ptr, auth_token, PQ_ZK_MAC_BYTES);
 
-    // 序列化 Merkle 路径 M2：前置叶子哈希 h_M1,dom，对齐论文 M2=(h_M1,dom, path)
     {
         uint8_t *m2_buf = (uint8_t *)m2_ptr;
         size_t off = 0;
@@ -1567,7 +1375,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
         }
     }
 
-    // ---- Step 4: 解码 seed_y 并恢复 y_pub ----
     memcpy(seed_y_raw, sy_ptr, PQ_ZK_SEED_BYTES);
     for (int i = 0; i < PQ_ZK_SEED_BYTES; i++) {
         seed_y_raw[i] ^= SEED_ENCRYPT_MASK;
@@ -1590,18 +1397,15 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase345_1ProveResponse(
         goto cleanup;
     }
 
-    // ---- Step 6: LPA 聚合 z_final = z_masked + y_pub ----
     PQC_LPA_Aggregate(z_masked, y_pub, resp_z);
     PQC_EncodePolyVec(resp_z, (uint8_t *)zf_ptr, PQ_ZK_M);
 
-    // 日志：输出 z_final 前 8 字节校验
     bytes_to_hex((const uint8_t *)zf_ptr, 8, hex_dump);
     LOGD("Phase345: ProveResponse done, z_final[0:8]=%s", hex_dump);
 
     result = PQ_ZK_SUCCESS;
 
 cleanup:
-    // ---- 安全释放 ----
     if (W_decoded) { secure_zero(W_decoded, sizeof(poly_vec_t)); free(W_decoded); }
     if (c_agg)     { secure_zero(c_agg, sizeof(poly_t)); free(c_agg); }
     if (z_masked)  { secure_zero(z_masked, sizeof(poly_vec_t)); free(z_masked); }
@@ -1626,8 +1430,6 @@ cleanup:
     return result;
 }
 // ================================================================
-// Phase 6: 原生验证引擎
-// 在本地执行 PQC_VerifyEngine（用于离线验证或服务端模拟）
 // ================================================================
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativePhase6_1VerifyEngine(
@@ -1647,12 +1449,10 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativePhase6_1VerifyEngine(
     jbyte *rd_ptr   = env->GetByteArrayElements(rDynamic, nullptr);
     jbyte *mm_ptr   = env->GetByteArrayElements(mMask, nullptr);
 
-    // 解码输入
     poly_vec_t *W_decoded  = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     poly_vec_t *z_decoded  = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     poly_vec_t *M_decoded  = (poly_vec_t *)malloc(sizeof(poly_vec_t));
 
-    // 提前声明所有栈变量（C++ 不允许 goto 跨越声明）
     beta_params_t beta;
     memset(&beta, 0, sizeof(beta));
     beta = PQZK_DEFAULT_BETA_PARAMS;
@@ -1697,10 +1497,6 @@ cleanup:
 }
 
 // ================================================================
-// 【Master Orchestrator】一键全认证：Phase 0-5 单次 JNI 调用
-// 【终极优化】整个抗量子认证流程仅跨越 JNI 边界 1 次
-// 输入：nvramDir, rBio, cSeed, m1Index, domainId
-// 返回：JSON 字符串，Base64 编码所有中间值和最终结果
 // ================================================================
 JNIEXPORT jstring JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
@@ -1717,7 +1513,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
     jbyte *rbio_ptr    = env->GetByteArrayElements(rBio, nullptr);
     jbyte *cseed_ptr   = env->GetByteArrayElements(cSeed, nullptr);
 
-    // ---- 堆分配所有大结构体 ----
     poly_vec_t *w_sec   = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     poly_vec_t *w_pub   = (poly_vec_t *)malloc(sizeof(poly_vec_t));
     poly_t     *c_agg   = (poly_t *)malloc(sizeof(poly_t));
@@ -1727,10 +1522,9 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
     merkle_tree_t *tree = (merkle_tree_t *)malloc(sizeof(merkle_tree_t));
     nvram_state_t *st   = (nvram_state_t *)malloc(sizeof(nvram_state_t));
 
-    char *json_out = (char *)malloc(65536);  // 64KB: 所有Base64字段合计约27KB，留足余量
+    char *json_out = (char *)malloc(65536);
     if (!w_sec || !w_pub || !c_agg || !z_mask || !y_pub || !resp_z ||
         !tree || !st || !json_out) {
-        // 安全处理：确保 json_out 有效或提前返回错误字符串
         if (json_out) {
             snprintf(json_out, 65536, "{\"error\":\"malloc_failed\"}");
         }
@@ -1738,7 +1532,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
     }
     memset(json_out, 0, 65536);
 
-    // ==================== Phase 0: GSMA 证书验证 ====================
     if (safe_nvram_read(path, st) != PQ_ZK_SUCCESS) {
         snprintf(json_out, 65536, "{\"error\":\"nvram_read_failed\",\"phase\":0}");
         goto fullauth_cleanup;
@@ -1761,11 +1554,9 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
             w_total.coeffs[i] = v;
         }
 
-        // 计算 R_dynamic
         uint8_t r_dynamic[PQ_ZK_SEED_BYTES];
         compute_r_dynamic((const uint8_t *)rbio_ptr, st->ctr_local, r_dynamic);
 
-        // 编码各值为 Base64
         uint8_t wsec_bytes[PQ_ZK_K * PQ_ZK_N * 4];
         uint8_t wtot_bytes[PQ_ZK_K * PQ_ZK_N * 4];
         PQC_EncodePolyVec(w_sec, wsec_bytes, PQ_ZK_K);
@@ -1778,7 +1569,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
         base64_encode(seed_y, PQ_ZK_SEED_BYTES, seedy_b64);
         base64_encode(r_dynamic, PQ_ZK_SEED_BYTES, rdyn_b64);
 
-        // ==================== Phase 2: 挑战生成 ====================
         PQC_GenChallenge(&w_total, (const uint8_t *)cseed_ptr, c_agg);
         uint8_t cagg_bytes[PQ_ZK_N * 4];
         PQC_EncodePoly(c_agg, cagg_bytes);
@@ -1786,13 +1576,12 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
         base64_encode(cagg_bytes, PQ_ZK_N * 4, cagg_b64);
 
         // ==================== Phase 3: TEE AuthToken ====================
-        // 加载 Merkle 树
         if (PQC_LoadTree(path, tree) != PQ_ZK_SUCCESS) {
             memset(tree, 0, sizeof(*tree));
             tree->n_leaves = 1;
             tree->depth = 0;
             memcpy(tree->root, st->R_bio, 32);
-            memcpy(tree->nodes[0][0], st->R_bio, 32);  // depth=0：叶子哈希即根
+            memcpy(tree->nodes[0][0], st->R_bio, 32);
             memcpy(tree->salt, st->salt, 32);
         }
 
@@ -1814,7 +1603,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
         base64_encode(auth_tok, PQ_ZK_MAC_BYTES, atok_b64);
         base64_encode(r_dyn2, PQ_ZK_SEED_BYTES, rdyn2_b64);
 
-        // 序列化 M2 路径：前置叶子哈希 h_M1,dom，对齐论文 M2=(h_M1,dom, path)
         uint8_t m2_serial[4096];
         size_t m2_off = 0;
         memcpy(m2_serial + m2_off, tree->nodes[0][(uint32_t)m1Index], PQZK_MERKLE_HASH_BYTES);
@@ -1830,7 +1618,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
         char m2_b64[8192];
         base64_encode(m2_serial, m2_off, m2_b64);
 
-        // ==================== Phase 4: 掩码计算 ====================
         PQ_ZK_ErrorCode zm_rc = PQC_ComputeZ_and_Mask(
             path, c_agg, (const uint8_t *)cseed_ptr, r_dyn2, auth_tok, z_mask);
 
@@ -1840,8 +1627,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
             goto fullauth_cleanup;
         }
 
-        // ==================== Phase 5: LPA 聚合 ====================
-        // 恢复 y_pub from seed_y
         {
             uint8_t sy_raw[PQ_ZK_SEED_BYTES];
             memcpy(sy_raw, seed_y, PQ_ZK_SEED_BYTES);
@@ -1856,7 +1641,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
         char zf_b64[21856];
         base64_encode(zf_bytes, PQ_ZK_M * PQ_ZK_N * 4, zf_b64);
 
-        // ==================== 构建输出 JSON ====================
         char eid_hex[33];
         bytes_to_hex(st->eid, NVRAM_EID_LEN, eid_hex);
 
@@ -1889,7 +1673,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeRunFullAuth(
     }
 
 fullauth_cleanup:
-    // ---- 安全释放所有堆内存 ----
     if (w_sec)   { secure_zero(w_sec, sizeof(poly_vec_t)); free(w_sec); }
     if (w_pub)   { secure_zero(w_pub, sizeof(poly_vec_t)); free(w_pub); }
     if (c_agg)   { secure_zero(c_agg, sizeof(poly_t)); free(c_agg); }
@@ -1910,7 +1693,6 @@ fullauth_cleanup:
 }
 
 // ================================================================
-// ML-KEM (CRYSTALS-Kyber-768) JNI 桥接 — 算子切换隧道
 // ================================================================
 
 JNIEXPORT jint JNICALL
@@ -1987,11 +1769,9 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeMlkemDecapsulate(
     return 0;
 }
 
-// ---- APDU 隧道加密/解密（内建 tunnel 构造） ----
 static void build_tunnel_from_key(const uint8_t *session_key, mlkem_tunnel_t *tunnel) {
     memset(tunnel, 0, sizeof(*tunnel));
     memcpy(tunnel->session_key, session_key, PQZK_MLKEM_SESSION_KEY_BYTES);
-    // 从 session_key 派生 tunnel_id
     uint8_t hash[32];
     pqzk_sha3_256(session_key, PQZK_MLKEM_SESSION_KEY_BYTES, hash);
     memcpy(tunnel->tunnel_id, hash, 16);
@@ -2022,7 +1802,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeApduEncrypt(
 
     int ret = PQZK_APDU_Encrypt(&tunnel, (const uint8_t *)pt_buf, (size_t)pt_len,
                                 (uint8_t *)ct_buf);
-    // PQZK_APDU_Encrypt 返回写入长度，<0 表示错误
     env->ReleaseByteArrayElements(outCt, ct_buf, ret > 0 ? 0 : JNI_ABORT);
     env->ReleaseByteArrayElements(plaintext, pt_buf, JNI_ABORT);
     secure_zero(key, sizeof(key));
@@ -2060,7 +1839,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeApduDecrypt(
     return (jint)(ret > 0 ? ret : -1);
 }
 
-// ---- APDU 载荷序列化 / 反序列化 ----
 
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativeApduSerializePayload(
@@ -2125,7 +1903,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeApduDeserializePayload(
 }
 
 // ================================================================
-// GSMA 证书操作 JNI 桥接
 // ================================================================
 
 JNIEXPORT jint JNICALL
@@ -2223,8 +2000,6 @@ Java_com_yourcompany_pqzkesim_NativeLib_nativeCredKycVerify(
 }
 
 // ================================================================
-// mode_switch JNI — 算子切换 (PQ-ZK operator switching)
-// 使用 C 层 mode_switch() 切换 eUICC 绑定运营商
 // ================================================================
 JNIEXPORT jint JNICALL
 Java_com_yourcompany_pqzkesim_NativeLib_nativeModeSwitch(

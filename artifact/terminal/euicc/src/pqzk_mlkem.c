@@ -28,7 +28,6 @@ static int derive_session_key(const uint8_t ss[PQZK_MLKEM_SS_BYTES],
 
 /* ================================================================
  * PQZK_MLKEM_Keygen
- * MNO_B 生成 ML-KEM-768 密钥对
  * ================================================================ */
 int PQZK_MLKEM_Keygen(mlkem_keypair_t *kp_out)
 {
@@ -47,7 +46,6 @@ int PQZK_MLKEM_Keygen(mlkem_keypair_t *kp_out)
 
 /* ================================================================
  * PQZK_MLKEM_Encapsulate
- * eUICC 端：封装，生成密文和共享密钥，派生会话密钥
  * ================================================================ */
 int PQZK_MLKEM_Encapsulate(const uint8_t  server_pk[PQZK_MLKEM_PK_BYTES],
                              uint8_t        ct_out[PQZK_MLKEM_CT_BYTES],
@@ -84,14 +82,13 @@ done:
 
 /* ================================================================
  * PQZK_MLKEM_Decapsulate
- * MNO_B 端：解封装，从密文恢复共享密钥，派生相同会话密钥
  * ================================================================ */
 int PQZK_MLKEM_Decapsulate(const mlkem_keypair_t *kp,
                              const uint8_t ct[PQZK_MLKEM_CT_BYTES],
                              mlkem_tunnel_t *tunnel_out)
 {
     if (!kp || !ct || !tunnel_out) return -1;
-    if (!tunnel_out->established) return -1; /* tunnel_id 须由 eUICC 传入 */
+    if (!tunnel_out->established) return -1; /* tunnel_id must be supplied by the eUICC */
 
     OQS_KEM *kem = OQS_KEM_new(OQS_KEM_alg_kyber_768);
     if (!kem) return -1;
@@ -102,7 +99,6 @@ int PQZK_MLKEM_Decapsulate(const mlkem_keypair_t *kp,
     if (OQS_KEM_decaps(kem, ss, ct, kp->sk) != OQS_SUCCESS)
         goto done;
 
-    /* 用 eUICC 传来的 tunnel_id 派生相同的会话密钥 */
     if (derive_session_key(ss, tunnel_out->tunnel_id,
                            tunnel_out->session_key) != 0)
         goto done;

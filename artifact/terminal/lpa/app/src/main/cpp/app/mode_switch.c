@@ -30,11 +30,11 @@ static int tee_biometric_verify(void)
 
 /* Step 2: TEE computes domain-bound bio root R_bio_dom_B */
 static int tee_derive_domain_root(const uint8_t  R_bio[32],
-                                  const uint8_t  did_b[PQZK_MNO_ID_BYTES],
-                                  const uint8_t  salt[32],
-                                  const uint8_t  feature_blocks[][PQZK_MERKLE_HASH_BYTES],
-                                  size_t         n_blocks,
-                                  uint8_t        R_bio_B_out[32])
+                                   const uint8_t  did_b[PQZK_MNO_ID_BYTES],
+                                   const uint8_t  salt[32],
+                                   const uint8_t  feature_blocks[][PQZK_MERKLE_HASH_BYTES],
+                                   size_t         n_blocks,
+                                   uint8_t        R_bio_B_out[32])
 {
     merkle_tree_t tree_b;
     int rc = PQC_MerkleTree_Build(feature_blocks, n_blocks, salt, did_b, &tree_b);
@@ -49,13 +49,13 @@ static int tee_derive_domain_root(const uint8_t  R_bio[32],
  * Sim: direct function calls.
  */
 static int smdp_switch(const uint8_t  eid[16],
-                       const uint8_t  did_a[PQZK_MNO_ID_BYTES],
-                       const uint8_t  did_b[PQZK_MNO_ID_BYTES],
-                       const uint8_t  R_bio_A[32],
-                       const uint8_t  cred_kyc_a[PQZK_MLDSA_SIG_BYTES],
-                       const uint8_t  R_bio_B[32],
-                       uint8_t        cred_kyc_b_out[PQZK_MLDSA_SIG_BYTES],
-                       size_t        *cred_kyc_b_len)
+                        const uint8_t  did_a[PQZK_MNO_ID_BYTES],
+                        const uint8_t  did_b[PQZK_MNO_ID_BYTES],
+                        const uint8_t  R_bio_A[32],
+                        const uint8_t  cred_kyc_a[PQZK_MLDSA_SIG_BYTES],
+                        const uint8_t  R_bio_B[32],
+                        uint8_t        cred_kyc_b_out[PQZK_MLDSA_SIG_BYTES],
+                        size_t        *cred_kyc_b_len)
 {
     /* Verify Cred_KYC_A over (EID, DID_A, R_bio_A) with SM-DP+ public key */
     if (PQZK_CredKYC_Verify(eid, did_a, R_bio_A, cred_kyc_a, PQZK_MLDSA_SIG_BYTES) != 0) {
@@ -119,9 +119,9 @@ int mode_switch(const char    *nvram_dir,
     /* Use the stored Merkle tree salt and root to derive R_bio_B.
      * Simplified: R_bio_B = SHA3-256(R_bio || DID_B) */
     pqzk_iov_t iov[] = {
-            { state.R_bio, 32 },
-            { domain_id_b, PQZK_MNO_ID_BYTES },
-            { NULL, 0 }
+        { state.R_bio, 32 },
+        { domain_id_b, PQZK_MNO_ID_BYTES },
+        { NULL, 0 }
     };
     pqzk_sha3_256_iov(iov, R_bio_B);
     print_hex("R_bio (original, unchanged)", state.R_bio, 32);

@@ -37,7 +37,6 @@ class LogViewModel : ViewModel() {
                 phoneNumber = phoneNumber
             )
             logItems.add(0, item)
-            // 限制最多 500 条，防止内存溢出
             if (logItems.size > 500) {
                 logItems.removeAt(logItems.lastIndex)
             }

@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.data.local
 
-// 认证日志数据访问对象（Room DAO）
 
 import androidx.room.*
 import com.yourcompany.pqzkesim.data.model.AuthLogItem

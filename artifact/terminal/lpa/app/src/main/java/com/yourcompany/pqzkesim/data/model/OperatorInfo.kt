@@ -7,25 +7,25 @@ data class OperatorInfo(
 )
 
 enum class OperatorStatus(val displayText: String) {
-    UNBOUND("未开卡"),
-    BOUND("已绑定")
+    UNBOUND("Not Activated"),
+    BOUND("Bound")
 }
 
 object OperatorConfig {
     val CHINA_MOBILE = OperatorInfo(
-        name = "中国移动",
+        name = "China Mobile",
         domainId = "CMCC_PQC_01",
         status = OperatorStatus.UNBOUND
     )
 
     val CHINA_UNICOM = OperatorInfo(
-        name = "中国联通",
+        name = "China Unicom",
         domainId = "CUCC_PQC_02",
         status = OperatorStatus.UNBOUND
     )
 
     val CHINA_TELECOM = OperatorInfo(
-        name = "中国电信",
+        name = "China Telecom",
         domainId = "CTCC_PQC_03",
         status = OperatorStatus.UNBOUND
     )

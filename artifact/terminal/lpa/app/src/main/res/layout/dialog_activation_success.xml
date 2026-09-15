@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-    dialog_activation_success.xml — eSIM 开通成功结果弹窗
-    卡片式设计：白色圆角卡片 + 蓝色安全主题 + 层次化信息布局
-    居中显示，高度约屏幕 1/3，内容超出时可滚动
+    dialog_activation_success.xml — eSIM activation-success dialog
+    Card design: white rounded card, blue security theme, hierarchical information layout
+    Centered display, about one third of screen height, scrollable when needed
 -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
@@ -12,7 +12,6 @@
     android:clickable="true"
     android:focusable="true">
 
-    <!-- 居中卡片容器：水平 margin 约束宽度接近屏幕但留边距 -->
     <FrameLayout
         android:id="@+id/dialog_card_container"
         android:layout_width="match_parent"
@@ -39,21 +38,18 @@
                 android:padding="20dp"
                 android:gravity="center_horizontal">
 
-                <!-- ═══ 成功图标区域 ═══ -->
                 <FrameLayout
                     android:id="@+id/layout_success_icon"
                     android:layout_width="56dp"
                     android:layout_height="56dp"
                     android:layout_marginBottom="12dp">
 
-                    <!-- 绿色圆形背景 -->
                     <View
                         android:layout_width="56dp"
                         android:layout_height="56dp"
                         android:layout_gravity="center"
                         android:background="@drawable/shape_circle_done" />
 
-                    <!-- 白色对勾 ✓ -->
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
@@ -64,7 +60,6 @@
                         android:fontFamily="sans-serif-medium" />
                 </FrameLayout>
 
-                <!-- ═══ 标题区域 ═══ -->
                 <LinearLayout
                     android:id="@+id/layout_success_text"
                     android:layout_width="match_parent"
@@ -90,7 +85,6 @@
                         android:textSize="12sp" />
                 </LinearLayout>
 
-                <!-- ═══ 分割线 ═══ -->
                 <View
                     android:id="@+id/divider_top"
                     android:layout_width="match_parent"
@@ -98,7 +92,6 @@
                     android:background="#EEEEEE"
                     android:layout_marginBottom="12dp" />
 
-                <!-- ═══ 信息区域 ═══ -->
                 <LinearLayout
                     android:id="@+id/layout_info"
                     android:layout_width="match_parent"
@@ -106,7 +99,6 @@
                     android:orientation="vertical"
                     android:layout_marginBottom="4dp">
 
-                    <!-- 手机号行 -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -138,7 +130,6 @@
                                 android:fontFamily="sans-serif-medium" />
                         </LinearLayout>
 
-                        <!-- 运营商图标装饰 -->
                         <ImageView
                             android:id="@+id/iv_operator_icon"
                             android:layout_width="18dp"
@@ -147,13 +138,11 @@
                             android:alpha="0.3" />
                     </LinearLayout>
 
-                    <!-- 分割 -->
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="0.5dp"
                         android:background="#F3F4F6" />
 
-                    <!-- 开通时间行 -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -178,13 +167,11 @@
                             android:fontFamily="sans-serif-medium" />
                     </LinearLayout>
 
-                    <!-- 分割 -->
                     <View
                         android:layout_width="match_parent"
                         android:layout_height="0.5dp"
                         android:background="#F3F4F6" />
 
-                    <!-- 运营商行 -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -203,14 +190,13 @@
                             android:id="@+id/tv_operator_name"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="中国移动"
+                            android:text="China Mobile"
                             android:textColor="#1F2937"
                             android:textSize="14sp"
                             android:fontFamily="sans-serif-medium" />
                     </LinearLayout>
                 </LinearLayout>
 
-                <!-- ═══ 分割线 ═══ -->
                 <View
                     android:id="@+id/divider_bottom"
                     android:layout_width="match_parent"
@@ -218,7 +204,6 @@
                     android:background="#EEEEEE"
                     android:layout_marginBottom="12dp" />
 
-                <!-- ═══ 完成按钮 ═══ -->
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_done"
                     android:layout_width="match_parent"

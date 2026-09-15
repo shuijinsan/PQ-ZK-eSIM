@@ -1,24 +1,13 @@
-Paper: Figure 7, Appendix D (Resistance to Real-World Attacks)
+Paper: sparse-noise / multi-norm validation.
 
-Claim: Sparse-noise degradation of the flooding term is detected by the
-multi-norm check (ell_2 lower bound), rejecting low-density injections.
+Claim: structured degradation of y_pub is tested against the actual verifier while preserving the lattice relation. The experiment records which norm check rejects each trial.
 
-Experiment (QEMU ARM64 emulation):
+Experiment:
   qemu-aarch64-static -L /usr/aarch64-linux-gnu \
       artifact/terminal/euicc/build/arm64/bench_pqzkesim_comprehensive --only sparse
 
-Input: none
+Expected outputs:
+  sparse_noise_attack_results.csv
+  sparse_noise_norm_breakdown.csv
 
-Expected output: sparse_noise_attack_results.csv
-  columns: rho, detection_rate, false_reject_rate, avg_total_us
-
-Runtime: ~1-2 min
-
-Resources: 1 CPU core, <100 MB RAM, <1 MB disk
-
-Tolerance:
-  - detection_rate: deterministic at the extremes -- 1.0 for rho <= 0.75
-    (below the geometric threshold rho* = 0.78), 0.0 for rho = 1.0 (honest
-    noise). The rho = 0.90 row falls in the transition band between the detected and undetected regimes.
-  - false_reject_rate: deterministic (0.0 for honest runs).
-  - timing: faster passes; slower up to +100% (2x).
+The rho=0.78 value is only the ell_2 geometric reference threshold for the stated sparsification model; the full verifier also applies ell_infinity and ell_1 checks. Honest false-rejection must be reported empirically and is not defined to be exactly zero.

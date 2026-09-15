@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.repository
 
-// 激活流程数据仓库，编排认证与网络请求
 
 import com.yourcompany.pqzkesim.NativeLib
 import com.yourcompany.pqzkesim.data.remote.ChallengeResponse

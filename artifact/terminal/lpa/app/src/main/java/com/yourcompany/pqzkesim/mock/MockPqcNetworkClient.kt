@@ -28,7 +28,6 @@ object MockPqcNetworkClient {
     @Volatile
     private var currentSessionId: String = freshSessionId()
 
-    // 每个运营商的手机号尾号计数器，每次认证递增，确保每次下发唯一号码
     @Volatile private var cmccCounter = 1
     @Volatile private var cuccCounter = 1
     @Volatile private var ctccCounter = 1
@@ -39,7 +38,7 @@ object MockPqcNetworkClient {
     /** Reset the session id for a new activation round. */
     fun resetSession() {
         currentSessionId = freshSessionId()
-        Log.d(TAG, "[Mock] 会话已重置: ${currentSessionId.take(12)}...")
+        Log.d(TAG, "[Mock] Session reset: ${currentSessionId.take(12)}...")
     }
 
     // ──── /api/v1/auth/challenge ────
@@ -98,7 +97,6 @@ object MockPqcNetworkClient {
         // Echo the client-encrypted request back as the "encrypted profile".
         Log.d(TAG, "[Mock] downloadProfile → echo encrypted request (${encryptedRequest.size} bytes)")
 
-        // 每次认证生成唯一手机号（尾号递增）和唯一 ICCID
         val phoneNumber: String
         val iccid: String
         synchronized(this) {

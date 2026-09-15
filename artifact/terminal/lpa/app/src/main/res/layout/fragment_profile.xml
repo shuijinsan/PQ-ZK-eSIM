@@ -6,12 +6,10 @@
     android:orientation="vertical"
     android:background="#F9FAFB">
 
-    <!-- 区域 A：用户信息与安全状态展示区 -->
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
 
-        <!-- 背景图：alignTop/Bottom 严格绑定内容容器，不溢出 -->
         <ImageView
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -20,7 +18,6 @@
             android:src="@drawable/bg_profile_header"
             android:scaleType="centerCrop" />
 
-        <!-- 半透明淡蓝遮罩：保护白色文字清晰可读 -->
         <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
@@ -35,14 +32,12 @@
             android:orientation="vertical"
             android:padding="24dp">
 
-            <!-- 用户头像与昵称 -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
                 android:gravity="center_vertical">
 
-            <!-- 圆形头像 -->
             <ImageView
                 android:id="@+id/iv_user_avatar"
                 android:layout_width="80dp"
@@ -52,7 +47,6 @@
                 android:background="@drawable/bg_circle_white"
                 android:padding="3dp" />
 
-            <!-- 用户昵称区域 -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -75,7 +69,6 @@
                         android:textSize="20sp"
                         android:textStyle="bold" />
 
-                    <!-- 编辑图标 -->
                     <ImageView
                         android:id="@+id/iv_edit_name"
                         android:layout_width="16dp"
@@ -87,7 +80,6 @@
             </LinearLayout>
         </LinearLayout>
 
-        <!-- 用户信息网格 -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -96,7 +88,7 @@
             android:divider="@drawable/divider_vertical"
             android:showDividers="middle">
 
-            <!-- 用户ID -->
+            <!-- User ID -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -124,7 +116,7 @@
                     android:layout_marginTop="4dp" />
             </LinearLayout>
 
-            <!-- 注册时间 -->
+            <!-- Registered -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -153,7 +145,6 @@
                     android:layout_marginTop="4dp" />
             </LinearLayout>
 
-            <!-- 绑定设备数 -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -173,7 +164,7 @@
                     android:id="@+id/tv_device_count"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="1台"
+                    android:text="1 device"
                     android:textColor="#555555"
                     android:textSize="12sp"
                     android:textStyle="bold"
@@ -184,7 +175,6 @@
     </LinearLayout>
     </RelativeLayout>
 
-    <!-- 区域 B：操作菜单列表区 -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"

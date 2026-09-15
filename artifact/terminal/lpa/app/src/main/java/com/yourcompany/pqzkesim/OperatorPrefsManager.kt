@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim
 
-// 运营商偏好设置管理
 
 import android.content.Context
 import android.content.SharedPreferences
