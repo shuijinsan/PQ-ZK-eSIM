@@ -19,7 +19,7 @@ class UserRepository(private val filesDir: File, private val nvramDir: File) {
         val nickname = loadNickname()
         val avatarIdx = loadAvatarIndex()
         val deviceCount = countDevices()
-        val securityLevel = if (isPqcEnabled()) "抗量子国防级" else "标准生物级"
+        val securityLevel = if (isPqcEnabled()) "Post-Quantum Defense Grade" else "Standard biometric level"
         val customPath = if (avatarImageFile.exists()) avatarImageFile.absolutePath else null
 
         UserProfile(

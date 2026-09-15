@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.data.model
 
-// 认证日志条目（Room 实体）
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
@@ -14,5 +13,5 @@ data class AuthLogItem(
     val sessionId: String,        // server session ID (full)
     val counter: Long,            // eUICC ctr_local value
     val operatorInfo: String = "", // active operator name, empty if none
-    val phoneNumber: String = ""  // 开通的手机号
+    val phoneNumber: String = ""
 )

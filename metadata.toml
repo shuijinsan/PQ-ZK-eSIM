@@ -1,60 +1,32 @@
-# PQ-ZK-eSIM Artifact metadata（数据来自实验与后端）
-# 待最终一致性审核
-
-[artifact]
 name = "PQ-ZK-eSIM"
-description = "Post-quantum zero-knowledge eSIM authentication: prover/verifier, TEE simulation, QEMU ARM64 evaluation"
-badges = ["Available", "Functional", "Reproduced"]  # 待最终确认实际达到后再勾选
+version = "camera-ready-k3m8"
+artifact_type = "research prototype"
+badges = ["Available", "Functional"]
 
-[hardware]
+[environment]
 os = "Ubuntu 22.04 LTS"
-host = "x86_64"
-cpu = "4+ cores"
-ram = "8 GB"
-disk = "20 GB"
-emulation = "QEMU ARM64 (qemu-user-static)"
-toolchain = "AArch64 cross (gcc-aarch64-linux-gnu)"
+arch = "x86_64 host / AArch64 emulation"
+qemu = "qemu-aarch64-static"
 
-[software]
-compiler = "gcc/g++ (C11/C++17)"
-cmake = ">= 3.22"
-crypto = ["OpenSSL 3.0.13", "liboqs 0.15.0"]
-python = "Python 3 + numpy/pandas/matplotlib"
-security_estimator = "lattice-estimator (commit d2bf9ca) + fpylll (外部，未 vendor)"
+[crypto]
+N = 256
+q = 8380417
+k = 3
+m = 8
+kappa = 35
+sigma_pub = 5000
+secret_distribution = "uniform ternary {-1,0,1}"
+public_matrix = "systematic [Abar|I_3], Abar in R_q^(3x5)"
+security_estimator = "lattice-estimator commit 6019056 + fpylll (external, not vendored)"
 
-# —— 各 claim 的 runtime / resource（来自 claim.txt）——
-[[claims]]
-id = "claim1_qemu_performance"
-paper = "Figure 5 / Section 7.2"
-runtime = "~2-3 min"
-resources = "1 CPU, <100 MB RAM, <10 MB disk"
+[claims]
+claim1 = "QEMU ARM64 phase timing"
+claim2 = "MLWE/MSIS known-attack estimation"
+claim3 = "DoS early reject"
+claim4 = "sliding-window resynchronization"
+claim5 = "sparse-noise multi-norm detection"
 
-[[claims]]
-id = "claim2_security_estimation"
-paper = "Figure 4 / Section 7"
-runtime = "~1 min（依赖外部 lattice-estimator）"
-resources = "1 CPU, <1 GB RAM, <10 MB disk"
-
-[[claims]]
-id = "claim3_dos_early_reject"
-paper = "Figure 8 / Appendix D"
-runtime = "~1 min"
-resources = "1 CPU, <100 MB RAM, <1 MB disk"
-
-[[claims]]
-id = "claim4_sliding_window"
-paper = "Figure 6 / Appendix D"
-runtime = "~1-2 min"
-resources = "1 CPU, <100 MB RAM, <1 MB disk"
-
-[[claims]]
-id = "claim5_sparse_noise"
-paper = "Figure 7 / Appendix D"
-runtime = "~1-2 min"
-resources = "1 CPU, <100 MB RAM, <1 MB disk"
-
-# —— 后端（SM-DP+ Verifier）——
 [backend]
-dependency = "Python >= 3.9 (venv)；FastAPI/uvicorn/SQLAlchemy/PyMySQL/redis/cryptography；MySQL 8.0 + Redis-server"
-network = "TCP 8000 (0.0.0.0)；本机连通 MySQL:3306、Redis:6379；接口 /api/v1/auth/*（/docs 为 Swagger）"
-runtime = "uvicorn main:app --host 0.0.0.0 --port 8000（详见根目录 SM-DP+ Verifier 说明）"
+optional = true
+network = "TCP 8000; optional local MySQL 8.0 and Redis"
+runtime = "uvicorn main:app --host 0.0.0.0 --port 8000"

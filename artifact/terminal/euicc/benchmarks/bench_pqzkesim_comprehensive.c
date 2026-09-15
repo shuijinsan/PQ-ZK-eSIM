@@ -18,6 +18,7 @@
 extern int mode_switch(const char*,const uint8_t[PQZK_MNO_ID_BYTES],const uint8_t[PQZK_MNO_ID_BYTES]);
 
 static double get_time_us(void){struct timespec ts;clock_gettime(CLOCK_MONOTONIC,&ts);return(double)ts.tv_sec*1e6+(double)ts.tv_nsec/1e3;}
+static void sleep_1ms(void){struct timespec ts={0,1000000L};nanosleep(&ts,NULL);}
 static long get_rss_kb(void) {
     FILE* fp = fopen("/proc/self/status", "r");
     if (!fp) return 0;
@@ -88,7 +89,7 @@ static PQ_ZK_ErrorCode run_one_trial(
     t0=get_time_us();
     poly_vec_t M_mask;PQC_GenerateMask(k_sym_nvram,c_seed,ctr_local,R_dyn,&M_mask);
     poly_vec_t zmm,zu;pqzk_vec_sub(&resp_z,&M_mask,&zmm, PQ_ZK_M);
-    for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=zmm.coeffs[i];if(v>PQ_ZK_Q_VAL/2)v-=PQ_ZK_Q_VAL;zu.coeffs[i]=v;}
+    for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=zmm.coeffs[i];if (v > PQ_ZK_Q_VAL / 2) v -= PQ_ZK_Q_VAL;}
     norm_precheck(&zu,params,ov,un,l1);
     PQ_ZK_ErrorCode vrc=PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&resp_z,c_seed,R_dyn,&M_mask,params);
     timings[6]=get_time_us()-t0;
@@ -100,9 +101,12 @@ static void make_sparse_ypub(const uint8_t seed[PQ_ZK_SEED_BYTES],double rho,pol
     for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){uint8_t rb;pqzk_rand_bytes(&rb,1);if((double)rb/255.0>rho)out->coeffs[i]=0;}}
 
 static void run_sparse_noise_attack_experiment(void){
-    printf("\n=== Sparse Noise Attack ===\n");
+    printf("\n=== Sparse Noise Attack (consistent malicious-y_pub model) ===\n");
     FILE*csv=fopen("sparse_noise_attack_results.csv","w");if(!csv){perror("fopen");return;}
+    FILE*detail=fopen("sparse_noise_norm_breakdown.csv","w");if(!detail){perror("fopen");fclose(csv);return;}
+    /* Keep the legacy 4-column result schema so existing plot/validation scripts keep working. */
     fprintf(csv,"rho,detection_rate,false_reject_rate,avg_total_us\n");
+    fprintf(detail,"rho,l2_low_rate,l2_high_rate,linf_rate,l1_low_rate,verify_reject_rate\n");
     const char*nd="/tmp/pqzk_sparse";system("mkdir -p /tmp/pqzk_sparse");
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];poly_vec_t sk_s;PQC_GenKeyPair(pk_t,&sk_s);
     uint8_t eid[16]={0},k_sym[32],k_tee[32],d_seed[32],R_bio[32],salt[32],cred_kyc[PQZK_MLDSA_SIG_BYTES];
@@ -111,14 +115,23 @@ static void run_sparse_noise_attack_experiment(void){
     double rhos[]={0.0,0.05,0.10,0.25,0.50,0.75,0.90,1.0};int nr=(int)(sizeof(rhos)/sizeof(rhos[0]));
     beta_params_t params=PQZK_DEFAULT_BETA_PARAMS;
     for(int ri=0;ri<nr;ri++){
-        double rho=rhos[ri];int trials=200,detected=0,accepted=0,false_rej=0;double sum_us=0.0;
+        double rho=rhos[ri];int trials=200,detected=0,accepted=0,false_rej=0;
+        int l2lo=0,l2hi=0,linf=0,l1lo=0,vrej=0; double sum_us=0.0;
         printf("  rho=%.2f ... ",rho);fflush(stdout);
-        for(int r=0;r<trials;r++){
+        for(int rr=0;rr<trials;rr++){
             uint64_t c0;pqzk_rand_bytes((uint8_t*)&c0,8);
             PQC_eUICC_Init(nd,eid,16,&sk_s,k_sym,32,c0,k_tee,32,salt,R_bio,cred_kyc,64);
             nvram_state_t st;nvram_read(nd,&st);uint64_t ctr=st.ctr_local;
-            poly_vec_t Wp,Ws,W;uint8_t sy[PQ_ZK_SEED_BYTES],MW[PQ_ZK_MAC_BYTES];
-            PQC_PreCompute(&Wp,sy);PQC_eUICC_Commit(nd,&Ws,MW);pqzk_vec_add(&Ws,&Wp,&W, PQ_ZK_K);
+
+            /* Malicious LPA fixes structured y_pub before W and challenge. */
+            uint8_t sy[PQ_ZK_SEED_BYTES];pqzk_rand_bytes(sy,sizeof(sy));
+            poly_vec_t ya;make_sparse_ypub(sy,rho,&ya);
+            poly_vec_t A_rows[PQ_ZK_K],Wp;
+            pqzk_gen_matrix_A(PQZK_MATRIX_A_SEED,A_rows,PQ_ZK_K,PQ_ZK_M);
+            pqzk_mat_vec_mul_ntt(A_rows,&ya,&Wp,PQ_ZK_K,PQ_ZK_M);
+
+            poly_vec_t Ws,W;uint8_t MW[PQ_ZK_MAC_BYTES];
+            PQC_eUICC_Commit(nd,&Ws,MW);pqzk_vec_add(&Ws,&Wp,&W,PQ_ZK_K);
             uint8_t cs[PQ_ZK_SEED_BYTES];pqzk_rand_bytes(cs,PQ_ZK_SEED_BYTES);
             poly_t ca;PQC_GenChallenge(&W,cs,&ca);
             uint8_t cb[8];write_le64(cb,ctr);uint8_t Rd[32];
@@ -126,31 +139,42 @@ static void run_sparse_noise_attack_experiment(void){
             uint8_t tok[PQ_ZK_MAC_BYTES];build_auth_token(k_tee,&ca,ctr,Rd,tok);
             poly_vec_t zsm;
             if(PQC_ComputeZ_and_Mask(nd,&ca,cs,Rd,tok,&zsm)!=PQ_ZK_SUCCESS)continue;
-            double t0=get_time_us();
-            poly_vec_t ya,rz;PQC_RegenerateYpub(sy,&ya);PQC_LPA_Aggregate(&zsm,&ya,&rz);
-            poly_vec_t Mm;PQC_GenerateMask(k_sym,cs,ctr,Rd,&Mm);
-            poly_vec_t zmm,zu;pqzk_vec_sub(&rz,&Mm,&zmm, PQ_ZK_M);
-            for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=zmm.coeffs[i];if(v>PQ_ZK_Q_VAL/2)v-=PQ_ZK_Q_VAL;zu.coeffs[i]=v;}
-            if (rho < 1.0) {
-                for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){
-                    uint8_t rb; pqzk_rand_bytes(&rb,1);
-                    if((double)rb/255.0>rho)zu.coeffs[i]=0;
-                }
-            }
-            PQ_ZK_ErrorCode vr = PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&rz,cs,Rd,&Mm,&params);
-            if(vr==PQ_ZK_SUCCESS)accepted++; else false_rej++;
 
-            int d1=0,d2=0,lh=0;
-            int64_t actual_l1 = 0;
-            for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v = zu.coeffs[i]; actual_l1 += (v < 0) ? -v : v;}
-            if (actual_l1 < (int64_t)params.beta_l1) detected++;
-            norm_precheck(&zu,&params,&d1,&d2,&lh);
-            sum_us+=get_time_us()-t0;}
+            double t0=get_time_us();
+            poly_vec_t rz;PQC_LPA_Aggregate(&zsm,&ya,&rz);
+            poly_vec_t Mm;PQC_GenerateMask(k_sym,cs,ctr,Rd,&Mm);
+            poly_vec_t zmm; pqzk_vec_sub(&rz, &Mm, &zmm, PQ_ZK_M);
+            int32_t inf=0;int64_t l2=0,l1=0;
+            for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){
+                int32_t v=zmm.coeffs[i];if (v > PQ_ZK_Q_VAL / 2) v -= PQ_ZK_Q_VAL;
+                int32_t av=v<0?-v:v;if(av>inf)inf=av;l2+=(int64_t)v*v;l1+=av;
+            }
+            int f_l2lo=l2<(int64_t)params.beta_min*params.beta_min;
+            int f_l2hi=l2>(int64_t)params.beta_final*params.beta_final;
+            int f_inf=inf>(int32_t)PQ_ZK_BETA_INF;
+            int f_l1=params.beta_l1>0&&l1<(int64_t)params.beta_l1;
+            if (f_l2lo) l2lo++;
+            if (f_l2hi) l2hi++;
+            if (f_inf)  linf++;
+            if (f_l1)   l1lo++;
+            if(f_l2lo||f_l2hi||f_inf||f_l1)detected++;
+
+            PQ_ZK_ErrorCode vr=PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&rz,cs,Rd,&Mm,&params);
+            if(vr==PQ_ZK_SUCCESS)accepted++;else vrej++;
+            if(rho>=0.999 && vr!=PQ_ZK_SUCCESS)false_rej++;
+            sum_us+=get_time_us()-t0;
+        }
         double dr=(double)detected/trials,fr=(double)false_rej/trials,avg=sum_us/trials;
         fprintf(csv,"%.2f,%.6f,%.6f,%.2f\n",rho,dr,fr,avg);
-        printf("detected=%.1f%% accepted=%.1f%% avg=%.1fus\n",dr*100,(double)accepted/trials*100,avg);}
-    fclose(csv);system("rm -rf /tmp/pqzk_sparse");printf("-> sparse_noise_attack_results.csv\n");}
-
+        fprintf(detail,"%.2f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
+                rho,(double)l2lo/trials,(double)l2hi/trials,
+                (double)linf/trials,(double)l1lo/trials,(double)vrej/trials);
+        printf("detected=%.1f%% accepted=%.1f%% honestFRR=%.2f%% avg=%.1fus\n",
+               dr*100,(double)accepted/trials*100,fr*100,avg);
+    }
+    fclose(csv);fclose(detail);system("rm -rf /tmp/pqzk_sparse");
+    printf("-> sparse_noise_attack_results.csv, sparse_noise_norm_breakdown.csv\n");
+}
 static void run_sliding_window_resync_experiment(void){
     printf("\n=== Sliding Window Resync ===\n");
     FILE*csv=fopen("sliding_window_resync_results.csv","w");if(!csv){perror("fopen");return;}
@@ -324,21 +348,21 @@ static void run_memory_experiment(void){
         PQC_eUICC_Init(nd,eid,16,&sk_s,k_sym,32,c,k_tee,32,salt,R_bio,cred_kyc,64);
         nvram_state_t st;nvram_read(nd,&st);uint64_t ctr=st.ctr_local;
         poly_vec_t Wp,Ws,W;uint8_t sy[PQ_ZK_SEED_BYTES],MW[PQ_ZK_MAC_BYTES];
-        usleep(1000); rb[0][r]=get_rss_kb(); usleep(1000); PQC_PreCompute(&Wp,sy); usleep(1000); ra[0][r]=get_rss_kb(); usleep(1000);
-        usleep(1000); rb[1][r]=get_rss_kb(); usleep(1000); PQC_eUICC_Commit(nd,&Ws,MW); usleep(1000); ra[1][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[0][r]=get_rss_kb(); sleep_1ms(); PQC_PreCompute(&Wp,sy); sleep_1ms(); ra[0][r]=get_rss_kb(); sleep_1ms();
+        sleep_1ms(); rb[1][r]=get_rss_kb(); sleep_1ms(); PQC_eUICC_Commit(nd,&Ws,MW); sleep_1ms(); ra[1][r]=get_rss_kb(); sleep_1ms();
         pqzk_vec_add(&Ws,&Wp,&W, PQ_ZK_K);
         uint8_t cs[PQ_ZK_SEED_BYTES];pqzk_rand_bytes(cs,PQ_ZK_SEED_BYTES);poly_t ca;
-        usleep(1000); rb[2][r]=get_rss_kb(); usleep(1000); PQC_GenChallenge(&W,cs,&ca); usleep(1000); ra[2][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[2][r]=get_rss_kb(); sleep_1ms(); PQC_GenChallenge(&W,cs,&ca); sleep_1ms(); ra[2][r]=get_rss_kb(); sleep_1ms();
         uint8_t cb[8];write_le64(cb,ctr);uint8_t Rd[32];
         pqzk_iov_t rv[]={{R_bio,32},{cb,8},{NULL,0}};pqzk_sha3_256_iov(rv,Rd);
         uint8_t tok[PQ_ZK_MAC_BYTES];
-        usleep(1000); rb[3][r]=get_rss_kb(); usleep(1000); build_auth_token(k_tee,&ca,ctr,Rd,tok); usleep(1000); ra[3][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[3][r]=get_rss_kb(); sleep_1ms(); build_auth_token(k_tee,&ca,ctr,Rd,tok); sleep_1ms(); ra[3][r]=get_rss_kb(); sleep_1ms();
         poly_vec_t zsm;
-        usleep(1000); rb[4][r]=get_rss_kb(); usleep(1000); PQC_ComputeZ_and_Mask(nd,&ca,cs,Rd,tok,&zsm); usleep(1000); ra[4][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[4][r]=get_rss_kb(); sleep_1ms(); PQC_ComputeZ_and_Mask(nd,&ca,cs,Rd,tok,&zsm); sleep_1ms(); ra[4][r]=get_rss_kb(); sleep_1ms();
         poly_vec_t yp,rz;PQC_RegenerateYpub(sy,&yp);
-        usleep(1000); rb[5][r]=get_rss_kb(); usleep(1000); PQC_LPA_Aggregate(&zsm,&yp,&rz); usleep(1000); ra[5][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[5][r]=get_rss_kb(); sleep_1ms(); PQC_LPA_Aggregate(&zsm,&yp,&rz); sleep_1ms(); ra[5][r]=get_rss_kb(); sleep_1ms();
         poly_vec_t Mm;PQC_GenerateMask(k_sym,cs,ctr,Rd,&Mm);
-        usleep(1000); rb[6][r]=get_rss_kb(); usleep(1000); PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&rz,cs,Rd,&Mm,&params); usleep(1000); ra[6][r]=get_rss_kb(); usleep(1000);
+        sleep_1ms(); rb[6][r]=get_rss_kb(); sleep_1ms(); PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&rz,cs,Rd,&Mm,&params); sleep_1ms(); ra[6][r]=get_rss_kb(); sleep_1ms();
         if(ra[6][r]>peak)peak=ra[6][r];}
     for(int i=0;i<7;i++){long sb=0,sa=0;for(int r=0;r<trials;r++){sb+=rb[i][r];sa+=ra[i][r];}long ab=sb/trials,aa=sa/trials;fprintf(csv,"%s,%ld,%ld,%ld,%ld\n",pn[i],ab,aa,aa-ab,peak);}
     long lpa_rss=0, euicc_rss=0, server_rss=0;
@@ -359,7 +383,7 @@ int main(int argc,char*argv[]){
         if(!strcmp(argv[i],"--only") && i+1<argc){ only=argv[++i]; }
     }
     printf("============================================\n");
-    printf("  PQ-ZK-eSIM Experiments v5.1\n");
+    printf("  PQ-ZK-eSIM Experiments camera-ready k=3,m=8\n");
     printf("============================================\n");
     int run_all = (only == NULL);
     if(run_all || (only && !strcmp(only,"nvm")))     run_nvm_wear_experiment();

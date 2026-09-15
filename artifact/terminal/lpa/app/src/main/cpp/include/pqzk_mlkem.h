@@ -44,26 +44,26 @@ typedef struct {
 int PQZK_MLKEM_Keygen(mlkem_keypair_t *kp_out);
 
 int PQZK_MLKEM_Encapsulate(const uint8_t  server_pk[PQZK_MLKEM_PK_BYTES],
-                           uint8_t        ct_out[PQZK_MLKEM_CT_BYTES],
-                           mlkem_tunnel_t *tunnel_out);
+                             uint8_t        ct_out[PQZK_MLKEM_CT_BYTES],
+                             mlkem_tunnel_t *tunnel_out);
 
 int PQZK_MLKEM_Decapsulate(const mlkem_keypair_t *kp,
-                           const uint8_t ct[PQZK_MLKEM_CT_BYTES],
-                           mlkem_tunnel_t *tunnel_out);
+                             const uint8_t ct[PQZK_MLKEM_CT_BYTES],
+                             mlkem_tunnel_t *tunnel_out);
 
 int PQZK_APDU_Encrypt(const mlkem_tunnel_t *tunnel,
-                      const uint8_t *plaintext, size_t pt_len,
-                      uint8_t *ciphertext);
+                       const uint8_t *plaintext, size_t pt_len,
+                       uint8_t *ciphertext);
 
 int PQZK_APDU_Decrypt(const mlkem_tunnel_t *tunnel,
-                      const uint8_t *ciphertext, size_t ct_len,
-                      uint8_t *plaintext);
+                       const uint8_t *ciphertext, size_t ct_len,
+                       uint8_t *plaintext);
 
 int PQZK_APDU_SerializePayload(const apdu_payload_t *payload,
-                               uint8_t *buf, size_t buf_len);
+                                uint8_t *buf, size_t buf_len);
 
 int PQZK_APDU_DeserializePayload(const uint8_t *buf, size_t buf_len,
-                                 apdu_payload_t *payload_out);
+                                   apdu_payload_t *payload_out);
 
 #ifdef __cplusplus
 }

@@ -116,44 +116,44 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
         tvInitResult.visibility = View.GONE
         tvStatusDetail.visibility = View.VISIBLE
         btnNextStep.isEnabled = true
-        btnNextStep.text = "下一步"
+        btnNextStep.text = "Next"
 
         when (step) {
             RegisterStep.USER_INFO -> {
-                tvStatusDetail.text = "请输入您的昵称"
+                tvStatusDetail.text = "Enter your nickname"
                 layoutUserInfo.visibility = View.VISIBLE
             }
             RegisterStep.TEE_CHECK -> {
-                tvStatusDetail.text = "正在检测 TEE 安全环境..."
+                tvStatusDetail.text = "Checking the TEE secure environment..."
                 layoutStepInit.visibility = View.VISIBLE
-                tvInitStatus.text = "正在验证 TEE 安全环境..."
+                tvInitStatus.text = "Verifying the TEE secure environment..."
                 btnNextStep.isEnabled = false
             }
             RegisterStep.KYBER_KEYGEN -> {
-                tvStatusDetail.text = "正在生成抗量子密钥..."
+                tvStatusDetail.text = "Generating post-quantum keys..."
                 layoutStepInit.visibility = View.VISIBLE
-                tvInitStatus.text = "正在生成 Kyber-768 主密钥..."
+                tvInitStatus.text = "Generating the Kyber-768 master key..."
                 btnNextStep.isEnabled = false
             }
             RegisterStep.FINGERPRINT -> {
-                tvStatusDetail.text = "请点击按钮采集指纹特征"
+                tvStatusDetail.text = "Tap the button to collect the fingerprint feature"
                 layoutStepInit.visibility = View.VISIBLE
-                tvInitStatus.text = "准备采集指纹..."
+                tvInitStatus.text = "Preparing fingerprint capture..."
                 tvInitResult.visibility = View.GONE
-                btnNextStep.text = "开始采集指纹"
+                btnNextStep.text = "Start fingerprint capture"
             }
             RegisterStep.FACE -> {
-                tvStatusDetail.text = "请正对摄像头完成人脸采集"
+                tvStatusDetail.text = "Face the camera to capture your face"
                 layoutStepFace.visibility = View.VISIBLE
-                btnNextStep.text = "准备中..."
+                btnNextStep.text = "Preparing..."
                 btnNextStep.isEnabled = false
                 enableCamera()
             }
             RegisterStep.SECURITY_BIND -> {
-                tvStatusDetail.text = "正在执行安全绑定..."
+                tvStatusDetail.text = "Performing secure binding..."
                 layoutStepInit.visibility = View.VISIBLE
                 layoutStepFace.visibility = View.GONE
-                tvInitStatus.text = "正在融合生物特征并注册设备..."
+                tvInitStatus.text = "Binding biometrics and registering the device..."
                 tvInitResult.visibility = View.GONE
                 btnNextStep.isEnabled = false
             }
@@ -161,10 +161,10 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 tvStatusDetail.text = ""
                 tvStatusDetail.visibility = View.GONE
                 layoutStepInit.visibility = View.VISIBLE
-                tvInitStatus.text = "✅ 所有安全模块已就绪"
+                tvInitStatus.text = "All security modules are ready"
                 tvInitResult.visibility = View.VISIBLE
-                tvInitResult.text = "设备已成功注册，请点击下方按钮进入主页"
-                btnNextStep.text = "进入主页"
+                tvInitResult.text = "Device registered successfully. Tap below to continue."
+                btnNextStep.text = "Enter home"
             }
         }
     }
@@ -189,7 +189,7 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
             }
             RegisterStep.FINGERPRINT -> {
                 btnNextStep.isEnabled = false
-                btnNextStep.text = "请在对话框中验证指纹..."
+                btnNextStep.text = "Verify your fingerprint in the dialog..."
                 showFingerprintPrompt()
             }
             RegisterStep.DONE -> {
@@ -232,10 +232,10 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 withContext(Dispatchers.Main) {
                     if (detectorOk) {
                         tvInitResult.visibility = View.VISIBLE
-                        tvInitResult.text = "✅ TEE 环境正常，人脸模型已加载"
+                        tvInitResult.text = "TEE environment ready; face model loaded"
                     } else {
                         tvInitResult.visibility = View.VISIBLE
-                        tvInitResult.text = "⚠️ 模型加载失败，人脸采集可能不可用"
+                        tvInitResult.text = "Model loading failed; face capture may be unavailable"
                     }
                     delay(800)
                     advanceTo(RegisterStep.KYBER_KEYGEN)
@@ -244,7 +244,7 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 Log.e(TAG, "TEE check failed", e)
                 withContext(Dispatchers.Main) {
                     tvInitResult.visibility = View.VISIBLE
-                    tvInitResult.text = "⚠️ TEE 检测异常: ${e.message}"
+                    tvInitResult.text = "⚠️ TEE check error: ${e.message}"
                     delay(1000)
                     advanceTo(RegisterStep.KYBER_KEYGEN)
                 }
@@ -261,9 +261,9 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 if (result != null) {
                     kyberPk = result.first
                     kyberSk = result.second
-                    Log.d(TAG, "✅ Kyber-768 密钥对生成成功 (pk=${kyberPk!!.size}B, sk=${kyberSk!!.size}B)")
+                    Log.d(TAG, "✅ Kyber-768 key pair generated (pk=${kyberPk!!.size}B, sk=${kyberSk!!.size}B)")
                 } else {
-                    Log.e(TAG, "Kyber 密钥对生成返回 null")
+                    Log.e(TAG, "Kyber key-pair generation returned null")
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Kyber keygen error", e)
@@ -272,10 +272,10 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
             withContext(Dispatchers.Main) {
                 if (kyberPk != null) {
                     tvInitResult.visibility = View.VISIBLE
-                    tvInitResult.text = "✅ Kyber-768 主密钥已生成"
+                    tvInitResult.text = "✅ Kyber-768 master key generated"
                 } else {
                     tvInitResult.visibility = View.VISIBLE
-                    tvInitResult.text = "⚠️ 密钥生成失败，将使用备用方案"
+                    tvInitResult.text = "Key generation failed; fallback will be used"
                 }
                 delay(600)
                 advanceTo(RegisterStep.FINGERPRINT)
@@ -289,21 +289,21 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
         val prompt = BiometricPrompt(this, ContextCompat.getMainExecutor(this),
             object : BiometricPrompt.AuthenticationCallback() {
                 override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                    Log.d(TAG, "指纹认证成功")
+                    Log.d(TAG, "Fingerprint authentication succeeded")
                     tvInitStatus.text = getString(R.string.register_fingerprint_ok)
                     advanceTo(RegisterStep.FACE)
                 }
                 override fun onAuthenticationFailed() {
-                    Log.d(TAG, "指纹不匹配")
+                    Log.d(TAG, "Fingerprint mismatch")
                     Toast.makeText(this@RegisterActivity, getString(R.string.register_toast_fingerprint_mismatch), Toast.LENGTH_SHORT).show()
                     btnNextStep.isEnabled = true
-                    btnNextStep.text = "开始采集指纹"
+                    btnNextStep.text = "Start fingerprint capture"
                 }
                 override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                    Log.e(TAG, "指纹认证错误 [$errorCode]: $errString")
+                    Log.e(TAG, "Fingerprint authentication error [$errorCode]: $errString")
                     Toast.makeText(this@RegisterActivity, getString(R.string.register_toast_auth_error, errString), Toast.LENGTH_SHORT).show()
                     btnNextStep.isEnabled = true
-                    btnNextStep.text = "开始采集指纹"
+                    btnNextStep.text = "Start fingerprint capture"
                 }
             })
         prompt.authenticate(
@@ -319,12 +319,12 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
 
     private fun enableCamera() {
         if (!OpenCVLoader.initLocal()) {
-            Log.e(TAG, "OpenCV 初始化失败")
+            Log.e(TAG, "OpenCV initialization failed")
         }
         layoutStepFace.visibility = View.VISIBLE
         cameraView.postDelayed({
             cameraView.enableView()
-            btnNextStep.text = "请正对摄像头..."
+            btnNextStep.text = "Face the camera..."
             btnNextStep.isEnabled = false
         }, 300)
 
@@ -348,7 +348,6 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
         val rgba = inputFrame.rgba()
         if (rgba.empty()) return rgba
 
-        // 采集帧与主界面认证保持完全一致的方向处理：旋转90° + 镜像
         if (isProcessing && currentStep == RegisterStep.FACE && captureRequest) {
             captureRequest = false
             hasScheduledCapture = false
@@ -367,7 +366,6 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
             cameraView.postDelayed({ captureRequest = true }, 1000)
         }
 
-        // 预览镜像，与手机自拍看到的一致
         val preview = rgba.clone()
         Core.flip(preview, preview, 1)
         return preview
@@ -383,12 +381,12 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 val face = NativeLib.extractFaceFeature(faceBitmap)
                 faceFeature = face
                 NativeLib.saveFaceTemplate(nvramDirPath, face)
-                Log.d(TAG, "✅ 人脸特征采集完成")
+                Log.d(TAG, "✅ Face Feature CollectionDone")
                 withContext(Dispatchers.Main) { advanceTo(RegisterStep.SECURITY_BIND) }
             } catch (e: Exception) {
                 Log.e(TAG, "Face extraction failed", e)
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@RegisterActivity, "人脸采集失败", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@RegisterActivity, "Face capture failed", Toast.LENGTH_SHORT).show()
                     showStep(RegisterStep.FACE)
                 }
             }
@@ -404,9 +402,9 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 if (ff == null) {
                     withContext(Dispatchers.Main) {
                         tvInitResult.visibility = View.VISIBLE
-                        tvInitResult.text = "❌ 生物特征数据缺失，请重试"
+                        tvInitResult.text = "Biometric data missing; please retry"
                         btnNextStep.isEnabled = true
-                        btnNextStep.text = "重新开始"
+                        btnNextStep.text = "Restart"
                     }
                     return@launch
                 }
@@ -430,25 +428,24 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 withContext(Dispatchers.Main) {
                     if (regResult == 0 && verified) {
                         tvInitResult.visibility = View.VISIBLE
-                        tvInitResult.text = "✅ 安全绑定完成 | r_bio + 主密钥 + 设备身份已落盘"
-                        // 后台注册到后端 SM-DP+
+                        tvInitResult.text = "Secure binding complete; r_bio, master key, and device identity stored"
                         lifecycleScope.launch(Dispatchers.IO) { registerToBackend() }
                         delay(800)
                         advanceTo(RegisterStep.DONE)
                     } else {
                         tvInitResult.visibility = View.VISIBLE
-                        tvInitResult.text = "❌ 设备注册失败 (code=$regResult, verified=$verified)"
+                        tvInitResult.text = "❌ Device registration failed (code=$regResult, verified=$verified)"
                         btnNextStep.isEnabled = true
-                        btnNextStep.text = "重试"
+                        btnNextStep.text = "Retry"
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Security bind failed", e)
                 withContext(Dispatchers.Main) {
                     tvInitResult.visibility = View.VISIBLE
-                    tvInitResult.text = "❌ 安全绑定异常: ${e.message}"
+                    tvInitResult.text = "❌ Secure-binding error: ${e.message}"
                     btnNextStep.isEnabled = true
-                    btnNextStep.text = "重试"
+                    btnNextStep.text = "Retry"
                 }
             }
         }
@@ -464,9 +461,9 @@ class RegisterActivity : BaseLocaleActivity(), CameraBridgeViewBase.CvCameraView
                 info.optString("r_bio"),
                 info.optString("salt")
             )
-            Log.d(TAG, "后端注册结果: $resp")
+            Log.d(TAG, "Backend registration result: $resp")
         } catch (e: Throwable) {
-            Log.e(TAG, "后端注册失败", e)
+            Log.e(TAG, "Backend registration failed", e)
         }
     }
 

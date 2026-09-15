@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.viewmodel
 
-// 通信与运营商视图模型
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel

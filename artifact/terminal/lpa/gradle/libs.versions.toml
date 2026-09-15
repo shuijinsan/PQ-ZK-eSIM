@@ -1,5 +1,4 @@
 [versions]
-# 建议使用稳定版 8.4.0，如果你的工程强制要求更高，请保持一致
 agp = "8.4.0"
 kotlin = "2.1.0"
 ksp = "2.1.0-1.0.29"
@@ -24,7 +23,6 @@ androidx-activity = { group = "androidx.activity", name = "activity", version.re
 androidx-constraintlayout = { group = "androidx.constraintlayout", name = "constraintlayout", version.ref = "constraintlayout" }
 
 [plugins]
-# 修复重点：这里只能出现一次 android-application
 android-application = { id = "com.android.application", version.ref = "agp" }
 jetbrains-kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 ksp-plugin = { id = "com.google.devtools.ksp", version.ref = "ksp" }

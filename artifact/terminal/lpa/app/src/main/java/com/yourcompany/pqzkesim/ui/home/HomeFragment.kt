@@ -94,7 +94,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
     private var faceModelPath: String = ""
     private val mainHandler = Handler(Looper.getMainLooper())
 
-    // 确保 UI 操作始终在主线程执行
     private fun runOnUiThread(block: () -> Unit) {
         if (Looper.myLooper() == Looper.getMainLooper()) {
             block()
@@ -137,7 +136,7 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
         // Timeline attaches to the progress bar
         timelineAnimator = TimelineAnimator(requireActivity() as androidx.appcompat.app.AppCompatActivity, progressBar)
         timelineAnimator?.bind()
-        timelineAnimator?.resetVisuals()  // 每次进入主页清理上次认证的残留状态
+        timelineAnimator?.resetVisuals()
     }
 
     override fun onResume() {
@@ -146,13 +145,11 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
 
     override fun onPause() {
         super.onPause()
-        // 仅设置标志位停止人脸检测，不直接操作相机硬件
         isAuthStarting = false
         isFaceExtracted = false
     }
 
     override fun onDestroyView() {
-        // 先关闭相机再销毁视图，防止在已销毁的视图上操作
         try { cameraView?.disableView() } catch (_: Exception) {}
         try {
             cameraView?.setCvCameraViewListener(null as CameraBridgeViewBase.CvCameraViewListener2?)
@@ -170,7 +167,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
         cameraView = view.findViewById(R.id.java_camera_view)
         faceOverlay = view.findViewById(R.id.face_scan_overlay)
 
-        // 将相机预览裁剪为与蓝色识别框一致的圆角
         cameraContainer?.apply {
             clipToOutline = true
             outlineProvider = object : android.view.ViewOutlineProvider() {
@@ -183,7 +179,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
 
         tvStatus = view.findViewById(R.id.tv_reg_status)
         progressBar = view.findViewById(R.id.auth_progress)
-        // 替换圆环 drawable：从 12 点钟方向开始顺时针填充
         val ringStrokePx = 4f * resources.displayMetrics.density
         progressBar.progressDrawable = ProgressRingDrawable(strokePx = ringStrokePx)
         tvProgressPct = view.findViewById(R.id.tv_progress_pct)
@@ -199,7 +194,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
             @Suppress("RemoveExplicitTypeArguments")
             setCvCameraViewListener(this@HomeFragment as CameraBridgeViewBase.CvCameraViewListener2)
             visibility = View.GONE
-            // 禁止保存相机内部状态到 Bundle，防止 TransactionTooLargeException
             isSaveEnabled = false
             setCameraIndex(1)
             setCameraPermissionGranted()
@@ -258,18 +252,14 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
                             phoneNumber = state.phoneNumber)
                         cleanupAfterAuth()
 
-                        // 将后端硬编码的运营商名映射为当前语言的显示名
                         val localizedOpName = localizedOperatorName(state.operatorName)
 
-                        // 弹出开通成功结果弹窗（基于真实认证状态，无模拟数据）
                         showActivationSuccessDialog(
                             phoneNumber = state.phoneNumber,
                             activatedAt = state.activatedAt,
                             operatorName = localizedOpName
                         )
-                        // 重置状态为 Idle，防止切页返回后 LiveData 重新触发弹窗
                         activationVM.resetState()
-                        // 清空运营商选择框，恢复初始未选中状态
                         rgOperator.clearCheck()
                     }
                     is AuthState.BiometricFailed -> {
@@ -313,7 +303,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
     // ──── Auth launch ────
 
     private fun onLaunchAuth() {
-        // 检查运营商选择
         val selectedId = rgOperator.checkedRadioButtonId
         if (selectedId == -1) {
             Toast.makeText(requireContext(), getString(R.string.home_toast_select_operator), Toast.LENGTH_SHORT).show()
@@ -332,7 +321,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
             else -> ""
         }
 
-        // 保存运营商选择
         OperatorPrefsManager.setActiveOperator(requireContext(), operatorName)
         OperatorPrefsManager.setActiveDomainId(requireContext(), operatorDomain)
 
@@ -412,7 +400,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
         isAuthStarting = false
 
         if (!isFaceExtracted) {
-            // cleanupAfterAuth 涉及 View 操作，必须在主线程执行
             withContext(Dispatchers.Main) {
                 appendLog(getString(R.string.home_log_face_not_detected))
                 cleanupAfterAuth()
@@ -420,22 +407,20 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
             return
         }
 
-        // disableCamera() 涉及 View 操作，必须在主线程执行
         withContext(Dispatchers.Main) {
             appendLog(getString(R.string.home_log_face_captured))
             disableCamera()
         }
 
-        // 同人校验：比对当前人脸与注册时保存的人脸模板
         if (NativeLib.verifyFace(nvramDirPath, latestRBio) != 1) {
             withContext(Dispatchers.Main) {
-                appendLog("❌ 人脸比对未通过，与注册用户不一致")
+                appendLog("❌ Face comparison failed; user does not match enrollment")
                 cleanupAfterAuth()
             }
             return
         }
         withContext(Dispatchers.Main) {
-            appendLog("✅ 人脸比对通过")
+            appendLog("✅ Face comparison passed")
         }
 
         // Start the PQC auth flow
@@ -484,7 +469,6 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
         }
 
         isProcessingFrame = true
-        // 在相机回调线程上立即 clone，防止后台线程访问已释放的相机缓冲区导致 SIGSEGV 闪退
         val frame = rgba.clone()
         lifecycleScope.launch(Dispatchers.Default) {
             try {
@@ -503,7 +487,7 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
                             delay(500)
                             synchronized(latestRBioLock) { _latestRBio = tempRBio.copyOf() }
                             isFaceExtracted = true
-                            Log.d(TAG, "✅ 人脸特征提取成功 (连续${consecutiveFaceFrames}帧)")
+                            Log.d(TAG, "✅ Face feature extraction succeeded (${consecutiveFaceFrames} consecutive frames)")
                         }
                     }
                 } else {
@@ -558,30 +542,24 @@ class HomeFragment : Fragment(), CameraBridgeViewBase.CvCameraViewListener2 {
         }
     }
 
-    // ──── 开通成功弹窗 ────
 
-    /** 将 OperatorConfig 中硬编码的中文运营商名映射为当前语言资源 */
     private fun localizedOperatorName(rawName: String): String = when (rawName) {
-        "中国移动" -> getString(R.string.operator_china_mobile)
-        "中国联通" -> getString(R.string.operator_china_unicom)
-        "中国电信" -> getString(R.string.operator_china_telecom)
+        "China Mobile" -> getString(R.string.operator_china_mobile)
+        "China Unicom" -> getString(R.string.operator_china_unicom)
+        "China Telecom" -> getString(R.string.operator_china_telecom)
         else -> rawName
     }
 
     /**
-     * 在认证流程完整成功后展示 eSIM 开通结果弹窗。
-     * 所有数据来自 ViewModel 传递的真实认证结果，无模拟/硬编码。
      */
     private fun showActivationSuccessDialog(
         phoneNumber: String,
         activatedAt: String,
         operatorName: String
     ) {
-        // 防止重复弹窗
         val existing = childFragmentManager.findFragmentByTag(TAG_SUCCESS_DIALOG)
         if (existing != null) return
 
-        // 监听弹窗【完成】按钮，关闭后立即重置主界面动画
         childFragmentManager.setFragmentResultListener(
             ActivationSuccessDialog.REQUEST_KEY_DONE,
             viewLifecycleOwner

@@ -1,32 +1,30 @@
-# ============================================================
-# PQ-ZK-eSIM Artifact — 依赖清单（reviewer 需要安装的软件与版本）
-# 依据：THIRD_PARTY.md + build.sh + 各 claim run.sh + 实际代码
-# ============================================================
+# PQ-ZK-eSIM artifact requirements
 
-## 终端 C 核心编译（artifact/terminal/euicc/）
-- gcc / g++            （C11 / C++17）
-- CMake                >= 3.22
-- gcc-aarch64-linux-gnu （AArch64 交叉编译工具链）
-- qemu-user-static     （提供 qemu-aarch64-static，ARM64 模拟执行）
+## Core build
+- Ubuntu 22.04 LTS (x86_64)
+- gcc / g++
+- CMake >= 3.22
+- gcc-aarch64-linux-gnu
+- qemu-user-static
 
-## 密码学库
-- OpenSSL              3.0.13   （libcrypto / libssl）
-- liboqs               0.15.0   （ML-KEM-768 / ML-DSA-65）
+## Cryptographic libraries
+- OpenSSL 3.0.13
+- liboqs 0.15.0
 
-## 实验与绘图（claims/ + scripts/）
-- Python 3
+## Experiment tooling
+- Python >= 3.9
 - numpy
 - pandas
 - matplotlib
 
-## 安全性评估（外部工具，未 vendor）
-- lattice-estimator     commit d2bf9ca2709d784dd56d42032e60e760202a4107
-- fpylll               （lattice-estimator 后端）
+## Security estimation
+- lattice-estimator commit 6019056
+- SageMath as required by lattice-estimator
+- fpylll
 
-## 后端（SM-DP+ Verifier）
-- Python >= 3.9（venv 虚拟环境）
-- FastAPI 0.115 / uvicorn 0.30 / starlette 0.38
-- SQLAlchemy 2.0 / PyMySQL 1.1
-- redis 5.0 / cryptography 50.0 / pydantic 2.9
-- MySQL 8.0（localhost:3306，库 pq_zk_esim_db）
-- Redis-server（localhost:6379，无密码，会话 TTL 300s）
+## Optional backend
+- FastAPI / uvicorn
+- SQLAlchemy / PyMySQL
+- redis Python package
+- MySQL 8.0 on localhost:3306
+- Redis on localhost:6379

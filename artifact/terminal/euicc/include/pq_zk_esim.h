@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #define PQ_ZK_N 256
-#define PQ_ZK_K 5
+#define PQ_ZK_K 3
 #define PQ_ZK_M 8
 #define PQ_ZK_SEED_BYTES 32
 #define PQ_ZK_TEE_KEY_BYTES 32

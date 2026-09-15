@@ -1,12 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 覆盖 Material Components 底部导航栏内部间距，缩小图标与文字间距 -->
 <resources>
-    <!-- Material2/Material3 通用：底部导航栏图标与标签间距（默认 4dp，缩小至 1dp） -->
     <dimen name="design_bottom_navigation_margin">1dp</dimen>
-    <!-- Material3：项内上下填充 -->
     <dimen name="m3_bottom_nav_item_padding_top">1dp</dimen>
     <dimen name="m3_bottom_nav_item_padding_bottom">2dp</dimen>
-    <!-- Material3 标签与图标间距 -->
     <dimen name="m3_bottom_nav_label_padding_top">1dp</dimen>
     <dimen name="m3_bottomnavigation_item_icon_margin">1dp</dimen>
 </resources>

@@ -38,6 +38,7 @@ int pqzk_sha3_256_iov(const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hmac_sha256_iov(const uint8_t key[32], const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hmac_sha256_iov_anykey(const uint8_t *key, size_t key_len, const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hkdf_expand(const uint8_t prk[32], const char *info, size_t info_len, uint8_t okm[32]);
+int pqzk_shake128(const uint8_t *in, size_t in_len, uint8_t *out, size_t out_len);
 int pqzk_shake256(const uint8_t *in, size_t in_len, uint8_t *out, size_t out_len);
 int pqzk_shake256_iov(const pqzk_iov_t *iov, uint8_t *out, size_t out_len);
 int pqzk_aes256_ctr(const uint8_t key[32], const uint8_t iv[16], uint8_t *out, size_t out_len);

@@ -47,7 +47,7 @@ static void make_dir(const char *path)
 }
 
 /* ================================================================
- * KAT 1：EncodePolyVec / DecodePolyVec
+ * KAT 1: EncodePolyVec / DecodePolyVec
  *
  * Cross-platform anchor: expected values must match Python ctypes and Android JNI.
  * ================================================================ */
@@ -74,7 +74,7 @@ static void kat_encode_decode(void)
 }
 
 /* ================================================================
- * KAT 2：EncodePoly / DecodePoly
+ * KAT 2: EncodePoly / DecodePoly
  *
  * ================================================================ */
 static void kat_encode_poly(void)
@@ -102,9 +102,9 @@ static void kat_encode_poly(void)
 }
 
 /* ================================================================
- * KAT 3：SHA-256 / HMAC-SHA256
+ * KAT 3: SHA-256 / HMAC-SHA256
  *
- * Use NIST standard test vectors， OpenSSL 。
+ * Use NIST standard test vectors using OpenSSL.
  * ================================================================ */
 static void kat_hash_mac(void)
 {
@@ -171,7 +171,7 @@ static void kat_prf(void)
     print_hex("PRF output[0:32]",  out,      32);
     print_hex("PRF output[32:64]", out + 32, 32);
 
-    /* determinism：same input -> same output */
+    /* determinism:same input -> same output */
     ASSERT_EQ("PRF deterministic", out, out2, 64);
 
  
@@ -185,12 +185,12 @@ static void kat_prf(void)
 }
 
 /* ================================================================
- * KAT 5：SampleInBall_κ
+ * KAT 5: SampleInBall_kappa
  *
  * ================================================================ */
 static void kat_sample_in_ball(void)
 {
-    printf("\n=== KAT 5: SampleInBall_κ ===\n");
+    printf("\n=== KAT 5: SampleInBall_kappa ===\n");
 
     uint8_t hash[32];
     memset(hash, 0x01, 32);
@@ -326,10 +326,10 @@ static void kat_protocol_e2e(void)
 
  
     poly_vec_t W_pub, W_sec;
-    uint8_t seed_y[32], MAC_W[32];
+    uint8_t seed_y[PQ_ZK_SEED_BYTES], MAC_W[PQ_ZK_MAC_BYTES];
     PQC_PreCompute(&W_pub, seed_y);
     PQC_eUICC_Commit(nvram_dir, &W_sec, MAC_W);
-    print_hex("MAC_W", MAC_W, 32);
+    print_hex("MAC_W", MAC_W, PQ_ZK_MAC_BYTES);
     ASSERT_TRUE("MAC_W non-zero", MAC_W[0] != 0 || MAC_W[1] != 0);
 
     poly_vec_t W;
@@ -344,7 +344,7 @@ static void kat_protocol_e2e(void)
 
     int wt = 0;
     for (int i = 0; i < PQ_ZK_N; i++) if (c_agg.coeffs[i] != 0) wt++;
-    ASSERT_TRUE("GenChallenge weight=26", wt == PQ_ZK_CHALLENGE_WEIGHT);
+    ASSERT_TRUE("GenChallenge weight matches kappa", wt == PQ_ZK_CHALLENGE_WEIGHT);
 
  
     uint32_t M1 = 2;
@@ -357,7 +357,7 @@ static void kat_protocol_e2e(void)
      * ---- */
     uint8_t R_dynamic[32];
     merkle_path_t M2;
-    uint8_t AuthToken[32];
+    uint8_t AuthToken[PQ_ZK_MAC_BYTES];
 
     PQ_ZK_ErrorCode tee_rc = TEE_GenerateAuthToken(
         nvram_dir,
@@ -371,7 +371,7 @@ static void kat_protocol_e2e(void)
         AuthToken);
     ASSERT_TRUE("TEE_GenerateAuthToken rc=0", tee_rc == PQ_ZK_SUCCESS);
     print_hex("R_dynamic", R_dynamic, 32);
-    print_hex("AuthToken", AuthToken, 32);
+    print_hex("AuthToken", AuthToken, PQ_ZK_MAC_BYTES);
 
  
     int verify_m2_rc = PQC_MerkleTree_VerifyPath(
@@ -379,8 +379,8 @@ static void kat_protocol_e2e(void)
     ASSERT_TRUE("MerkleTree_VerifyPath (M2 verify)", verify_m2_rc == 0);
 
  
-    uint8_t AuthToken_tampered[32];
-    memcpy(AuthToken_tampered, AuthToken, 32);
+    uint8_t AuthToken_tampered[PQ_ZK_MAC_BYTES];
+    memcpy(AuthToken_tampered, AuthToken, PQ_ZK_MAC_BYTES);
     AuthToken_tampered[0] ^= 0x01;
 
     poly_vec_t z_dummy;
@@ -486,7 +486,7 @@ int main(void)
     kat_protocol_e2e();
 
     printf("\n========================================\n");
-    printf("  Results：%d passed，%d failed\n", g_pass, g_fail);
+    printf("  Results: %d passed, %d failed\n", g_pass, g_fail);
     printf("========================================\n");
     return (g_fail == 0) ? 0 : 1;
 }

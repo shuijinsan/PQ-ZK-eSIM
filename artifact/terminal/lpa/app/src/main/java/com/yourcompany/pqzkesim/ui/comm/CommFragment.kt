@@ -111,7 +111,6 @@ class CommFragment : Fragment() {
                     addInfoRow(expandLayout, getString(R.string.comm_label_activated_time), activatedAt)
                 }
 
-                // 分隔横线：加粗 + 上下边距，模块间距清晰
                 if (i < count - 1) {
                     val divider = View(requireContext()).apply {
                         val lp = LinearLayout.LayoutParams(

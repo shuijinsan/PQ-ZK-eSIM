@@ -23,15 +23,18 @@ static int norm_precheck(const poly_vec_t *z_unmasked,
 {
     int32_t inf_norm = 0;
     int64_t l2_sq    = 0;
+    int64_t l1_norm  = 0;
     for (int i = 0; i < PQ_ZK_M * PQ_ZK_N; i++) {
         int32_t v  = (int32_t)z_unmasked->coeffs[i];
         int32_t av = (v < 0) ? -v : v;
         if (av > inf_norm) inf_norm = av;
         l2_sq += (int64_t)v * v;
+        l1_norm += (int64_t)av;
     }
     if (l2_sq < (int64_t)params->beta_min * params->beta_min) return 2;
     if (l2_sq > (int64_t)params->beta_final * params->beta_final) return 1;
     if (inf_norm > (int32_t)PQ_ZK_BETA_INF) return 1;
+    if (params->beta_l1 > 0 && l1_norm < (int64_t)params->beta_l1) return 2;
     return 0;
 }
 
@@ -50,7 +53,7 @@ static PQ_ZK_ErrorCode run_one_trial(const char *nvram_dir,
     double t0;
 
     poly_vec_t W_pub, W_sec;
-    uint8_t seed_y[32], MAC_W[32];
+    uint8_t seed_y[32], MAC_W[PQ_ZK_MAC_BYTES];
 
     t0 = get_time_us();
     PQC_PreCompute(&W_pub, seed_y);
@@ -89,7 +92,7 @@ static PQ_ZK_ErrorCode run_one_trial(const char *nvram_dir,
         { R_dynamic,  32               },
         { NULL, 0 }
     };
-    uint8_t AuthToken[32];
+    uint8_t AuthToken[PQ_ZK_MAC_BYTES];
     pqzk_aes256_cmac(k_tee, auth_iov, AuthToken);
 
     poly_vec_t z_sec_masked;
@@ -132,108 +135,10 @@ static PQ_ZK_ErrorCode run_one_trial(const char *nvram_dir,
 
 static void run_grid_search(void)
 {
-    printf("\n=== Parameter Grid Search (v4.2) ===\n");
-    FILE *csv = fopen("grid_results.csv", "w");
-    if (!csv) { perror("fopen"); return; }
-    fprintf(csv,
-        "kappa,sigma_pub,beta_final,beta_pub,correctness_ok,"
-        "overflow_fail,underflow_fail,mac_fail,other_fail,"
-        "fail_count,trials,fail_rate,overflow_rate,underflow_rate,"
-        "avg_precompute_us,avg_commit_us,avg_challenge_us,"
-        "avg_compute_mask_us,avg_aggregate_us,avg_verify_us,avg_total_us\n");
-
-    const char *nvram_dir = "/tmp/pqzk_bench_nvram";
-    system("mkdir -p /tmp/pqzk_bench_nvram");
-
-    uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];
-    poly_vec_t sk_s;
-    PQC_GenKeyPair(pk_t, &sk_s);
-
-    uint8_t eid[16] = {0};
-    uint8_t k_sym[32], k_tee[32], R_bio[32], salt[32], cred_kyc[64];
-    pqzk_rand_bytes(k_sym,    32);
-    pqzk_rand_bytes(k_tee,    32);
-    pqzk_rand_bytes(R_bio,    32);
-    pqzk_rand_bytes(salt,     32);
-    pqzk_rand_bytes(cred_kyc, 64);
-
-    int total = 0;
-    for (int kappa = PQZK_GRID_KAPPA_MIN;
-             kappa <= PQZK_GRID_KAPPA_MAX; kappa++) {
-        for (double sigma = PQZK_GRID_SIGMA_MIN;
-                    sigma <= PQZK_GRID_SIGMA_MAX + 0.01;
-                    sigma += PQZK_GRID_SIGMA_STEP) {
-
-            int beta_pub   = (int)(PQ_ZK_TAU * sigma);
-            int beta_final = beta_pub + 1 + kappa * PQ_ZK_ETA_S;
-            int ok         = (beta_final < PQ_ZK_Q_VAL/2) ? 1 : 0;
-
-            beta_params_t params;
-            params.beta_final = (uint32_t)beta_final;
-            params.beta_min   = PQZK_BETA_MIN;
-
-            int    overflow_fail  = 0;
-            int    underflow_fail = 0;
-            int    mac_fail       = 0;
-            int    other_fail     = 0;
-            double sum_t[6]       = {0};
-
-            for (int trial = 0; trial < PQZK_GRID_TRIALS; trial++) {
-                uint64_t init_ctr;
-                pqzk_rand_bytes((uint8_t*)&init_ctr, 8);
-                PQC_eUICC_Init(nvram_dir, eid, 16, &sk_s,
-                               k_sym, 32, init_ctr, k_tee, 32,
-                               salt, R_bio, cred_kyc, 64);
-
-                double t[6] = {0};
-                PQ_ZK_ErrorCode rc = run_one_trial(
-                    nvram_dir, pk_t, k_sym, k_tee, R_bio, eid,
-                    &sk_s, &params, t, &overflow_fail, &underflow_fail);
-
-                if (rc != PQ_ZK_SUCCESS) {
-                    switch (rc) {
-                        case PQ_ZK_ERR_NORM_BOUND: break;
-                        case PQ_ZK_ERR_MAC_FAIL:   mac_fail++;   break;
-                        default:                   other_fail++; break;
-                    }
-                }
-                for (int i = 0; i < 6; i++) sum_t[i] += t[i];
-            }
-
-            int    fail_count     = overflow_fail + underflow_fail
-                                    + mac_fail + other_fail;
-            double fail_rate      = (double)fail_count     / PQZK_GRID_TRIALS;
-            double overflow_rate  = (double)overflow_fail  / PQZK_GRID_TRIALS;
-            double underflow_rate = (double)underflow_fail / PQZK_GRID_TRIALS;
-            double tot = 0;
-            for (int i = 0; i < 6; i++) tot += sum_t[i] / PQZK_GRID_TRIALS;
-
-            fprintf(csv,
-                "%d,%.1f,%d,%d,%d,"
-                "%d,%d,%d,%d,"
-                "%d,%d,%.6f,%.6f,%.6f,"
-                "%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f\n",
-                kappa, sigma, beta_final, beta_pub, ok,
-                overflow_fail, underflow_fail, mac_fail, other_fail,
-                fail_count, PQZK_GRID_TRIALS,
-                fail_rate, overflow_rate, underflow_rate,
-                sum_t[0]/PQZK_GRID_TRIALS, sum_t[1]/PQZK_GRID_TRIALS,
-                sum_t[2]/PQZK_GRID_TRIALS, sum_t[3]/PQZK_GRID_TRIALS,
-                sum_t[4]/PQZK_GRID_TRIALS, sum_t[5]/PQZK_GRID_TRIALS, tot);
-
-            if (overflow_fail > 0 || kappa == PQ_ZK_CHALLENGE_WEIGHT)
-                printf("k=%2d s=%5.1f bf=%4d ok=%d  "
-                       "ov=%3d un=%3d mac=%3d oth=%3d  "
-                       "ov_rate=%.4f\n",
-                       kappa, sigma, beta_final, ok,
-                       overflow_fail, underflow_fail,
-                       mac_fail, other_fail, overflow_rate);
-            total++;
-        }
-    }
-    fclose(csv);
-    system("rm -rf /tmp/pqzk_bench_nvram");
-    printf("Total %d combinations. Results -> grid_results.csv\n", total);
+    fprintf(stderr,
+        "Parameter grid search is disabled in the camera-ready build. "
+        "The implementation is locked to k=3, m=8, kappa=35, sigma_pub=5000; "
+        "use the external lattice-estimator record in claim2 for MLWE/MSIS analysis.\n");
 }
 
 #define PERF_WARMUP 10
@@ -361,7 +266,7 @@ static void run_dos_bench(void)
     beta_params_t params = PQZK_DEFAULT_BETA_PARAMS;
 
     poly_vec_t W_pub, W_sec, W;
-    uint8_t seed_y[32], MAC_W[32];
+    uint8_t seed_y[32], MAC_W[PQ_ZK_MAC_BYTES];
     PQC_PreCompute(&W_pub, seed_y);
 
     uint64_t init_ctr;
@@ -396,7 +301,7 @@ static void run_dos_bench(void)
         { R_dynamic,  32               },
         { NULL, 0 }
     };
-    uint8_t AuthToken[32];
+    uint8_t AuthToken[PQ_ZK_MAC_BYTES];
     pqzk_aes256_cmac(k_tee, auth_iov, AuthToken);
 
     poly_vec_t z_sec_masked;
@@ -500,7 +405,7 @@ static void run_constant_time_bench(void)
                        salt, R_bio, cred_kyc, 64);
 
         poly_vec_t W_pub, W_sec, W;
-        uint8_t seed_y[32], MAC_W[32];
+        uint8_t seed_y[32], MAC_W[PQ_ZK_MAC_BYTES];
         PQC_PreCompute(&W_pub, seed_y);
         PQC_eUICC_Commit(nvram_dir, &W_sec, MAC_W);
         pqzk_vec_add(&W_sec, &W_pub, &W, PQ_ZK_K);
@@ -528,7 +433,7 @@ static void run_constant_time_bench(void)
             { R_dynamic,  32               },
             { NULL, 0 }
         };
-        uint8_t AuthToken[32];
+        uint8_t AuthToken[PQ_ZK_MAC_BYTES];
         pqzk_aes256_cmac(k_tee, auth_iov, AuthToken);
 
         poly_vec_t z_sec_masked;
