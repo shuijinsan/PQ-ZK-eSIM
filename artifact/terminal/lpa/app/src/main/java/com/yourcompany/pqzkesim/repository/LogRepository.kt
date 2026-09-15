@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.repository
 
-// 认证日志数据仓库
 
 import com.yourcompany.pqzkesim.data.local.AuthLogDao
 import com.yourcompany.pqzkesim.data.model.AuthLogItem

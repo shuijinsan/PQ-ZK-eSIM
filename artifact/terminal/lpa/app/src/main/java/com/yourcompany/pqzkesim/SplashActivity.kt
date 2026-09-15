@@ -1,4 +1,4 @@
-package com.yourcompany.pqzkesim // 确保包名与项目一致
+package com.yourcompany.pqzkesim
 
 import android.Manifest
 import android.content.Intent
@@ -56,7 +56,7 @@ class SplashActivity : BaseLocaleActivity() {
             val nvram = File(filesDir, "euicc_nvram")
             if (!nvram.exists()) {
                 val created = nvram.mkdirs()
-                Log.d("PQZK", "NVRAM目录创建: $created")
+                Log.d("PQZK", "NVRAM directory created: $created")
             }
 
             tvStatus.text = getString(R.string.app_secure_env_ready)
@@ -75,7 +75,7 @@ class SplashActivity : BaseLocaleActivity() {
                     startActivity(Intent(this, target))
                     finish()
                 } catch (e: Exception) {
-                    Log.e("PQZK", "Native判断注册状态失败，强制跳注册页", e)
+                    Log.e("PQZK", "Native registration-state check failed; forcing registration page", e)
                     startActivity(Intent(this, RegisterActivity::class.java))
                     finish()
                 }

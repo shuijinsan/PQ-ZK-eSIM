@@ -57,7 +57,6 @@ class ProfileFragment : Fragment() {
         R.drawable.ic_camera
     )
 
-    // 保存当前裁剪的目标 URI，用于在 cropLauncher 回调中直接读取结果
     private var currentCropDestUri: Uri? = null
 
     private val galleryLauncher = registerForActivityResult(
@@ -74,7 +73,6 @@ class ProfileFragment : Fragment() {
         val destUri = currentCropDestUri
         currentCropDestUri = null
         if (result.resultCode == Activity.RESULT_OK) {
-            // 优先用 UCrop.getOutput，失败则回退到我们传入的 destUri
             val outputUri = result.data?.let { UCrop.getOutput(it) } ?: destUri
             if (outputUri != null) {
                 viewModel.saveCustomAvatar(outputUri)
@@ -89,7 +87,6 @@ class ProfileFragment : Fragment() {
             else
                 Toast.makeText(requireContext(), getString(R.string.profile_toast_crop_unknown), Toast.LENGTH_SHORT).show()
         }
-        // RESULT_CANCELED: 用户取消，不做任何处理
     }
 
     override fun onCreateView(
@@ -197,7 +194,6 @@ class ProfileFragment : Fragment() {
         }
     }
 
-    /** 将 Bitmap 裁剪为圆形，确保无论 ImageView 设置如何都显示为圆形 */
     private fun getCircleBitmap(source: Bitmap): Bitmap {
         val size = minOf(source.width, source.height)
         val output = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
@@ -240,13 +236,10 @@ class ProfileFragment : Fragment() {
     }
 
     /**
-     * 语言选择对话框
-     * 显示中文/English 选项，当前选中项高亮 ✓
      */
     private fun showLanguageDialog() {
         val currentLang = LocaleManager.getCurrentLanguage(requireContext())
 
-        // 用自定义布局实现带选中标记的单选列表
         val layout = LinearLayout(requireContext()).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, 16, 0, 16)
@@ -265,7 +258,6 @@ class ProfileFragment : Fragment() {
         options.forEach { (code, name) ->
             val rb = RadioButton(requireContext()).apply {
                 text = name
-                // 选中/未选中统一黑色文字，按钮圆点统一 #1677FF，覆盖系统默认紫色
                 setTextColor(
                     android.content.res.ColorStateList(
                         arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
@@ -302,23 +294,17 @@ class ProfileFragment : Fragment() {
 
     private fun applyLanguageChange(language: String) {
         val activity = requireActivity()
-        // 切换语言
         LocaleManager.switchLanguage(activity, language)
-        // 重建 Activity 以刷新全部界面
         activity.recreate()
     }
 
     /**
-     * 启动 uCrop 裁剪。
-     * 源 URI 直接传入 uCrop（uCrop 内部处理跨 Activity 权限），
-     * 目标使用 FileProvider 生成可写入的 URI。
      */
     private fun launchCrop(sourceUri: Uri) {
         try {
             val cacheDir = File(requireContext().cacheDir, "crop")
             if (!cacheDir.exists()) cacheDir.mkdirs()
 
-            // 目标文件：uCrop 裁剪后将结果写入此处
             val destFile = File(cacheDir, "crop_${UUID.randomUUID()}.jpg")
             val destUri = FileProvider.getUriForFile(
                 requireContext(),
@@ -345,11 +331,9 @@ class ProfileFragment : Fragment() {
             val intent = UCrop.of(sourceUri, destUri)
                 .withOptions(options)
                 .getIntent(requireContext())
-            // 显式授予读写权限，确保 uCrop 能访问源图和写入目标
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
 
-            // 确认 uCrop Activity 可用后再启动
             if (intent.resolveActivity(requireContext().packageManager) != null) {
                 cropLauncher.launch(intent)
             } else {

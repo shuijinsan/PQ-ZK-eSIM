@@ -18,10 +18,10 @@
 
 /* Global seed for public matrix A (shared across all platforms) */
 const uint8_t PQZK_MATRIX_A_SEED[32] = {
-        0x50,0x51,0x5A,0x4B, 0x45,0x53,0x49,0x4D,  /* "PQZKESIM" */
-        0x4D,0x41,0x54,0x52, 0x49,0x58,0x5F,0x41,  /* "MATRIX_A" */
-        0x00,0x01,0x02,0x03, 0x04,0x05,0x06,0x07,
-        0x08,0x09,0x0A,0x0B, 0x0C,0x0D,0x0E,0x0F
+    0x50,0x51,0x5A,0x4B, 0x45,0x53,0x49,0x4D,  /* "PQZKESIM" */
+    0x4D,0x41,0x54,0x52, 0x49,0x58,0x5F,0x41,  /* "MATRIX_A" */
+    0x00,0x01,0x02,0x03, 0x04,0x05,0x06,0x07,
+    0x08,0x09,0x0A,0x0B, 0x0C,0x0D,0x0E,0x0F
 };
 
 /* ================================================================
@@ -32,8 +32,8 @@ int pqzk_sha3_256(const uint8_t *in, size_t len, uint8_t out[32])
     if (!out) return -1;
     if (len > 0 && !in) return -1;
     const pqzk_iov_t iov[] = {
-            { in ? in : (const uint8_t *)"", len },
-            { NULL, 0 }
+        { in ? in : (const uint8_t *)"", len },
+        { NULL, 0 }
     };
     return pqzk_sha3_256_iov(iov, out);
 }
@@ -58,7 +58,7 @@ int pqzk_sha3_256_iov(const pqzk_iov_t *iov, uint8_t out[32])
 
 /* Fixed 32-byte key HMAC-SHA256 */
 int pqzk_hmac_sha256_iov(const uint8_t key[32], const pqzk_iov_t *iov,
-                         uint8_t out[32])
+                          uint8_t out[32])
 {
     if (!key || !iov || !out) return -1;
     HMAC_CTX *hctx = HMAC_CTX_new();
@@ -70,14 +70,14 @@ int pqzk_hmac_sha256_iov(const uint8_t key[32], const pqzk_iov_t *iov,
     if (!HMAC_Final(hctx, out, &outl)) goto fail;
     HMAC_CTX_free(hctx);
     return 0;
-    fail:
+fail:
     HMAC_CTX_free(hctx);
     return -1;
 }
 
 /* Variable-length key HMAC-SHA256 (tests only) */
 int pqzk_hmac_sha256_iov_anykey(const uint8_t *key, size_t key_len,
-                                const pqzk_iov_t *iov, uint8_t out[32])
+                                  const pqzk_iov_t *iov, uint8_t out[32])
 {
     if (!key || !iov || !out || key_len == 0) return -1;
     HMAC_CTX *hctx = HMAC_CTX_new();
@@ -89,14 +89,29 @@ int pqzk_hmac_sha256_iov_anykey(const uint8_t *key, size_t key_len,
     if (!HMAC_Final(hctx, out, &outl)) goto fail;
     HMAC_CTX_free(hctx);
     return 0;
-    fail:
+fail:
     HMAC_CTX_free(hctx);
     return -1;
 }
 
 /* ================================================================
- * SHAKE-256 XOF
+ * SHAKE XOFs
  * ================================================================ */
+
+int pqzk_shake128(const uint8_t *in, size_t in_len,
+                  uint8_t *out, size_t out_len)
+{
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (!ctx) return -1;
+    int ret = -1;
+    if (EVP_DigestInit_ex(ctx, EVP_shake128(), NULL) != 1) goto done;
+    if (EVP_DigestUpdate(ctx, in, in_len) != 1)            goto done;
+    if (EVP_DigestFinalXOF(ctx, out, out_len) != 1)        goto done;
+    ret = 0;
+done:
+    EVP_MD_CTX_free(ctx);
+    return ret;
+}
 
 int pqzk_shake256(const uint8_t *in, size_t in_len,
                   uint8_t *out, size_t out_len)
@@ -108,7 +123,7 @@ int pqzk_shake256(const uint8_t *in, size_t in_len,
     if (EVP_DigestUpdate(ctx, in, in_len) != 1)            goto done;
     if (EVP_DigestFinalXOF(ctx, out, out_len) != 1)        goto done;
     ret = 0;
-    done:
+done:
     EVP_MD_CTX_free(ctx);
     return ret;
 }
@@ -127,7 +142,7 @@ int pqzk_shake256_iov(const pqzk_iov_t *iov, uint8_t *out, size_t out_len)
     }
     if (EVP_DigestFinalXOF(ctx, out, out_len) != 1) goto done;
     ret = 0;
-    done:
+done:
     EVP_MD_CTX_free(ctx);
     return ret;
 }
@@ -149,7 +164,7 @@ int pqzk_aes256_ctr(const uint8_t key[32], const uint8_t iv[16],
     if (EVP_EncryptInit_ex(ctx, EVP_aes_256_ctr(), NULL, key, iv) != 1) goto done;
     if (EVP_EncryptUpdate(ctx, out, &outl, zeros, (int)out_len)   != 1) goto done;
     ret = 0;
-    done:
+done:
     EVP_CIPHER_CTX_free(ctx);
     free(zeros);
     return ret;
@@ -203,12 +218,12 @@ int pqzk_aes256_cmac(const uint8_t key[32], const pqzk_iov_t *iov, uint8_t out[1
  * HKDF-Expand (RFC 5869): T(1) = HMAC-SHA256(prk, info || 0x01)
  * ================================================================ */
 int pqzk_hkdf_expand(const uint8_t prk[32], const char *info, size_t info_len,
-                     uint8_t okm[32])
+                      uint8_t okm[32])
 {
     pqzk_iov_t iov[] = {
-            { (const uint8_t *)info, info_len },
-            { (const uint8_t *)"\x01", 1 },
-            { NULL, 0 }
+        { (const uint8_t *)info, info_len },
+        { (const uint8_t *)"\x01", 1 },
+        { NULL, 0 }
     };
     return pqzk_hmac_sha256_iov(prk, iov, okm);
 }

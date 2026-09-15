@@ -28,7 +28,7 @@ class AppPreferences(private val context: Context) {
     }
 
     val securityLevel: Flow<String> = context.appPrefsStore.data.map { prefs ->
-        prefs[KEY_SECURITY_LEVEL] ?: "标准生物级"
+        prefs[KEY_SECURITY_LEVEL] ?: "Standard biometric level"
     }
 
     val currentOperator: Flow<String> = context.appPrefsStore.data.map { prefs ->

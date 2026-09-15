@@ -20,7 +20,7 @@ static inline void write_le64(uint8_t *b, uint64_t v) {
 }
 static inline uint64_t read_le64(const uint8_t *b) {
     return (uint64_t)b[0]|((uint64_t)b[1]<<8)|((uint64_t)b[2]<<16)|((uint64_t)b[3]<<24)
-           |((uint64_t)b[4]<<32)|((uint64_t)b[5]<<40)|((uint64_t)b[6]<<48)|((uint64_t)b[7]<<56);
+          |((uint64_t)b[4]<<32)|((uint64_t)b[5]<<40)|((uint64_t)b[6]<<48)|((uint64_t)b[7]<<56);
 }
 static inline int32_t mod_q(int32_t x) {
     int32_t r=x%(int32_t)PQ_ZK_Q_VAL;return (r<0)?r+(int32_t)PQ_ZK_Q_VAL:r;
@@ -38,6 +38,7 @@ int pqzk_sha3_256_iov(const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hmac_sha256_iov(const uint8_t key[32], const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hmac_sha256_iov_anykey(const uint8_t *key, size_t key_len, const pqzk_iov_t *iov, uint8_t out[32]);
 int pqzk_hkdf_expand(const uint8_t prk[32], const char *info, size_t info_len, uint8_t okm[32]);
+int pqzk_shake128(const uint8_t *in, size_t in_len, uint8_t *out, size_t out_len);
 int pqzk_shake256(const uint8_t *in, size_t in_len, uint8_t *out, size_t out_len);
 int pqzk_shake256_iov(const pqzk_iov_t *iov, uint8_t *out, size_t out_len);
 int pqzk_aes256_ctr(const uint8_t key[32], const uint8_t iv[16], uint8_t *out, size_t out_len);

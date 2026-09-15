@@ -78,7 +78,7 @@ void nvram_reset_write_count(void) { nvram_write_count = 0; nvram_byte_count = 0
 uint64_t nvram_get_write_count(void) { return nvram_write_count; }
 
 int nvram_update_ctr_and_key(const char *nvram_dir, uint64_t new_ctr,
-                             const uint8_t new_k_sym[32])
+                              const uint8_t new_k_sym[32])
 {
     nvram_state_t state;
     if (nvram_read(nvram_dir, &state) != 0) return -1;

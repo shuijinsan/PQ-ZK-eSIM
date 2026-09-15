@@ -95,8 +95,23 @@ fail:
 }
 
 /* ================================================================
- * SHAKE-256 XOF
+ * SHAKE XOFs
  * ================================================================ */
+
+int pqzk_shake128(const uint8_t *in, size_t in_len,
+                  uint8_t *out, size_t out_len)
+{
+    EVP_MD_CTX *ctx = EVP_MD_CTX_new();
+    if (!ctx) return -1;
+    int ret = -1;
+    if (EVP_DigestInit_ex(ctx, EVP_shake128(), NULL) != 1) goto done;
+    if (EVP_DigestUpdate(ctx, in, in_len) != 1)            goto done;
+    if (EVP_DigestFinalXOF(ctx, out, out_len) != 1)        goto done;
+    ret = 0;
+done:
+    EVP_MD_CTX_free(ctx);
+    return ret;
+}
 
 int pqzk_shake256(const uint8_t *in, size_t in_len,
                   uint8_t *out, size_t out_len)

@@ -56,8 +56,8 @@ CLAIMS = {
     "claim5_sparse_noise": {
         "sparse_noise_attack_results.csv": {
             "key": "rho",
-            "rate": ["false_reject_rate"],
             "detection": "detection_rate",
+            "honest_frr": {"rho": 1.0, "col": "false_reject_rate", "max": 0.05},
             "timing": ["avg_total_us"],
         },
     },
@@ -169,6 +169,19 @@ def compare_file(claim, name, spec):
             if not within_timing_tol(er[col], rr[col]):
                 print(f"  [{name}] {col} (row {k}) expected {er[col]}, got {rr[col]} (slower by > {int(TIMING_SLOW_TOL*100)}%)")
                 ok = False
+
+    honest_frr = spec.get("honest_frr")
+    if honest_frr:
+        target = honest_frr["rho"]
+        col = honest_frr["col"]
+        max_val = honest_frr["max"]
+        for rr in res_rows:
+            if abs(float(rr["rho"]) - target) < 1e-9:
+                val = float(rr[col])
+                if val > max_val:
+                    print(f"  [{name}] {col} (rho={target}) expected <= {max_val}, got {val}")
+                    ok = False
+                break
 
     sp = spec.get("speedup")
     if sp:

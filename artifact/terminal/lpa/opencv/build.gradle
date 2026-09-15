@@ -106,7 +106,7 @@ android {
     namespace 'org.opencv'
     compileSdkVersion 34
 
-    // 🟢 添加这一行，确保和 app 模块版本对齐
+    // Keep this version aligned with the app module.
     ndkVersion "26.3.11579264"
 
     defaultConfig {

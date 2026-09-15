@@ -10,7 +10,7 @@ data class UserProfile(
     val userId: String = "eUICC-0000",
     val registerTime: String = "2025-01-01 00:00:00",
     val deviceCount: Int = 0,
-    val securityLevel: String = "标准生物级",
+    val securityLevel: String = "Standard biometric level",
     val avatarIndex: Int = 0,
     val customAvatarPath: String? = null
 )

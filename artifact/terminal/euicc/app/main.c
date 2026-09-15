@@ -53,7 +53,7 @@ static int mode_auth(const char *nvram_dir)
 
     /* Phase 1 */
     poly_vec_t W_pub, W_sec;
-    uint8_t seed_y[32], MAC_W[32];
+    uint8_t seed_y[32], MAC_W[PQ_ZK_MAC_BYTES];
     PQC_PreCompute(&W_pub, seed_y);
     PQC_eUICC_Commit(nvram_dir, &W_sec, MAC_W);
     poly_vec_t W;
@@ -77,7 +77,7 @@ static int mode_auth(const char *nvram_dir)
 
     uint8_t R_dynamic[32];
     merkle_path_t M2;
-    uint8_t AuthToken[32];
+    uint8_t AuthToken[PQ_ZK_MAC_BYTES];
     PQ_ZK_ErrorCode tee_rc = TEE_GenerateAuthToken(
         nvram_dir, &c_agg, R_bio, &tree,
         M1, k_tee, R_dynamic, &M2, AuthToken);
@@ -172,7 +172,6 @@ static int mode_auth(const char *nvram_dir)
  * ================================================================ */
 int main(int argc, char *argv[])
 {
-    /* 让 stdout 行缓冲，避免管道下 stdout/stderr 输出乱序 */
     setvbuf(stdout, NULL, _IOLBF, 0);
 
     const char *nvram_dir     = "/tmp/pqzk_euicc";
@@ -235,7 +234,7 @@ int main(int argc, char *argv[])
     printf("  auth: %s --auth --nvram /tmp/euicc\n", argv[0]);
     printf("  switch: %s --switch --nvram /tmp/euicc"
            " --mno-a-id MNO_A_001 --mno-b-id MNO_B_001\n", argv[0]);
-    printf("\nNote: registration is offline，via tools/setup_euicc.sh\n");
+    printf("\nNote: registration is offline, via tools/setup_euicc.sh\n");
     printf("      Real eSIM uses OOB NFC/USB channel for registration\n");
     return 0;
 }

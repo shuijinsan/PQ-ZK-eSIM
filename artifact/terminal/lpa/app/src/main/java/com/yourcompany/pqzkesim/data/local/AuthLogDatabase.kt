@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.data.local
 
-// 认证日志数据库（Room）
 
 import android.content.Context
 import androidx.room.Database

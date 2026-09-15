@@ -53,7 +53,7 @@ static int mode_auth(const char *nvram_dir)
 
     /* Phase 1 */
     poly_vec_t W_pub, W_sec;
-    uint8_t seed_y[32], MAC_W[32];
+    uint8_t seed_y[32], MAC_W[PQ_ZK_MAC_BYTES];
     PQC_PreCompute(&W_pub, seed_y);
     PQC_eUICC_Commit(nvram_dir, &W_sec, MAC_W);
     poly_vec_t W;
@@ -77,10 +77,10 @@ static int mode_auth(const char *nvram_dir)
 
     uint8_t R_dynamic[32];
     merkle_path_t M2;
-    uint8_t AuthToken[32];
+    uint8_t AuthToken[PQ_ZK_MAC_BYTES];
     PQ_ZK_ErrorCode tee_rc = TEE_GenerateAuthToken(
-            nvram_dir, &c_agg, R_bio, &tree,
-            M1, k_tee, R_dynamic, &M2, AuthToken);
+        nvram_dir, &c_agg, R_bio, &tree,
+        M1, k_tee, R_dynamic, &M2, AuthToken);
     if (tee_rc != PQ_ZK_SUCCESS) {
         fprintf(stderr, "[Error] TEE token generation failed: %d\n", tee_rc);
         return -1;
@@ -101,8 +101,8 @@ static int mode_auth(const char *nvram_dir)
     /* Phase 4 */
     poly_vec_t z_sec_masked;
     PQ_ZK_ErrorCode rc = PQC_ComputeZ_and_Mask(
-            nvram_dir, &c_agg, c_seed,
-            R_dynamic, AuthToken, &z_sec_masked);
+        nvram_dir, &c_agg, c_seed,
+        R_dynamic, AuthToken, &z_sec_masked);
     if (rc != PQ_ZK_SUCCESS) {
         fprintf(stderr, "[Error] Phase 4 failed: %d\n", rc);
         return -1;
@@ -115,11 +115,33 @@ static int mode_auth(const char *nvram_dir)
     PQC_LPA_Aggregate(&z_sec_masked, &y_pub, &resp_z);
     printf("[Phase 5] Aggregation done\n");
 
-    /* Phase 6 */
+    /* Phase 6 (full Algorithm 5 verification pipeline) */
     nvram_read(nvram_dir, &nvram_st);
     uint8_t ctr_le8[8];
     write_le64(ctr_le8, nvram_st.ctr_local - 1);
     secure_zero(&nvram_st, sizeof(nvram_st));
+
+    /* Step 1: MAC pre-filter (sliding window) on (EID, W_sec, ctr) */
+    server_state_t srv;
+    memset(&srv, 0, sizeof(srv));
+    srv.ctr_server = 0;                   /* demo: single session, server ctr starts at 0 */
+    memcpy(srv.k_sym, k_sym, 32);
+    pqzk_sha3_256(k_sym, 32, srv.d_seed); /* d_seed = SHA3-256(k_sym), as in PQC_Register */
+    /* srv.eid stays zero: PQC_Register does not set EID, so the demo MAC input uses EID=0 */
+
+    uint64_t ctr_sess = 0;
+    uint8_t  k_synced[32];
+    if (PQC_Server_SlidingWindowSync(&srv, &W_sec, MAC_W, PQZK_WINDOW_MAX,
+                                     &ctr_sess, k_synced) != PQ_ZK_SUCCESS) {
+        fprintf(stderr, "[Phase 6] Verify FAIL: MAC pre-filter\n");
+        return -1;
+    }
+
+    /* Step 2: Merkle path verification (biometric root R_bio) */
+    if (PQC_MerkleTree_VerifyPath(tree.nodes[0][M1], &M2, R_bio, tree.salt) != 0) {
+        fprintf(stderr, "[Phase 6] Verify FAIL: Merkle path\n");
+        return -1;
+    }
 
     pqzk_iov_t ri[] = {{ R_bio, 32 }, { ctr_le8, 8 }, { NULL, 0 }};
     uint8_t R_dynamic_server[32];
@@ -132,8 +154,8 @@ static int mode_auth(const char *nvram_dir)
 
     beta_params_t params = PQZK_DEFAULT_BETA_PARAMS;
     PQ_ZK_ErrorCode vrc = PQC_VerifyEngine(
-            PQZK_MATRIX_A_SEED, pk_t, &W, &resp_z,
-            c_seed, R_dynamic_server, &M_mask, &params);
+        PQZK_MATRIX_A_SEED, pk_t, &W, &resp_z,
+        c_seed, R_dynamic_server, &M_mask, &params);
 
     if (vrc == PQ_ZK_SUCCESS) {
         printf("[Phase 6] Verify PASS ✓\n");
@@ -150,6 +172,8 @@ static int mode_auth(const char *nvram_dir)
  * ================================================================ */
 int main(int argc, char *argv[])
 {
+    setvbuf(stdout, NULL, _IOLBF, 0);
+
     const char *nvram_dir     = "/tmp/pqzk_euicc";
     int do_auth = 0, do_switch = 0;
 
@@ -194,7 +218,7 @@ int main(int argc, char *argv[])
 
     if (do_auth)     return mode_auth(nvram_dir);
     if (do_switch) {
-        /* Read current operator from NVRAM */
+         /* Read current operator from NVRAM */
         nvram_state_t cur_state;
         if (nvram_read(nvram_dir, &cur_state) == 0) {
             printf("[Switch] Current operator: %.16s\n",
@@ -205,12 +229,12 @@ int main(int argc, char *argv[])
         printf("[Switch] Target operator: %.16s\n", (char*)mno_b_id);
         return mode_switch(nvram_dir, mno_b_id, mno_a_id);
     }
-
+  
     printf("\nUsage:\n");
     printf("  auth: %s --auth --nvram /tmp/euicc\n", argv[0]);
     printf("  switch: %s --switch --nvram /tmp/euicc"
            " --mno-a-id MNO_A_001 --mno-b-id MNO_B_001\n", argv[0]);
-    printf("\nNote: registration is offline，via tools/setup_euicc.sh\n");
+    printf("\nNote: registration is offline, via tools/setup_euicc.sh\n");
     printf("      Real eSIM uses OOB NFC/USB channel for registration\n");
     return 0;
 }

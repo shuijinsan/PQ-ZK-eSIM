@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.viewmodel
 
-// 用户资料视图模型
 
 import android.app.Application
 import android.net.Uri
@@ -80,7 +79,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
 
                 if (!inputOpened) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(getApplication(), "无法读取裁剪结果", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getApplication(), "Cannot read crop result", Toast.LENGTH_SHORT).show()
                     }
                     return@launch
                 }
@@ -90,16 +89,16 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
                 if (saved) {
                     _customAvatarPath.postValue(File(filesDir, "avatar.jpg").absolutePath)
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(getApplication(), "头像已更新", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getApplication(), "Avatar updated", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(getApplication(), "保存头像失败", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(getApplication(), "Failed to save avatar", Toast.LENGTH_SHORT).show()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(getApplication(), "保存头像失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(getApplication(), "Failed to save avatar: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
         }

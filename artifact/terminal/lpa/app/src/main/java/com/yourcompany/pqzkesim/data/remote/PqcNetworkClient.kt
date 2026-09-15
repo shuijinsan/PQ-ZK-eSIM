@@ -29,7 +29,6 @@ object PqcNetworkClient {
     // Real backend server (HTTP, for register/quick_biz)
     private const val DEV_BASE_URL = "http://43.157.25.142:8000"
 
-    // 设备唯一标识（与 native 层硬编码 EID 0x1122...FF01 保持一致）
     private const val E_UICC_ID = "112233445566778899aabbccddeeff01"
 
     private val JSON_MEDIA = "application/json; charset=utf-8".toMediaType()
@@ -116,16 +115,11 @@ object PqcNetworkClient {
         domainId: String,
         encryptedRequest: ByteArray
     ): ProfileResponse? = withContext(Dispatchers.IO) {
-        // 由于当前没有实际运营商（MNO）下发的 profile 文件，此处不请求后端，
-        // 而是直接返回一份本地生成的 profile：把客户端自身加密的请求原样回传，
-        // 由本地会话密钥在 apduDecrypt 时自然解密，从而打通“下载 → 激活”链路。
-        // 其余接口（challenge / verify / server_pk）保持原有行为不受影响。
         MockPqcNetworkClient.downloadProfile(sessionId, domainId, encryptedRequest)
     }
 
     /**
      * GET /api/v1/auth/server_pk
-     * 后端暂未实现该接口，固定返回 null，由 ActivationViewModel 走自封装回退。
      */
     suspend fun fetchServerPk(): ByteArray? = withContext(Dispatchers.IO) {
         null

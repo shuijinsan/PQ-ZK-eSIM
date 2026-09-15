@@ -127,7 +127,6 @@ if(NOT ANDROID)
     target_include_directories(bench_pqzkesim_comprehensive PRIVATE ${PQZK_INCLUDES})
     target_link_libraries(bench_pqzkesim_comprehensive PRIVATE ${PQZK_LINK_LIBS})
 
-    # Comparison experiments（预留：后续迭代扩展）
     # add_executable(bench_comparison
     #     benchmarks/bench_comparison_experiments.c
     #     ${PQZK_SOURCES}
@@ -135,7 +134,6 @@ if(NOT ANDROID)
     # target_include_directories(bench_comparison PRIVATE ${PQZK_INCLUDES})
     # target_link_libraries(bench_comparison PRIVATE ${PQZK_LINK_LIBS})
 
-    # Triple comparison（预留：后续迭代扩展）
     # add_executable(bench_triple_comparison
     #     benchmarks/bench_triple_comparison.c
     #     ${PQZK_SOURCES}
@@ -164,7 +162,7 @@ if(NOT ANDROID)
     enable_testing()
     add_test(NAME KAT COMMAND test_vectors)
     set_tests_properties(KAT PROPERTIES
-        PASS_REGULAR_EXPRESSION "0 失败"
+        PASS_REGULAR_EXPRESSION "0 failed"
     )
 endif()
 

@@ -42,7 +42,7 @@
                 android:layout_marginTop="4dp" />
         </LinearLayout>
 
-        <!-- ═══ 中国移动 ═══ -->
+        <!-- ═══ China Mobile ═══ -->
         <LinearLayout
             android:id="@+id/card_mobile"
             android:layout_width="match_parent"
@@ -112,7 +112,7 @@
             android:background="#FFFFFF"
             android:visibility="gone" />
 
-        <!-- ═══ 中国联通 ═══ -->
+        <!-- ═══ China Unicom ═══ -->
         <LinearLayout
             android:id="@+id/card_unicom"
             android:layout_width="match_parent"
@@ -182,7 +182,7 @@
             android:background="#FFFFFF"
             android:visibility="gone" />
 
-        <!-- ═══ 中国电信 ═══ -->
+        <!-- ═══ China Telecom ═══ -->
         <LinearLayout
             android:id="@+id/card_telecom"
             android:layout_width="match_parent"

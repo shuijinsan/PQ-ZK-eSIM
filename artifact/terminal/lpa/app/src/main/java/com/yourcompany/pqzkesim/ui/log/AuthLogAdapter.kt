@@ -1,6 +1,5 @@
 package com.yourcompany.pqzkesim.ui.log
 
-// 认证日志列表适配器
 
 import android.view.LayoutInflater
 import android.view.View

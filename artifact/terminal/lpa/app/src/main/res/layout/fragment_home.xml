@@ -39,7 +39,6 @@
                 android:padding="16dp"
                 android:layout_marginBottom="16dp">
 
-                <!-- ── 上方：System Status ── -->
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
@@ -89,14 +88,12 @@
                     </FrameLayout>
                 </LinearLayout>
 
-                <!-- ── 分隔 ── -->
                 <View
                     android:layout_width="match_parent"
                     android:layout_height="1dp"
                     android:background="#EEEEEE"
                     android:layout_marginVertical="14dp" />
 
-                <!-- ── 下方：TEE / 主密钥 ── -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -151,7 +148,7 @@
             </LinearLayout>
 
             <!-- ════════════════════════════════════════════
-                 Section 2 — 运营商选择
+                 Section 2 — Communication selection
                  ════════════════════════════════════════════ -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -224,7 +221,6 @@
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
-                <!-- 节点行：clipChildren=false 允许圆点扩散动画不截断 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -256,7 +252,6 @@
                         android:background="@drawable/shape_circle_gray" />
                 </LinearLayout>
 
-                <!-- 标签行 -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -287,7 +282,7 @@
             </LinearLayout>
 
             <!-- ════════════════════════════════════════════
-                 Section 6 — Mock 模式开关
+                 Section 6 — Mock mode switch
                  ════════════════════════════════════════════ -->
             <LinearLayout
                 android:layout_width="match_parent"
@@ -328,7 +323,7 @@
             </LinearLayout>
 
             <!-- ════════════════════════════════════════════
-                 Section 7 — 启动认证按钮
+                 Section 7 — Start Authentication button
                  ════════════════════════════════════════════ -->
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_run_test"
