@@ -18,6 +18,7 @@ Unified visualization:
 import os
 import sys
 import csv
+import glob
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -39,15 +40,30 @@ matplotlib.rcParams.update({
     'savefig.bbox': 'tight',
 })
 
-OUTPUT_DIR = "../build"
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+REPO_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, "..", "..", ".."))
+OUTPUT_DIR = os.path.join(REPO_ROOT, "build")
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+
+def find_csv(filename):
+    """Locate a result CSV: claim results/ dirs first, then legacy build dirs."""
+    matches = sorted(glob.glob(os.path.join(REPO_ROOT, "claims", "*", "results", filename)))
+    if matches:
+        return matches[0]
+    for d in (OUTPUT_DIR, os.path.abspath("../build")):
+        p = os.path.join(d, filename)
+        if os.path.exists(p):
+            return p
+    return None
 
 # ================================================================
 # ================================================================
 
 def load_csv(filename):
-    path = os.path.join(OUTPUT_DIR, filename)
-    if not os.path.exists(path):
-        print(f"  [Warning] File not found: {path}")
+    path = find_csv(filename)
+    if not path:
+        print(f"  [Warning] File not found: {filename}")
         return None
     try:
         df = pd.read_csv(path)
@@ -571,11 +587,11 @@ def plot_memory_usage():
 # ================================================================
 
 def load_dos_results(csv_path):
-    path = os.path.join(OUTPUT_DIR, csv_path)
-    if not os.path.exists(path):
-        print(f"  [Warning] File not found: {path}")
+    path = find_csv(csv_path)
+    if not path:
+        print(f"  [Warning] File not found: {csv_path}")
         return None
-    
+
     data = {}
     with open(path, 'r') as f:
         reader = csv.DictReader(f)
@@ -634,11 +650,11 @@ def plot_dos_prevention():
 # ================================================================
 
 def load_constant_time_results(csv_path):
-    path = os.path.join(OUTPUT_DIR, csv_path)
-    if not os.path.exists(path):
-        print(f"  [Warning] File not found: {path}")
+    path = find_csv(csv_path)
+    if not path:
+        print(f"  [Warning] File not found: {csv_path}")
         return None
-    
+
     times = []
     with open(path, 'r') as f:
         reader = csv.DictReader(f)
@@ -691,11 +707,9 @@ def plot_constant_time():
 # ================================================================
 
 def plot_callgrind_top_functions():
-    csv_path = os.path.join(OUTPUT_DIR, "callgrind_top_functions.csv")
-    if not os.path.exists(csv_path):
-        csv_path = os.path.join(os.path.dirname(OUTPUT_DIR), "callgrind_top_functions.csv")
-    if not os.path.exists(csv_path):
-        print(f"  [Warning] callgrind_top_functions.csv not found")
+    csv_path = find_csv("callgrind_top_functions.csv")
+    if not csv_path:
+        print("  [Warning] callgrind_top_functions.csv not found")
         return
 
     df = load_csv("callgrind_top_functions.csv")
@@ -762,9 +776,9 @@ def plot_callgrind_top_functions():
 # ================================================================
 
 def plot_environment_breakdown():
-    csv_path = os.path.join(OUTPUT_DIR, "perf_results.csv")
-    if not os.path.exists(csv_path):
-        print(f"  [Warning] File not found: {csv_path}")
+    csv_path = find_csv("perf_results.csv")
+    if not csv_path:
+        print("  [Warning] File not found: perf_results.csv")
         return
 
     data = {}

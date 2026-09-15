@@ -316,16 +316,24 @@ static void run_dos_bench(void)
     poly_vec_t M_mask;
     PQC_GenerateMask(k_sym, c_seed, st.ctr_local, R_dynamic, &M_mask);
 
-    /* Build MAC_W iov: HMAC(K_sym, Encode(W_sec) || ctr) — paper DoS pre-filter */
+    /* Build MAC_W iov: CMAC(K_MAC, EID || Encode(W_sec) || ctr) — paper DoS pre-filter.
+     * K_MAC = HKDF(K_sym, "MAC"); matches compute_mac_w() in pq_zk_esim.c. */
     uint8_t wsec_bytes_dos[PQ_ZK_POLYVEC_BYTES];
     uint8_t ctr8_dos[8];
     PQC_EncodePolyVec(&W_sec, wsec_bytes_dos, PQ_ZK_K);
     write_le64(ctr8_dos, st.ctr_local);
-    pqzk_iov_t macw_iov[] = {{wsec_bytes_dos, (size_t)PQ_ZK_K * PQ_ZK_N * 4}, {ctr8_dos, 8}, {NULL, 0}};
+    pqzk_iov_t macw_iov[] = {
+        { eid,            NVRAM_EID_LEN                    },
+        { wsec_bytes_dos, (size_t)PQ_ZK_K * PQ_ZK_N * 4    },
+        { ctr8_dos,       8                                },
+        { NULL, 0 }
+    };
+    uint8_t k_mac_dos[32];
+    pqzk_hkdf_expand(k_sym, "MAC", 3, k_mac_dos);
 
     for (int i = 0; i < 10; i++) {
-        uint8_t tmp[32];
-        pqzk_hmac_sha256_iov(k_sym, macw_iov, tmp);
+        uint8_t tmp[PQ_ZK_MAC_BYTES];
+        pqzk_aes256_cmac(k_mac_dos, macw_iov, tmp);
         PQ_ZK_ErrorCode vrc = PQC_VerifyEngine(
             PQZK_MATRIX_A_SEED, pk_t, &W, &resp_z,
             c_seed, R_dynamic, &M_mask, &params);
@@ -335,11 +343,12 @@ static void run_dos_bench(void)
     int trials = 1000;
     double mac_times[trials];
     for (int i = 0; i < trials; i++) {
-        uint8_t tmp[32];
+        uint8_t tmp[PQ_ZK_MAC_BYTES];
         double t0 = get_time_us();
-        pqzk_hmac_sha256_iov(k_sym, macw_iov, tmp);
+        pqzk_aes256_cmac(k_mac_dos, macw_iov, tmp);
         mac_times[i] = get_time_us() - t0;
     }
+    memset(k_mac_dos, 0, sizeof(k_mac_dos));
 
     double lattice_times[trials];
     for (int i = 0; i < trials; i++) {
