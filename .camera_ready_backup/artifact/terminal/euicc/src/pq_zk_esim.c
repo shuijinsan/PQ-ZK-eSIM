@@ -1,6 +1,6 @@
 /* pq_zk_esim.c — v5.1
  * PQ-ZK-eSIM protocol implementation
- * K=3, M=8, q=8380417, kappa=35, sigma=5000
+ * K=5, M=8, q=8380417, kappa=35, sigma=5000
  * int32_t coefficients, int64_t intermediates (anti-overflow)
  */
 
@@ -19,28 +19,20 @@
  * Internal utilities
  * ================================================================ */
 
-/* Uniform ternary sampler: each coefficient is exactly uniform in {-1,0,1}.
- * Bytes >= 252 are rejected so reduction modulo 3 is unbiased. */
-static void sample_uniform_ternary(const uint8_t seed[32], poly_vec_t *out)
+/* sample_binomial_B1 -- centered binomial B_1 (Paper Table 1): Pr[+1]=1/4, Pr[0]=1/2, Pr[-1]=1/4 */static void sample_binomial_B1(const uint8_t seed[32], poly_vec_t *v){    int total = PQ_ZK_M * PQ_ZK_N;    uint8_t buf[PQ_ZK_M * PQ_ZK_N * 2];    uint8_t expanded[40];    memcpy(expanded, seed, 32);    for (int block = 0; block * 32 < total * 2; block++) {        write_le64(expanded + 32, (uint64_t)block);        pqzk_sha3_256(expanded, 40, buf + block * 32);    }    for (int i = 0; i < total; i++) {        int a = (buf[2*i] >> 0) & 1;        int b = (buf[2*i] >> 1) & 1;        v->coeffs[i] = a - b;    }    secure_zero(buf, sizeof(buf));}
+static void sample_ternary(const uint8_t seed[32], poly_vec_t *y_sec)
 {
-    uint32_t block = 0;
-    int filled = 0;
-    uint8_t domain[36];
-    uint8_t buf[512];
-    memcpy(domain, seed, 32);
-    while (filled < PQ_ZK_M * PQ_ZK_N) {
-        write_le32(domain + 32, block++);
-        pqzk_shake256(domain, sizeof(domain), buf, sizeof(buf));
-        for (size_t i = 0; i < sizeof(buf) && filled < PQ_ZK_M * PQ_ZK_N; i++) {
-            uint8_t x = buf[i];
-            if (x >= 252) continue;
-            int t = (int)(x % 3);
-            out->coeffs[filled++] = (t == 0) ? -1 : (t == 1 ? 0 : 1);
-        }
+    uint8_t buf[PQ_ZK_M * PQ_ZK_N];
+    pqzk_shake256(seed, 32, buf, sizeof(buf));
+    for (int i = 0; i < PQ_ZK_M * PQ_ZK_N; i++) {
+        uint8_t b = buf[i] & 0x03;
+        if      (b == 2) y_sec->coeffs[i] =  1;
+        else if (b == 3) y_sec->coeffs[i] = -1;
+        else             y_sec->coeffs[i] =  0;
     }
-    secure_zero(domain, sizeof(domain));
     secure_zero(buf, sizeof(buf));
 }
+
 /* ================================================================
  * Serialization — int32_t, 4 bytes per coefficient LE
  * ================================================================ */
@@ -141,7 +133,7 @@ static int serialize_merkle_path(const merkle_path_t *path,
 }
 
 /* ================================================================
- * Key Generation — K=3, M=8 systematic MLWE public key
+ * Key Generation — K=5, M=8 rectangular MSIS
  * ================================================================ */
 
 void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s)
@@ -149,7 +141,7 @@ void PQC_GenKeyPair(uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES], poly_vec_t *sk_s)
     if (!pk_t || !sk_s) return;
     uint8_t sk_seed[32];
     pqzk_rand_bytes(sk_seed, 32);
-    sample_uniform_ternary(sk_seed, sk_s);
+    sample_binomial_B1(sk_seed, sk_s);
     memcpy(pk_t, PQZK_MATRIX_A_SEED, 32);
 
     poly_vec_t A_rows[PQ_ZK_K];
@@ -301,7 +293,7 @@ void PQC_eUICC_Commit(const char* nvram_dir, poly_vec_t *W_sec,
     uint8_t ysec_seed[32];
     pqzk_rand_bytes(ysec_seed, 32);
     poly_vec_t y_sec;
-    sample_uniform_ternary(ysec_seed, &y_sec);
+    sample_ternary(ysec_seed, &y_sec);
     secure_zero(ysec_seed, 32);
 
     poly_vec_t A_rows[PQ_ZK_K];
@@ -491,7 +483,7 @@ PQ_ZK_ErrorCode PQC_ComputeZ_and_Mask(
     pqzk_vec_add(&y_sec, &S_c_agg, &z_sec, PQ_ZK_M);
 
     /* M_mask = Parse(PRF(K_sym, c_seed||ctr_session||R_dynamic)), M=8 dim */
-    size_t mask_stream_len = ((size_t)PQ_ZK_M * PQ_ZK_N + 128u) * 3u;
+    size_t mask_stream_len = (size_t)PQ_ZK_M * PQ_ZK_N * 3;
     uint8_t *mask_stream = (uint8_t *)malloc(mask_stream_len);
     if (!mask_stream) {
         secure_zero(&state, sizeof(state));
@@ -555,7 +547,7 @@ void PQC_GenerateMask(const uint8_t K_sym[PQ_ZK_SEED_BYTES],
                        poly_vec_t *M_mask)
 {
     if (!K_sym || !c_seed || !R_dynamic || !M_mask) return;
-    size_t stream_len = ((size_t)PQ_ZK_M * PQ_ZK_N + 128u) * 3u;
+    size_t stream_len = (size_t)PQ_ZK_M * PQ_ZK_N * 3;
     uint8_t *stream = (uint8_t *)malloc(stream_len);
     if (!stream) return;
     uint8_t k_prf[32];

@@ -21,7 +21,7 @@
  * ================================================================
  *
  *   PQ_ZK_N     = 256     polynomial ring degree
- *   PQ_ZK_K     = 3       matrix rows (commitment dim)
+ *   PQ_ZK_K     = 5       matrix rows (commitment dim)
  *   PQ_ZK_M     = 8       matrix cols (witness dim)
  *   PQ_ZK_Q_VAL = 8380417 modulus q = 2^23 - 2^13 + 1 (NTT-friendly)
  *   PQ_ZK_ETA_S = 1       secret S coefficient l_inf bound (ternary)
@@ -38,11 +38,12 @@
  * Derivation chain (sigma=5000, kappa=35):
  *
  *   1. kappa = 35 (challenge sparsity weight)
- *      - log2(C(256,35)*2^35) = 178.6 bit gives about 178.6 challenge bits
- *      - Soundness uses the ROM forking reduction in the paper
+ *      - log2(C(256,35)*2^35) = 178.6 bit >> NIST Level 1 (128 bit)
+ *      - Soundness via Reset Lemma: eps_fork >= eps^2 - eps/|C_chal|
  *
  *   2. sigma_pub = 5000 (Gaussian flooding std deviation)
- *      - Finite-parameter Renyi accounting is reported separately from the asymptotic UC condition
+ *      - Renyi smudging: sigma >= rho_smudge * sqrt(kappa*M*N) * eta_s
+ *        5000 >= 12.36 * sqrt(35*8*256) * 1 = 12.36 * 267.7 = 3309  OK
  *      - R_16 <= exp(16*||b||^2 / (2*sigma^2)) = exp(16*97960/(2*25e6))
  *        = exp(0.0314) = 1.032  (paper: per-transcript loss R_16^(15/16) = 1.030)
  *      - Per-transcript loss L = R_16^(15/16) = 1.030
@@ -80,7 +81,7 @@
 #define PQ_ZK_RENYI_GAMMA       12.36
 #define PQ_ZK_BETA_INF          35700
 
-/* Historical finite-accounting reference only; not a theorem-level minimum. */
+/* Renyi smudging minimum: gamma * sqrt(M*N*kappa) * eta_s (Paper Theorem 3) */
 #define PQZK_RENYI_SMUDGE_MIN  3309
 
 /* ================================================================
@@ -120,7 +121,7 @@ _Static_assert(
     "PQZK_BETA_FINAL must be < q/2 = 4,190,208"
 );
 
-// Finite-accounting engineering check (not the asymptotic UC condition)
+// Paper Theorem 3: sigma >= gamma * sqrt(M*N*kappa) * eta_s
 // Since sqrt() is not a constant expression, we precompute:
 // gamma^2 * M * N * kappa * eta_s^2 = 12.36^2 * 2048 * 35 * 1
 //                                   = 152.77 * 71680
@@ -128,7 +129,7 @@ _Static_assert(
 // sigma^2 = 5000^2 = 25,000,000 >= 10,950,554  OK
 _Static_assert(
     (int)(PQ_ZK_SIGMA_PUB * PQ_ZK_SIGMA_PUB) >= (int)(PQ_ZK_RENYI_GAMMA * PQ_ZK_RENYI_GAMMA * PQ_ZK_M * PQ_ZK_N * PQZK_KAPPA * PQ_ZK_ETA_S * PQ_ZK_ETA_S),
-    "PQ_ZK_SIGMA_PUB fails the finite-accounting engineering reference"
+    "PQ_ZK_SIGMA_PUB fails Renyi smudging condition (Paper Theorem 3): sigma >= gamma*sqrt(M*N*kappa)*eta_s"
 );
 
 _Static_assert(

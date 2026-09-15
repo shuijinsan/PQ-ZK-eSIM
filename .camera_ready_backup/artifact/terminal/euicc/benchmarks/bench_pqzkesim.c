@@ -23,18 +23,15 @@ static int norm_precheck(const poly_vec_t *z_unmasked,
 {
     int32_t inf_norm = 0;
     int64_t l2_sq    = 0;
-    int64_t l1_norm  = 0;
     for (int i = 0; i < PQ_ZK_M * PQ_ZK_N; i++) {
         int32_t v  = (int32_t)z_unmasked->coeffs[i];
         int32_t av = (v < 0) ? -v : v;
         if (av > inf_norm) inf_norm = av;
         l2_sq += (int64_t)v * v;
-        l1_norm += (int64_t)av;
     }
     if (l2_sq < (int64_t)params->beta_min * params->beta_min) return 2;
     if (l2_sq > (int64_t)params->beta_final * params->beta_final) return 1;
     if (inf_norm > (int32_t)PQ_ZK_BETA_INF) return 1;
-    if (params->beta_l1 > 0 && l1_norm < (int64_t)params->beta_l1) return 2;
     return 0;
 }
 
@@ -174,7 +171,6 @@ static void run_grid_search(void)
             beta_params_t params;
             params.beta_final = (uint32_t)beta_final;
             params.beta_min   = PQZK_BETA_MIN;
-            params.beta_l1    = PQZK_BETA_L1;
 
             int    overflow_fail  = 0;
             int    underflow_fail = 0;
