@@ -183,12 +183,22 @@ def plot_sliding_window_resync():
         else:
             worst_case_mac.append(0)
 
-    theoretical = [w * 2.82 for w in windows]
+    # Expected worst-case cost = (W+1) MAC_W verifications, i.e. (W+1)
+    # candidate epochs at the single-epoch cost measured by the DoS
+    # pre-filter benchmark (claim3). The model omits the per-epoch key
+    # evolution, so it is a slight lower bound.
+    _dos = load_dos_results("dos_results.csv")
+    if not _dos:
+        _dos = load_dos_results("dos_results_qemu.csv")
+    mac_w_us = _dos.get("MAC_W_Verification", 0.0) if _dos else 0.0
+    theoretical = [(w + 1) * mac_w_us for w in windows]
 
     ax_b.plot(windows, worst_case_mac, 'o-', color='#d62728',
               linewidth=4, markersize=16, label='Measured (worst case)')
-    ax_b.plot(windows, theoretical, 's--', color='#1f77b4',
-              linewidth=3, markersize=14, label='Theoretical (W×2.82μs)')
+    if mac_w_us > 0:
+        ax_b.plot(windows, theoretical, 's--', color='#1f77b4',
+                  linewidth=3, markersize=14,
+                  label=f'Expected ((W+1)×{mac_w_us:.1f}μs)')
     ax_b.set_xlabel("Window Size W", fontsize=42)
     ax_b.set_ylabel("MAC Search Time (μs)", fontsize=42)
     ax_b.set_title("(B) MAC Search Latency\n(worst case: Δ=W)", fontsize=44)

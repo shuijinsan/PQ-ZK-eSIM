@@ -1,6 +1,9 @@
-Paper: concrete lattice estimates for the selected parameter set.
+Paper: Figure 4, Section 7 (Concrete security / lattice-estimator estimation)
 
-Claim: known attacks against both underlying lattice instances exceed the 128-bit quantum target under the stated lattice-estimator cost model. These estimates are not identified with concrete bit security of the non-tight UC reduction.
+Claim: known attacks against both underlying lattice instances exceed the
+128-bit quantum target under the stated lattice-estimator cost model. These
+estimates are not identified with concrete bit security of the non-tight UC
+reduction.
 
 MLWE input:
   N=256, q=8380417, k=3, m=8
@@ -9,10 +12,30 @@ MLWE input:
   secret=uniform ternary, error=uniform ternary
   reported minimum: dual_hybrid, 172.1 classical bits, 162.9 quantum bits
 
-MSIS input:
+HNF-MSIS input:
+  N=256, q=8380417, k=3, m=8
   coefficient-view rows=768, columns=2304
-  Euclidean norm bound beta=520012, norm=2
-  reported minimum: 163.6 classical bits, 155.6 quantum bits
+  norm=infinity, length_bound=71400
+  reported minimum: 142.6 classical bits, 135.1 quantum bits
 
-Dependency: lattice-estimator commit 6019056 and fpylll.
-Preserve the full estimator invocation and output log for camera-ready reproducibility.
+Experiment: lattice-estimator sweep over the HNF-MSIS length_bound
+(40000 to 200000), reporting classical (MATZOV) and quantum (LaaMosPol14)
+bits for each point.
+
+Input: none (the instance is derived from src/internal/params.h)
+
+Expected output:
+  msis_estimator_sweep.csv
+    columns: length_bound, classical_bits, quantum_bits, bkz_block_size
+  fig_lattice_estimator.png  (Figure 4)
+
+Runtime: ~1 min
+
+Resources: 1 CPU core, <1 GB RAM, <10 MB disk
+
+Dependency: lattice-estimator, commit 6019056
+(github.com/malb/lattice-estimator), Python 3, fpylll, SageMath.
+
+Tolerance:
+  - Deterministic: for a fixed instance, cost model, and estimator commit the
+    reported bit counts are exact; there is no run-to-run variation.

@@ -1,13 +1,36 @@
-Paper: sparse-noise / multi-norm validation.
+Paper: Figure 7, Appendix D (Resistance to Real-World Attacks)
 
-Claim: structured degradation of y_pub is tested against the actual verifier while preserving the lattice relation. The experiment records which norm check rejects each trial.
+Claim: structured degradation of y_pub (zeroing a fraction rho of its
+coefficients) is tested against the actual verifier while preserving the
+lattice relation. The experiment records which norm check rejects each trial.
 
-Experiment:
+Experiment (QEMU ARM64 emulation):
   qemu-aarch64-static -L /usr/aarch64-linux-gnu \
       artifact/terminal/euicc/build/arm64/bench_pqzkesim_comprehensive --only sparse
+  (200 trials per rho)
+
+Input: none
 
 Expected outputs:
   sparse_noise_attack_results.csv
+    columns: rho, detection_rate, false_reject_rate, avg_total_us
   sparse_noise_norm_breakdown.csv
+    columns: rho, l2_low_rate, l2_high_rate, linf_rate, l1_low_rate,
+             verify_reject_rate
 
-The rho=0.78 value is only the ell_2 geometric reference threshold for the stated sparsification model; the full verifier also applies ell_infinity and ell_1 checks. Honest false-rejection must be reported empirically and is not defined to be exactly zero.
+Runtime: ~1 min
+
+Resources: 1 CPU core, <100 MB RAM, <1 MB disk
+
+Tolerance:
+  - detection_rate: deterministic at the extremes -- 1.0 for rho <= 0.75 and
+    0.0 for rho = 1.0 (honest noise). The rho = 0.90 row falls in the
+    transition band.
+  - false_reject_rate: 0.0 for honest runs.
+  - timing: faster passes; slower up to +100% (2x).
+
+Notes:
+  The rho = 0.78 value is the ell_2 geometric reference threshold for the
+  stated sparsification model; the verifier additionally applies the
+  ell_infinity and ell_1 checks. Honest false-rejection is reported
+  empirically and is not defined to be exactly zero.

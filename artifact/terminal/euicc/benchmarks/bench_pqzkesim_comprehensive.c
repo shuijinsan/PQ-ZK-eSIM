@@ -89,7 +89,7 @@ static PQ_ZK_ErrorCode run_one_trial(
     t0=get_time_us();
     poly_vec_t M_mask;PQC_GenerateMask(k_sym_nvram,c_seed,ctr_local,R_dyn,&M_mask);
     poly_vec_t zmm,zu;pqzk_vec_sub(&resp_z,&M_mask,&zmm, PQ_ZK_M);
-    for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=zmm.coeffs[i];if (v > PQ_ZK_Q_VAL / 2) v -= PQ_ZK_Q_VAL;}
+    for(int i=0;i<PQ_ZK_M*PQ_ZK_N;i++){int32_t v=zmm.coeffs[i];if (v > PQ_ZK_Q_VAL / 2) v -= PQ_ZK_Q_VAL;zu.coeffs[i]=v;}
     norm_precheck(&zu,params,ov,un,l1);
     PQ_ZK_ErrorCode vrc=PQC_VerifyEngine(PQZK_MATRIX_A_SEED,pk_t,&W,&resp_z,c_seed,R_dyn,&M_mask,params);
     timings[6]=get_time_us()-t0;

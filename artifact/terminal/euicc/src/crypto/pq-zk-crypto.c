@@ -229,8 +229,10 @@ int pqzk_hkdf_expand(const uint8_t prk[32], const char *info, size_t info_len,
 }
 
 /* ================================================================
- * KDF (Paper Table 2): AES-256-CTR encrypt d_seed || EID
- *   K_sym^(i+1) = AES-256-CTR(K_sym^i, iv=d_seed[0:16], d_seed||EID)[0:32]
+ * State-evolution KDF (Paper Table 2, Def. 3; Algorithm 4):
+ *   K_sym^(i+1) = HMAC-SHA256(K_sym^i, "PQZK-KDF" || d_seed || EID)
+ * One-way PR evolution keyed by the current master key; every input
+ * (K_sym, d_seed, EID) contributes to the derived key.
  * ================================================================ */
 int pqzk_kdf(const uint8_t  K_sym[32],
              const uint8_t  d_seed[32],
@@ -241,15 +243,13 @@ int pqzk_kdf(const uint8_t  K_sym[32],
     if (!K_sym || !d_seed || !eid || !new_key) return -1;
     if (eid_len == 0 || eid_len > 16) return -1;
 
-    uint8_t plain[48], iv[16];
-    memset(plain, 0, 48);
-    memcpy(plain, d_seed, 32);
-    memcpy(plain + 32, eid, eid_len);
-    memcpy(iv, d_seed, 16);
-    if (pqzk_aes256_ctr(K_sym, iv, plain, 48) != 0) return -1;
-    memcpy(new_key, plain, 32);
-    secure_zero(plain, sizeof(plain));
-    return 0;
+    pqzk_iov_t iov[] = {
+        { (const uint8_t *)"PQZK-KDF", 8 },
+        { d_seed, 32 },
+        { eid, eid_len },
+        { NULL, 0 }
+    };
+    return pqzk_hmac_sha256_iov(K_sym, iov, new_key);
 }
 
 /* ================================================================

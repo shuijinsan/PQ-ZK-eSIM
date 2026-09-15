@@ -316,16 +316,21 @@ static void run_dos_bench(void)
     poly_vec_t M_mask;
     PQC_GenerateMask(k_sym, c_seed, st.ctr_local, R_dynamic, &M_mask);
 
-    /* Build MAC_W iov: HMAC(K_sym, Encode(W_sec) || ctr) — paper DoS pre-filter */
-    uint8_t wsec_bytes_dos[PQ_ZK_POLYVEC_BYTES];
-    uint8_t ctr8_dos[8];
-    PQC_EncodePolyVec(&W_sec, wsec_bytes_dos, PQ_ZK_K);
-    write_le64(ctr8_dos, st.ctr_local);
-    pqzk_iov_t macw_iov[] = {{wsec_bytes_dos, (size_t)PQ_ZK_K * PQ_ZK_N * 4}, {ctr8_dos, 8}, {NULL, 0}};
+    /* Protocol-accurate pre-filter: the same HKDF("MAC") + AES-256-CMAC path
+       PQC_Server_SlidingWindowSync runs per candidate epoch (compute_mac_w
+       over EID || W_sec || ctr). The counter matches on the first epoch
+       (delta = 0), so one call times exactly one MAC_W check. */
+    server_state_t srv;
+    memset(&srv, 0, sizeof(srv));
+    memcpy(srv.eid, eid, NVRAM_EID_LEN);
+    memcpy(srv.k_sym, st.k_sym, 32);
+    srv.ctr_server = st.ctr_local;
 
     for (int i = 0; i < 10; i++) {
-        uint8_t tmp[32];
-        pqzk_hmac_sha256_iov(k_sym, macw_iov, tmp);
+        uint64_t cs_w; uint8_t ks_w[32];
+        PQ_ZK_ErrorCode mrc = PQC_Server_SlidingWindowSync(&srv, &W_sec, MAC_W, 1, &cs_w, &ks_w);
+        if (mrc != PQ_ZK_SUCCESS || cs_w != st.ctr_local)
+            printf("  [warn] MAC_W pre-filter did not match at delta=0\n");
         PQ_ZK_ErrorCode vrc = PQC_VerifyEngine(
             PQZK_MATRIX_A_SEED, pk_t, &W, &resp_z,
             c_seed, R_dynamic, &M_mask, &params);
@@ -335,9 +340,9 @@ static void run_dos_bench(void)
     int trials = 1000;
     double mac_times[trials];
     for (int i = 0; i < trials; i++) {
-        uint8_t tmp[32];
+        uint64_t cs_w; uint8_t ks_w[32];
         double t0 = get_time_us();
-        pqzk_hmac_sha256_iov(k_sym, macw_iov, tmp);
+        PQC_Server_SlidingWindowSync(&srv, &W_sec, MAC_W, 1, &cs_w, &ks_w);
         mac_times[i] = get_time_us() - t0;
     }
 

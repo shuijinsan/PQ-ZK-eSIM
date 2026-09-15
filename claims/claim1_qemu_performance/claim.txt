@@ -18,7 +18,7 @@ Expected output: phase_timing_results.csv
            server_verify_us, total_us, euicc_total_us, lpa_total_us,
            tee_total_us, server_total_us
 
-Runtime: ~2-3 min (QEMU ARM64 emulation)
+Runtime: <1 min (QEMU ARM64 emulation)
 
 Resources: 1 CPU core, <100 MB RAM, <10 MB disk
 

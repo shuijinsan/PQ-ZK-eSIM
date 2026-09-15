@@ -1,4 +1,4 @@
 test,avg_us
-MAC_W_Verification,87.33
-Full_Lattice_Verification,2758.55
-Speedup,31.59
+MAC_W_Verification,71.00
+Full_Lattice_Verification,1110.94
+Speedup,15.65

@@ -12,7 +12,7 @@ Expected output: dos_results.csv
   columns: test, avg_us
   rows:    MAC_W_Verification, Full_Lattice_Verification, Speedup
 
-Runtime: ~1 min
+Runtime: <1 min
 
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk
 
@@ -20,3 +20,8 @@ Tolerance:
   - Deterministic: Speedup > 1 (MAC is strictly cheaper than full lattice
     verification).
   - timing (avg_us): faster passes; slower up to +100% (2x).
+
+Notes:
+  MAC_W_Verification times one epoch of the server sliding-window MAC search:
+  HKDF("MAC") followed by AES-256-CMAC over (EID, W_sec, ctr). Full_Lattice_
+  Verification times PQC_VerifyEngine on the same request.
