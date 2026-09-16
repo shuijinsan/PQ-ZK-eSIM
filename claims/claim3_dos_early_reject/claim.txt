@@ -1,6 +1,6 @@
 Paper: Figure 8, Appendix D (Resistance to Real-World Attacks)
 
-Claim: A low-cost MAC pre-verification rejects forged/flooded commitments
+Claim: a low-cost MAC pre-verification rejects forged/flooded commitments
 before the expensive lattice verification, giving an early-reject speedup.
 
 Experiment (QEMU ARM64 emulation):
@@ -12,6 +12,17 @@ Expected output: dos_results.csv
   columns: test, avg_us
   rows:    MAC_W_Verification, Full_Lattice_Verification, Speedup
 
+Measured:
+  MAC_W_Verification         71.00 us
+  Full_Lattice_Verification 1110.94 us
+  Speedup                     15.6x
+
+The benchmark measures the protocol MAC path used by the verifier: one
+candidate epoch of the server sliding-window MAC search, i.e. the per-epoch
+key/MAC derivation (HKDF("MAC") followed by AES-256-CMAC over
+(EID, W_sec, ctr)) as implemented by the final code path. Full_Lattice_
+Verification times PQC_VerifyEngine on the same request.
+
 Runtime: <1 min
 
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk
@@ -20,8 +31,3 @@ Tolerance:
   - Deterministic: Speedup > 1 (MAC is strictly cheaper than full lattice
     verification).
   - timing (avg_us): faster passes; slower up to +100% (2x).
-
-Notes:
-  MAC_W_Verification times one epoch of the server sliding-window MAC search:
-  HKDF("MAC") followed by AES-256-CMAC over (EID, W_sec, ctr). Full_Lattice_
-  Verification times PQC_VerifyEngine on the same request.

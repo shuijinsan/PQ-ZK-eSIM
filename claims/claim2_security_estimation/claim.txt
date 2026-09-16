@@ -1,26 +1,34 @@
 Paper: Figure 4, Section 7 (Concrete security / lattice-estimator estimation)
 
-Claim: known attacks against both underlying lattice instances exceed the
-128-bit quantum target under the stated lattice-estimator cost model. These
-estimates are not identified with concrete bit security of the non-tight UC
-reduction.
+Claim: the minimum estimator-reported quantum attack cost across the
+instantiated MLWE and HNF-MSIS problems is 135.1 bits. The paper uses
+128 bits as an engineering threshold for estimator-reported quantum attack
+cost.
 
-MLWE input:
-  N=256, q=8380417, k=3, m=8
-  coefficient-view dimension n=(m-k)N=1280
-  samples=kN=768
-  secret=uniform ternary, error=uniform ternary
-  reported minimum: dual_hybrid, 172.1 classical bits, 162.9 quantum bits
+MLWE:
+  commit: lattice-estimator 6019056
+  n = 1280
+  samples = 768
+  q = 8380417
+  Xs = Xe = coefficient-wise uniform ternary {-1,0,1}
+  lowest reported attack: dual_hybrid
+  classical: 172.1 bits
+  quantum: 162.9 bits
 
-HNF-MSIS input:
-  N=256, q=8380417, k=3, m=8
-  coefficient-view rows=768, columns=2304
-  norm=infinity, length_bound=71400
-  reported minimum: 142.6 classical bits, 135.1 quantum bits
+HNF-MSIS:
+  commit: lattice-estimator 6019056
+  norm: infinity
+  n = 768
+  m = 2304
+  q = 8380417
+  gamma_ext = 71400
+  classical: 142.6 bits
+  quantum: 135.1 bits
+  selected-point BKZ beta: 394
 
-Experiment: lattice-estimator sweep over the HNF-MSIS length_bound
+Experiment: lattice-estimator sweep over the HNF-MSIS length bound
 (40000 to 200000), reporting classical (MATZOV) and quantum (LaaMosPol14)
-bits for each point.
+attack cost for each point.
 
 Input: none (the instance is derived from src/internal/params.h)
 
@@ -33,8 +41,15 @@ Runtime: ~1 min
 
 Resources: 1 CPU core, <1 GB RAM, <10 MB disk
 
-Dependency: lattice-estimator, commit 6019056
+Dependency: lattice-estimator commit 6019056
 (github.com/malb/lattice-estimator), Python 3, fpylll, SageMath.
+
+Notes:
+  NIST FIPS 204 categories 2, 3, and 5 refer to the standardized ML-DSA
+  parameter sets. PQ-ZK-eSIM uses the custom tuple (k,m,kappa)=(3,8,35) and
+  reports its concrete lattice-attack estimates separately.
+  The estimator configuration and full stdout are retained alongside this
+  claim as evidence (estimator_stdout.txt).
 
 Tolerance:
   - Deterministic: for a fixed instance, cost model, and estimator commit the

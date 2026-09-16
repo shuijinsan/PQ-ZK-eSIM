@@ -1,0 +1,11 @@
+# lattice-estimator commit 6019056 (github.com/malb/lattice-estimator) + fpylll
+
+# MLWE instance
+  LWEParameters(n=1280, q=8380417, Xs=D(σ=0.82), Xe=D(σ=0.82), m=768, tag=None)
+  MATZOV       lowest=dual_hybrid  rop=2^172.1
+  LaaMosPol14  lowest=dual_hybrid  rop=2^162.9
+
+# HNF-MSIS instance (gamma_ext = 71400, norm = infinity)
+  SISParameters(n=768, q=8380417, length_bound=71400, m=2304, norm=+Infinity, tag=None)
+  MATZOV       rop=2^142.6  beta=394
+  LaaMosPol14  rop=2^135.1  beta=396

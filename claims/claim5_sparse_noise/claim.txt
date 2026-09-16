@@ -18,9 +18,23 @@ Expected outputs:
     columns: rho, l2_low_rate, l2_high_rate, linf_rate, l1_low_rate,
              verify_reject_rate
 
+Measured:
+  L1 rejection 100% through rho = 75%;
+  66% at rho = 90%;
+  0% at honest rho = 100%;
+  latency about 0.21 ms through rho = 75%, 0.55 ms at rho = 90%, 1.21 ms for
+  honest rho = 100%.
+  Honest false-rejection rate: no false rejection was observed in the finite
+  run. This is a finite-sample observation, not an empirical 2^-128 bound.
+
 Runtime: ~1 min
 
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk
+
+Notes:
+  The rho = 0.78 value is the ell_2 geometric reference threshold for the
+  stated sparsification model; the verifier additionally applies the
+  ell_infinity and ell_1 checks.
 
 Tolerance:
   - detection_rate: deterministic at the extremes -- 1.0 for rho <= 0.75 and
@@ -28,9 +42,3 @@ Tolerance:
     transition band.
   - false_reject_rate: 0.0 for honest runs.
   - timing: faster passes; slower up to +100% (2x).
-
-Notes:
-  The rho = 0.78 value is the ell_2 geometric reference threshold for the
-  stated sparsification model; the verifier additionally applies the
-  ell_infinity and ell_1 checks. Honest false-rejection is reported
-  empirically and is not defined to be exactly zero.

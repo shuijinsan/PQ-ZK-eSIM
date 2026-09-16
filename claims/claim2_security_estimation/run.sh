@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claim 2: Figure 4 lattice-estimator sweep (HNF-MSIS and MLWE instances).
+# Claim 2: Figure 4 lattice-estimator sweep (MSIS instance).
 # Usage: bash claims/claim2_security_estimation/run.sh
 set -e
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
