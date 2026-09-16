@@ -1,2 +1,0 @@
-These files are legacy reference baselines from the pre-camera-ready implementation.
-Regenerate the corresponding claim with the locked k=3,m=8 build and replace the CSV/figure only after reviewing the final run.
