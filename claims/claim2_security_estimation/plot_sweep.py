@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "expected")
+OUT = os.path.join(HERE, "results")
 HIGHLIGHT = 71400       # HNF-MSIS extraction bound
 MLWE_QUANTUM = 162.9     # verified: dual_hybrid, LaaMosPol14
 NIST = {1: 143, 3: 207, 5: 272}

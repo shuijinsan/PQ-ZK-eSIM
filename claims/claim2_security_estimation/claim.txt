@@ -1,9 +1,11 @@
 Paper: Figure 4, Section 7.1 (Instantiation / concrete lattice-attack estimation)
 
-Claim: known attacks against both underlying lattice instances exceed the
-128-bit quantum target under the stated lattice-estimator cost model. These
-estimates are not identified with concrete bit security of the non-tight UC
-reduction.
+Claim: The artifact reproduces the HNF-MSIS lattice-estimator result used in
+Figure 4. At the paper's extraction bound gamma_ext = 71400, the pinned
+lattice-estimator configuration reports approximately 142.6 classical bits
+and 135.1 quantum bits. The paper also reports MLWE costs of 172.1 classical bits and 162.9 quantum
+bits. Those MLWE inputs and results are documented below for paper alignment;
+the Claim 2 run script reproduces the HNF-MSIS sweep only.
 
 MLWE input:
   N=256, q=8380417, k=3, m=8

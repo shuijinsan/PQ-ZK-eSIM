@@ -11,12 +11,9 @@ Experiment (QEMU ARM64 emulation):
 
 Input: none
 
-Expected outputs:
+Expected output:
   sparse_noise_attack_results.csv
     columns: rho, detection_rate, false_reject_rate, avg_total_us
-  sparse_noise_norm_breakdown.csv
-    columns: rho, l2_low_rate, l2_high_rate, linf_rate, l1_low_rate,
-             verify_reject_rate
 
 Runtime: ~1 min
 

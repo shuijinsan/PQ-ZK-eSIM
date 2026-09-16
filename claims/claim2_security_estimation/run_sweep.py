@@ -25,7 +25,7 @@ BETAS = [40000, 50000, 60000, 70000, 71400, 80000, 90000, 100000,
          120000, 140000, 160000, 200000]
 HIGHLIGHT = 71400       # HNF-MSIS extraction bound
 NIST = {1: 143, 3: 207, 5: 272}
-OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "expected")
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results")
 
 rows = []
 for b in BETAS:

@@ -9,7 +9,7 @@ OPENSSL_VERSION="3.0.13"
 LIBOQS_VERSION="0.15.0"
 
 log()  { echo "== $* =="; }
-fail() { echo "❌ $*"; exit 1; }
+fail() { echo "ERROR: $*" >&2; exit 1; }
 
 cd "$ROOT"
 

@@ -2,9 +2,9 @@ PQ-ZK-eSIM Artifact
 
 1. Artifact purpose
 
-PQ-ZK-eSIM is the artifact accompanying the ACSAC paper “PQ-ZK-eSIM: Post-Quantum Zero-Knowledge Identity Authentication for eSIM.”
+PQ-ZK-eSIM is the artifact accompanying the ACSAC paper "PQ-ZK-eSIM: Post-Quantum Zero-Knowledge Identity Authentication for eSIM."
 
-The artifact contains the source code, build scripts, experiment drivers, validation scripts, expected results, and documentation used to support the implementation and evaluation results in the paper. The package is prepared for evaluation of availability, functionality, and reproduction of the paper’s main experimental claims.
+The artifact contains the source code, build scripts, experiment drivers, validation scripts, expected results, and documentation used to support the implementation and evaluation results in the paper. The package is prepared for evaluation of availability, functionality, and reproduction of the paper's main experimental claims.
 
 The artifact supports the following parts of the paper.
 
@@ -32,7 +32,7 @@ The directory artifact/terminal/lpa contains the Android and LPA reference integ
 
 The directory artifact/demo contains the end-to-end smoke test.
 
-The directory claims contains the scripts, descriptions, and expected outputs associated with the paper’s reproducibility claims.
+The directory claims contains the scripts, descriptions, and expected outputs associated with the paper's reproducibility claims.
 
 The directory infrastructure contains environment requirements, infrastructure constraints, and access information.
 
@@ -54,7 +54,7 @@ The software dependencies include OpenSSL 3.0.13, liboqs 0.15.0, CMake, an AArch
 
 Network access is required during installation when dependencies must be downloaded. The artifact itself does not require access to a private backend for the claims listed in Section 6.
 
-A standard Ubuntu 22.04 x86_64 virtual machine on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper’s reported performance and robustness figures.
+A standard Ubuntu 22.04 x86_64 virtual machine on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper's reported performance and robustness figures.
 
 The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance and is recorded by the experiment scripts.
 
@@ -126,7 +126,7 @@ The final paper dataset has a mean cryptographic-path latency of approximately 1
 
 Timing results are expected to vary across hosts. Reproduction is based on obtaining the same workload structure and comparable phase behavior, not bit-for-bit identical timing values.
 
-Claim 2 supports the concrete lattice known-attack estimates reported in Figure 4 and Section 7.1.
+Claim 2 reproduces the HNF-MSIS lattice-estimator sweep reported in Figure 4 and Section 7.1. The MLWE estimator inputs and reported values are documented for paper alignment but are not rerun by the Claim 2 script.
 
 The estimator is an external dependency and is not vendored in this repository. The paper uses lattice-estimator commit 6019056.
 
@@ -202,7 +202,7 @@ The QEMU measurements are software workload measurements under AArch64 emulation
 
 The approximately 4.2 ms eUICC value in the paper is an analytical dominant-cost projection with W_sec precomputed. It is not an end-to-end wall-clock measurement. The projection covers the dominant ternary challenge-response additions and the stated AES allowances. Auxiliary HKDF and KDF operations, challenge hashing, token verification, serialization, and NVM commit are outside that analytical subtotal.
 
-The paper’s communication sizes use canonical packing with 23 bits per ring coefficient. The Android and JNI reference integration uses 32-bit coefficient containers for implementation convenience. JNI buffer lengths therefore do not represent the paper’s canonical wire-size estimate.
+The paper's communication sizes use canonical packing with 23 bits per ring coefficient. The Android and JNI reference integration uses 32-bit coefficient containers for implementation convenience. JNI buffer lengths therefore do not represent the paper's canonical wire-size estimate.
 
 9. Prototype limitations
 

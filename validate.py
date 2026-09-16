@@ -34,8 +34,25 @@ TIMING_SLOW_TOL = 1.0
 # (raw per-trial latency traces are timing-only and too noisy to compare).
 CLAIMS = {
     "claim1_qemu_performance": {
-        "phase_timing_results.csv": {
-            "rowcount": True,
+    "phase_timing_results.csv": {
+        "rowcount": True,
+        "mean_timing": [
+            "lpa_precompute_us",
+            "euicc_commit_us",
+            "challenge_gen_us",
+            "tee_authtoken_us",
+            "euicc_mask_us",
+            "lpa_aggregate_us",
+            "server_verify_us",
+            "total_us",
+            ],
+        },
+    },
+    "claim2_security_estimation": {
+        "msis_estimator_sweep.csv": {
+            "key": "length_bound",
+            "exact": ["bkz_block_size"],
+            "rate": ["classical_bits", "quantum_bits"],
         },
     },
     "claim3_dos_early_reject": {
@@ -130,9 +147,24 @@ def compare_file(claim, name, spec):
     if spec.get("rowcount"):
         if len(exp_rows) != len(res_rows):
             print(f"  [{name}] row count mismatch: expected {len(exp_rows)}, got {len(res_rows)}")
-            return False
-        print(f"  [{name}] OK (header + {len(res_rows)} rows; latency is timing-only)")
-        return True
+        return False
+
+        ok = True
+        for col in spec.get("mean_timing", []):
+            exp_mean = sum(float(r[col]) for r in exp_rows) / len(exp_rows)
+            res_mean = sum(float(r[col]) for r in res_rows) / len(res_rows)
+
+            if not within_timing_tol(exp_mean, res_mean):
+                print(
+                    f"  [{name}] mean {col}: "
+                    f"expected {exp_mean:.2f}, got {res_mean:.2f} "
+                    f"(slower by > {int(TIMING_SLOW_TOL*100)}%)"
+                )
+                ok = False
+
+        if ok:
+            print(f"  [{name}] OK (header + {len(res_rows)} rows + phase means)")
+        return ok
 
     key = spec["key"]
     exp_keys = [key_of(r, key) for r in exp_rows]
