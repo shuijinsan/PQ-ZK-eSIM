@@ -248,7 +248,7 @@ If a command fails, preserve the complete terminal output, the current Git commi
 
 The artifact should be evaluated at the commit identified in the submitted metadata.toml file.
 
-The expected result files should match the final camera-ready parameter set and final rerun data. Any older k = 5, norm = 2, beta_ext = 520012, or 155.6-bit MSIS baseline is obsolete and must not appear in the submitted artifact.
+The expected result files should match the final camera-ready parameter set and final rerun data. Legacy pre-camera-ready parameterizations and estimator baselines are obsolete and must not be used for evaluation.
 
 The paper uses the following final HNF-MSIS values:
 

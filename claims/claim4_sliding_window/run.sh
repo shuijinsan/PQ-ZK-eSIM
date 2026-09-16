@@ -1,5 +1,5 @@
 #!/bin/bash
-# Claim 4: Figure 6 / Appendix D sliding-window resynchronization (QEMU ARM64).
+# Claim 4: Figure 6 / Appendix E sliding-window resynchronization (QEMU ARM64).
 # Usage: bash claims/claim4_sliding_window/run.sh [--quick|--full]   (both equivalent)
 set -e
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"

@@ -1,4 +1,4 @@
-Paper: Figure 6, Appendix D (Resistance to Real-World Attacks)
+Paper: Figure 6, Appendix E (Resistance to Real-World Attacks)
 
 Claim: Sliding-window MAC resynchronization recovers from counter
 desynchronization within the window (w_sync up to 32) and rejects beyond it.

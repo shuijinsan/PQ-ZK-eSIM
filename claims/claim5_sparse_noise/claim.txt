@@ -1,4 +1,4 @@
-Paper: Figure 7, Appendix D (Resistance to Real-World Attacks)
+Paper: Figure 7, Appendix E (Resistance to Real-World Attacks)
 
 Claim: structured degradation of y_pub (zeroing a fraction rho of its
 coefficients) is tested against the actual verifier while preserving the

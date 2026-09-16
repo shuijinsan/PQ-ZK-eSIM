@@ -10,7 +10,7 @@
 | Secret / `y_sec` | coefficient-wise uniform ternary `{-1,0,1}` |
 | Public matrix | `A=[Abar|I_3]`, `Abar` is `3x5` |
 | Acceptance bounds | `200000 <= ||z||_2 <= 260000`, `||z||_inf <= 35700`, `||z||_1 >= 7400000` |
-| Extraction bound | estimator input `beta_2=520012` |
+| Extraction bound | HNF-MSIS coefficient-infinity-norm bound `gamma_ext=71400` |
 
 ## Paper-matched implementation details
 - `T=Abar*s1+s2` is computed with the systematic matrix.

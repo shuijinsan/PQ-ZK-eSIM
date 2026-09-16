@@ -1,4 +1,4 @@
-Paper: Figure 4, Section 7 (Concrete security / lattice-estimator estimation)
+Paper: Figure 4, Section 7.1 (Instantiation / concrete lattice-attack estimation)
 
 Claim: known attacks against both underlying lattice instances exceed the
 128-bit quantum target under the stated lattice-estimator cost model. These

@@ -6,7 +6,7 @@ infer lattice security from the challenge space or from a kappa/sigma sweep;
 MLWE/MSIS costs are obtained from the external lattice-estimator configuration
 documented in claim2_security_estimation.
 """
-from math import comb, log2, sqrt
+from math import comb, log2
 
 N = 256
 Q = 8_380_417
@@ -18,7 +18,7 @@ BETA_MIN = 200_000
 BETA_MAX = 260_000
 BETA_INF = 35_700
 BETA_L1 = 7_400_000
-BETA_EXT = 2 * BETA_MAX + 2 * sqrt(KAPPA)
+GAMMA_EXT = max(2 * BETA_INF, 2)
 
 
 def main() -> None:
@@ -31,7 +31,7 @@ def main() -> None:
     print(f"challenge-space log2 size={challenge_bits:.2f} bits")
     print(f"acceptance: beta_min={BETA_MIN}, beta_max={BETA_MAX}, "
           f"beta_inf={BETA_INF}, beta_L1={BETA_L1}")
-    print(f"proof extraction beta_ext={BETA_EXT:.3f} (rounded estimator input: 520012)")
+    print(f"HNF-MSIS extraction bound gamma_ext={GAMMA_EXT}")
     print("MLWE/MSIS security estimates are external lattice-estimator results; see claim2.")
 
 
