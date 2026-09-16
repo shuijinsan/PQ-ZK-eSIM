@@ -1,88 +1,276 @@
-# PQ-ZK-eSIM Artifact
+PQ-ZK-eSIM Artifact
 
-PQ-ZK-eSIM is a post-quantum, biometric-gated authentication prototype for eSIM provisioning. Biometrics remain inside the TEE, the eUICC stores the lattice witness, and heavy lattice computation is delegated to the LPA/Server.
+1. Artifact purpose
 
-## 1. Canonical environment
-- Ubuntu 22.04 LTS (x86_64)
-- 4+ CPU cores, 8 GB RAM, 20 GB free disk
-- AArch64 cross-toolchain and QEMU user-mode emulation
-- OpenSSL 3.0.13, liboqs 0.15.0
-- Python 3 with numpy, pandas, matplotlib
+PQ-ZK-eSIM is the artifact accompanying the ACSAC paper “PQ-ZK-eSIM: Post-Quantum Zero-Knowledge Identity Authentication for eSIM.”
 
-Install and build:
-```bash
+The artifact contains the source code, build scripts, experiment drivers, validation scripts, expected results, and documentation used to support the implementation and evaluation results in the paper. The package is prepared for evaluation of availability, functionality, and reproduction of the paper’s main experimental claims.
+
+The artifact supports the following parts of the paper.
+
+Figure 4 and Section 7.1: concrete MLWE and HNF-MSIS known-attack estimates.
+
+Figure 5 and Section 7.2: QEMU ARM64 cryptographic-path timing.
+
+Figure 6 and Appendix E: sliding-window resynchronization.
+
+Figure 7 and Appendix E: sparse-noise degradation experiments and finite-run honest false-rejection observations.
+
+Figure 8 and Appendix E: MAC pre-filtering before lattice verification for denial-of-service mitigation.
+
+Tables 4, 6, and 7: analytical eUICC cost decomposition, dominant per-entity operations, and canonical packed communication size.
+
+The protocol proof itself is part of the paper and is not submitted as an executable artifact.
+
+2. Artifact contents
+
+The directory artifact contains the implementation and the end-to-end demonstration.
+
+The directory artifact/terminal/euicc contains the C implementation of the eUICC and verifier cryptographic path, including lattice arithmetic, challenge generation, Merkle processing, state evolution, ML-KEM and ML-DSA integration used by the prototype, and the NVRAM model.
+
+The directory artifact/terminal/lpa contains the Android and LPA reference integration and the JNI bridge.
+
+The directory artifact/demo contains the end-to-end smoke test.
+
+The directory claims contains the scripts, descriptions, and expected outputs associated with the paper’s reproducibility claims.
+
+The directory infrastructure contains environment requirements, infrastructure constraints, and access information.
+
+The file install.sh installs dependencies and prepares the artifact.
+
+The file validate.sh checks generated claim outputs against the expected paper-aligned results.
+
+The file license.txt states the artifact license.
+
+The file use.txt states the intended use and limitations of the artifact.
+
+3. Canonical evaluation environment
+
+The recommended environment is Ubuntu 22.04 LTS on x86_64 with at least 4 CPU cores, 8 GB of RAM, and 20 GB of free disk space.
+
+The artifact uses an AArch64 cross compiler and QEMU user-mode emulation. No special hardware is required for the QEMU, denial-of-service, sliding-window, or sparse-noise claims.
+
+The software dependencies include OpenSSL 3.0.13, liboqs 0.15.0, CMake, an AArch64 GNU cross toolchain, QEMU user-mode emulation, Python 3, NumPy, pandas, and matplotlib.
+
+Network access is required during installation when dependencies must be downloaded. The artifact itself does not require access to a private backend for the claims listed in Section 6.
+
+A standard Ubuntu 22.04 x86_64 virtual machine on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper’s reported performance and robustness figures.
+
+The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance and is recorded by the experiment scripts.
+
+4. Installation
+
+From the repository root, run:
+
 bash install.sh
-```
 
-## 2. Quick start
-Run the end-to-end demo:
-```bash
+The installation script installs or prepares the required compiler, QEMU, cryptographic libraries, and Python dependencies.
+
+After installation, the evaluator should run the end-to-end smoke test:
+
 bash artifact/demo/run.sh
-```
-A valid proof should end in ACCEPT; a tampered proof should end in REJECT. Both results are produced by the actual verifier path.
 
-## 3. Final paper-aligned parameters
-- N = 256
-- q = 8,380,417
-- k = 3, m = 8
-- kappa = 35
-- sigma_pub = 5000
-- secret and y_sec: coefficient-wise uniform ternary U{-1,0,1}
-- A = [Abar | I_3], Abar in R_q^(3x5)
-- Matrix Abar expansion: SHAKE-128 + 23-bit rejection sampling
-- Sparse challenge: FIPS-204/ML-DSA-style SampleInBall with protocol-specific kappa=35
-- beta_min = 200,000
-- beta_max = 260,000
-- beta_inf = 35,700
-- beta_L1 = 7,400,000
+A valid proof should produce ACCEPT.
 
-The eUICC online response costs m*kappa*N = 71,680 ternary-weighted coefficient additions and uses no NTT or Gaussian sampling. Commitment precomputation uses ternary schoolbook convolution with the systematic matrix.
+A tampered proof should produce REJECT.
 
-## 4. Security-model scope
-The implementation and experiments follow the camera-ready proof scope:
-- Malicious LPA case: biometric non-exposure, liveness gating, freshness, and authentication soundness are claimed. No full-view long-term secret-key privacy is claimed against a malicious LPA.
-- Honest-but-curious Server case: server-side secret-key privacy additionally assumes an honest LPA, honest Gaussian flooding, non-collusion, and the asymptotic negligible-distance condition stated in the paper.
-- The fixed sigma_pub=5000 implementation is reported with finite Renyi-divergence accounting and is not claimed to instantiate the asymptotic negligible-distance UC condition.
-- The Fiat-Shamir analysis is in the classical ROM; QROM security is outside the current proof.
+Both outcomes are generated by the actual verifier path.
 
-## 5. Concrete lattice estimates
-The paper uses coefficient embedding for known-attack estimation only.
-- MLWE: n=1280, samples=768, q=8380417, Xs=Xe=uniform ternary.
-- MSIS: n=768, m=2304, Euclidean norm bound beta=520012, norm=2.
-- lattice-estimator commit: 6019056.
-- Reported lowest quantum costs: MLWE 162.9 bits, MSIS 155.6 bits.
-These are known-attack estimates for the underlying lattice instances, not concrete bit security for the non-tight UC reduction.
+5. Paper-aligned protocol parameters
 
-## 6. Claims
-| Claim | Paper location | Command |
-|---|---|---|
-| claim1_qemu_performance | QEMU phase timing | `bash claims/claim1_qemu_performance/run.sh --quick` |
-| claim2_security_estimation | MLWE/MSIS estimation | documented external lattice-estimator run |
-| claim3_dos_early_reject | MAC-before-lattice early reject | `bash claims/claim3_dos_early_reject/run.sh` |
-| claim4_sliding_window | sliding-window resynchronization | `bash claims/claim4_sliding_window/run.sh --quick` |
-| claim5_sparse_noise | sparse-noise / multi-norm checks | `bash claims/claim5_sparse_noise/run.sh --quick` |
+The final evaluated parameter set is:
 
-Validate generated results:
-```bash
+N = 256
+q = 8380417
+k = 3
+m = 8
+kappa = 35
+sigma_pub = 5000
+
+The long-term secret and y_sec are sampled coefficient-wise from the uniform ternary distribution U({-1,0,1}).
+
+The public matrix has the systematic form:
+
+A = [Abar | I_3]
+
+with Abar in R_q^(3x5).
+
+Abar is expanded using SHAKE-128 and 23-bit rejection sampling.
+
+The Fiat-Shamir challenge uses the FIPS 204 SampleInBall procedure with the protocol-specific challenge weight kappa = 35.
+
+The verifier bounds are:
+
+beta_min = 200000
+beta_max = 260000
+beta_inf = 35700
+beta_L1 = 7400000
+
+The online eUICC challenge response requires:
+
+m * kappa * N = 71680
+
+ternary-weighted coefficient additions.
+
+The eUICC response path uses no NTT-based polynomial multiplication and no Gaussian sampling. W_sec may be precomputed using ternary schoolbook convolution with the systematic public matrix.
+
+6. Reproducibility claims
+
+Claim 1 reproduces the QEMU ARM64 cryptographic-path timing reported in Figure 5 and Section 7.2.
+
+Run:
+
+bash claims/claim1_qemu_performance/run.sh --quick
+
+The final paper dataset has a mean cryptographic-path latency of approximately 10.319 ms. The reported phase means are approximately 2.046 ms for LPA precomputation, 5.544 ms for eUICC commitment, 0.071 ms for challenge generation, 0.037 ms for TEE token handling, 1.421 ms for the eUICC response and mask phase, 0.011 ms for LPA aggregation, and 1.188 ms for Server verification.
+
+Timing results are expected to vary across hosts. Reproduction is based on obtaining the same workload structure and comparable phase behavior, not bit-for-bit identical timing values.
+
+Claim 2 supports the concrete lattice known-attack estimates reported in Figure 4 and Section 7.1.
+
+The estimator is an external dependency and is not vendored in this repository. The paper uses lattice-estimator commit 6019056.
+
+The MLWE estimator input is:
+
+n = 1280
+samples = 768
+q = 8380417
+secret distribution = uniform ternary
+error distribution = uniform ternary
+
+The reported lowest MLWE costs are 172.1 classical bits and 162.9 quantum bits.
+
+The formal HNF-MSIS extraction instance is:
+
+n = 768
+m = 2304
+q = 8380417
+gamma_ext = 71400
+norm = infinity
+
+The reported HNF-MSIS costs are 142.6 classical bits and 135.1 quantum bits.
+
+The 135.1-bit value is an estimator-reported quantum attack cost for the instantiated HNF-MSIS problem. The paper uses 128 bits as an engineering target for the evaluated attack models. The artifact does not assign the custom parameter set to a NIST security category.
+
+Claim 3 reproduces the denial-of-service early-rejection experiment reported in Figure 8 and Appendix E.
+
+Run:
+
+bash claims/claim3_dos_early_reject/run.sh
+
+The final paper dataset reports approximately 71.0 microseconds for one protocol MAC pre-filter operation and approximately 1.111 ms for full lattice verification, corresponding to approximately 15.6 times lower verification time for the pre-filter path.
+
+Claim 4 reproduces the sliding-window resynchronization experiment reported in Figure 6 and Appendix E.
+
+Run:
+
+bash claims/claim4_sliding_window/run.sh --quick
+
+The expected qualitative result is that synchronization succeeds when Delta is no greater than the configured window size W and fails when Delta exceeds W. For W = 32, the final paper dataset reports a worst-case in-window MAC search of approximately 2.96 ms at Delta = 32. The total successful path is approximately 6.8 ms. Delta = 64 is outside the window and terminates before lattice verification, giving a shorter failure-path latency of approximately 3.0 ms.
+
+Claim 5 reproduces the sparse-noise experiment reported in Figure 7 and Appendix E.
+
+Run:
+
+bash claims/claim5_sparse_noise/run.sh --quick
+
+The final paper dataset reports 100 percent l1-bound rejection through rho = 75 percent, 66 percent rejection at rho = 90 percent, and 0 percent rejection for the honest rho = 100 percent case.
+
+The finite Monte Carlo run observed no honest false rejection. This finite observation is not interpreted as evidence of a 2^-128 false-rejection probability.
+
+After running the claims, validate the generated results with:
+
 bash validate.sh
-```
 
-## 7. Repository layout
-- `artifact/terminal/euicc/`: C implementation, verifier, lattice arithmetic, TEE/Merkle, ML-KEM/ML-DSA integration, NVRAM model.
-- `artifact/terminal/lpa/`: Android/LPA reference application and JNI bridge.
-- `artifact/demo/`: end-to-end smoke test.
-- `claims/`: reproducibility claims and run scripts.
-- `infrastructure/`: environment, dependencies, constraints, access instructions.
+The expected directories under claims contain the final camera-ready baselines used for evaluation. They must correspond to the k = 3, m = 8 parameter set, the HNF-MSIS infinity-norm extraction bound gamma_ext = 71400, and the final rerun data summarized above.
 
-## 8. Important limitations
-- QEMU results are software workload measurements, not real eUICC/TrustZone measurements.
-- The 4.2 ms eUICC figure is an analytical dominant-cost projection, not end-to-end wall-clock latency.
-- The Gaussian prototype uses Box-Muller continuous-Gaussian sampling followed by rounding; it is an implementation approximation, not a rigorously sampled discrete Gaussian.
-- Biometric conditional min-entropy is an assumption and is not empirically established by this artifact.
-- The TEE-eUICC binding is a research co-design assumption rather than a standard commodity-eSIM capability.
+7. Security scope represented by the artifact
 
-Network-size note: the paper's communication table is an analytical canonical-packing estimate at 23 bits per ring coefficient. The Android/JNI prototype currently uses 32-bit coefficient containers across JNI for simplicity; cryptographic values and verifier equations are unchanged. Do not use JNI buffer lengths as the paper wire-size measurement.
+The malicious-LPA evaluation scope covers biometric non-exposure, AuthToken-enforced liveness, freshness, and authentication soundness. Long-term secret-key privacy against malicious-LPA verifier feedback is outside this claim.
 
-The parameter-dependent CSV/PNG files under `claims/*/expected/` are legacy reference baselines and must be replaced after the final k=3 rerun before camera-ready archiving.
+The honest-but-curious Server privacy analysis assumes an honest LPA, honest Gaussian flooding, non-collusion, and the asymptotic negligible-distance condition stated in the paper.
 
-See `use.txt`, `CODE_PAPER_AUDIT.md`, `CHANGES_CAMERA_READY.md`, and `infrastructure/constraints.txt` for details.
+The fixed sigma_pub = 5000 parameter set is accompanied by finite Renyi-divergence accounting. It is not used as an implementation-level claim of negligible statistical distance.
+
+The Fiat-Shamir security analysis is in the classical random-oracle model. QROM security is outside the current proof scope.
+
+The concrete lattice numbers reported in this artifact are known-attack estimates for the instantiated MLWE and HNF-MSIS problems. They are not the concrete bit security of the non-tight protocol reduction and do not define a NIST security category.
+
+8. Interpretation of the performance results
+
+The QEMU measurements are software workload measurements under AArch64 emulation. They are not measurements from a commercial eUICC or TrustZone device.
+
+The approximately 4.2 ms eUICC value in the paper is an analytical dominant-cost projection with W_sec precomputed. It is not an end-to-end wall-clock measurement. The projection covers the dominant ternary challenge-response additions and the stated AES allowances. Auxiliary HKDF and KDF operations, challenge hashing, token verification, serialization, and NVM commit are outside that analytical subtotal.
+
+The paper’s communication sizes use canonical packing with 23 bits per ring coefficient. The Android and JNI reference integration uses 32-bit coefficient containers for implementation convenience. JNI buffer lengths therefore do not represent the paper’s canonical wire-size estimate.
+
+9. Prototype limitations
+
+The Gaussian prototype uses Box-Muller continuous-Gaussian generation followed by rounding. It is an implementation approximation to the discrete Gaussian distribution used in the formal analysis.
+
+The biometric conditional min-entropy condition is an assumption of the paper and is not empirically established by this artifact.
+
+The trusted TEE-to-eUICC binding is a research co-design assumption and is not a standard commodity-eSIM capability.
+
+The Android application is a reference integration prototype. It is not required for Claims 1 through 5.
+
+The external network backend is not required for the reported artifact claims. Any deployment-specific backend or operator infrastructure is outside the reproducibility path described here.
+
+10. Public infrastructure and release
+
+The evaluated C, QEMU, and Python components require no private hardware and can be exercised on a suitable Ubuntu 22.04 x86_64 public compute instance.
+
+If the artifact is submitted from a mutable Git repository during evaluation, the final evaluated version should also be archived in a permanent public repository according to the ACSAC artifact-availability requirements.
+
+The final public release is intended to include the source code, experiment scripts, expected outputs, documentation, and configuration files needed to exercise the claims described above.
+
+11. Evaluator workflow
+
+For the initial kick-the-tires check, use the following sequence from the repository root:
+
+bash install.sh
+
+bash artifact/demo/run.sh
+
+bash claims/claim1_qemu_performance/run.sh --quick
+
+bash claims/claim4_sliding_window/run.sh --quick
+
+bash claims/claim5_sparse_noise/run.sh --quick
+
+For the full evaluation, run the non-quick claim variants where provided, run the denial-of-service experiment, obtain or inspect the documented lattice-estimator evidence for Claim 2, and then execute:
+
+bash validate.sh
+
+If a command fails, preserve the complete terminal output, the current Git commit hash, and the environment information before contacting the authors through the ACSAC artifact-evaluation channel.
+
+12. Reproducibility notes
+
+The artifact should be evaluated at the commit identified in the submitted metadata.toml file.
+
+The expected result files should match the final camera-ready parameter set and final rerun data. Any older k = 5, norm = 2, beta_ext = 520012, or 155.6-bit MSIS baseline is obsolete and must not appear in the submitted artifact.
+
+The paper uses the following final HNF-MSIS values:
+
+gamma_ext = 71400
+norm = infinity
+classical known-attack estimate = 142.6 bits
+quantum known-attack estimate = 135.1 bits
+
+The corresponding MLWE quantum known-attack estimate is 162.9 bits.
+
+The minimum estimator-reported quantum attack cost among the two instantiated lattice problems is therefore 135.1 bits.
+
+13. Additional documentation
+
+Detailed usage instructions are provided in use.txt.
+
+Environment and infrastructure constraints are documented under infrastructure.
+
+Each claim directory contains the claim description, execution script where applicable, and expected results.
+
+CODE_PAPER_AUDIT.md records the implementation-to-paper consistency audit.
+
+CHANGES_CAMERA_READY.md records the final camera-ready implementation changes.
+
+license.txt records the artifact license.
