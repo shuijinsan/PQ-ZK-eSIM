@@ -130,6 +130,31 @@ Claim 2 reproduces the HNF-MSIS lattice-estimator sweep reported in Figure 4 and
 
 The estimator is an external dependency and is not vendored in this repository. The paper uses lattice-estimator commit 6019056.
 
+Claim 2 needs a heavyweight dependency stack (SageMath plus the
+lattice-estimator source tree). The core install.sh does not install it,
+because SageMath requires several GB of disk space and would slow down the
+quick evaluation path.
+
+Prepare Claim 2 once:
+
+bash claims/claim2_security_estimation/setup.sh
+
+This installs SageMath and clones the lattice-estimator at the exact commit
+used by the paper (6019056). SageMath 10.x or newer is required.
+
+Then run the sweep:
+
+bash claims/claim2_security_estimation/run.sh
+
+Expected outputs:
+
+  claims/claim2_security_estimation/results/msis_estimator_sweep.csv
+  claims/claim2_security_estimation/results/fig_lattice_estimator.png
+
+At length_bound = 71400 the reproduced estimator result should be
+approximately 142.6 classical bits, 135.1 quantum bits, and BKZ block size
+394.
+
 The MLWE estimator input is:
 
 n = 1280
