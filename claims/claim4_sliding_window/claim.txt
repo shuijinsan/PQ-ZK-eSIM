@@ -27,4 +27,4 @@ Tolerance:
   - success_rate: deterministic (1.0 within window, 0.0 beyond window).
   - timing: faster passes; slower up to +100% (2x).
 
-Artifact commit: dc5ec9f8c70da6c5e240390908a96ce2b88c7d6f
+Artifact commit: 5db8589f796d5c5959dd889c44295befe357a3e3
