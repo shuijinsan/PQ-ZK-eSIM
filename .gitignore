@@ -63,9 +63,9 @@ __pycache__/
 bin/
 venv/
 
-# 依赖构建目录（install.sh 生成的源码与临时构建）
+
 .deps/
 
-# aarch64 预编译库（由 install.sh 自动生成，不提交；README.md 保留）
+
 artifact/terminal/euicc/libs/aarch64/openssl/
 artifact/terminal/euicc/libs/aarch64/liboqs/
