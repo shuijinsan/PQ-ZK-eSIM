@@ -12,6 +12,13 @@ Input: none
 Expected output: sliding_window_resync_results.csv
   columns: window_size, sync_depth, success_rate, avg_mac_us, avg_total_us
 
+Measured:
+  resynchronization succeeds iff Delta <= W across the tested grid;
+  W=32, Delta=32: MAC search about 2.96 ms;
+  total in-window latency about 6.8 ms;
+  Delta=64: outside-window failure about 3.0 ms (lattice verification skipped);
+  expected MAC-search reference: (W+1) x 71.0 us.
+
 Runtime: ~1-2 min
 
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk

@@ -107,7 +107,7 @@ int main(int argc, char *argv[])
     uint8_t k_sym[32], k_tee[32];
     pqzk_rand_bytes(k_sym, 32);
     pqzk_rand_bytes(k_tee, 32);
-    printf("[Offline] Simulated OOB channel:K_sym、K_TEE generated\n");
+    printf("[Offline] Simulated OOB channel: K_sym, K_TEE generated\n");
 
     /* execute registration */
     uint8_t pk_t[PQ_ZK_PUBLICKEY_BYTES];

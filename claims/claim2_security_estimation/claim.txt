@@ -19,6 +19,7 @@ HNF-MSIS input:
   coefficient-view rows=768, columns=2304
   norm=infinity, length_bound=71400
   reported minimum: 142.6 classical bits, 135.1 quantum bits
+  selected-point BKZ beta: 394
 
 Experiment: lattice-estimator sweep over the HNF-MSIS length_bound
 (40000 to 200000), reporting classical (MATZOV) and quantum (LaaMosPol14)
@@ -37,6 +38,16 @@ Resources: 1 CPU core, <1 GB RAM, <10 MB disk
 
 Dependency: lattice-estimator, commit 6019056
 (github.com/malb/lattice-estimator), Python 3, fpylll, SageMath.
+
+Notes:
+  The minimum estimator-reported quantum attack cost across the instantiated
+  MLWE and HNF-MSIS problems is 135.1 bits; the paper uses 128 bits as an
+  engineering threshold for estimator-reported quantum attack cost.
+  NIST FIPS 204 categories 2, 3, and 5 refer to the standardized ML-DSA
+  parameter sets. PQ-ZK-eSIM uses the custom tuple (k,m,kappa)=(3,8,35) and
+  reports its concrete lattice-attack estimates separately.
+  The estimator configuration and full stdout are retained alongside this
+  claim as evidence (estimator_stdout.txt).
 
 Tolerance:
   - Deterministic: for a fixed instance, cost model, and estimator commit the

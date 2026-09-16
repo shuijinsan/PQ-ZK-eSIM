@@ -15,6 +15,15 @@ Expected output:
   sparse_noise_attack_results.csv
     columns: rho, detection_rate, false_reject_rate, avg_total_us
 
+Measured:
+  L1 rejection 100% through rho = 75%;
+  66% at rho = 90%;
+  0% at honest rho = 100%;
+  latency about 0.21 ms through rho = 75%, 0.55 ms at rho = 90%, 1.21 ms for
+  honest rho = 100%.
+  Honest false-rejection rate: no false rejection was observed in the finite
+  run. This is a finite-sample observation, not an empirical 2^-128 bound.
+
 Runtime: ~1 min
 
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk

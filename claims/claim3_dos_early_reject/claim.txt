@@ -12,6 +12,11 @@ Expected output: dos_results.csv
   columns: test, avg_us
   rows:    MAC_W_Verification, Full_Lattice_Verification, Speedup
 
+Measured:
+  MAC_W_Verification         71.00 us
+  Full_Lattice_Verification 1110.94 us
+  Speedup                     15.6x
+
 Runtime: <1 min
 
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk

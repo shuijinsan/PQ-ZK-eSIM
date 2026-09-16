@@ -114,14 +114,11 @@ def plot_sparse_noise_attack():
         false_reject = df[honest_mask]["false_reject_rate"].values[0] * 100
         ax.bar([0], [false_reject],
                color='#2ca02c', alpha=0.85, width=0.6, edgecolor='white', linewidth=2)
-        ax.axhline(y=0.01, color='#d62728', linestyle='--', linewidth=2,
-                   label=f'2⁻¹²⁸ target (≈0%)')
-        ax.text(0, false_reject + 0.3, f'{false_reject:.2f}%',
-                ha='center', fontsize=38, fontweight='bold')
+        ax.text(0, false_reject + 0.3, f'{false_reject:.2f}%\n(0 observed)',
+                ha='center', fontsize=34, fontweight='bold')
     ax.set_ylabel("False Rejection Rate (%)", fontsize=42)
     ax.set_title("(B) Honest Authentication\nFalse Rejection Rate", fontsize=44, pad=5)
     ax.set_ylim(0, max(6, false_reject * 2 + 1.5) if honest_mask.any() else 6)
-    ax.legend(fontsize=38)
     ax.set_xticks([])
     ax.tick_params(axis='y', labelsize=38)
 

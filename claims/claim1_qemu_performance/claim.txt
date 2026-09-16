@@ -18,6 +18,24 @@ Expected output: phase_timing_results.csv
            server_verify_us, total_us, euicc_total_us, lpa_total_us,
            tee_total_us, server_total_us
 
+Measured per-phase means (us):
+  LPA PreCompute        2046
+  eUICC Commit          5544
+  Challenge Gen           71
+  TEE AuthToken           37
+  eUICC Mask/Response   1421
+  LPA Aggregate           11
+  Server Verify         1188
+  ---------------------------------
+  end-to-end total     10319
+
+Scope: QEMU ARM64 cryptographic-path timing; biometric capture/matching,
+network transit, and NVM commit are excluded.
+
+Analytical eUICC projection (separate model, not a measurement): 4.17 ms
+(4.2 ms rounded) dominant-cost projection with W_sec precomputed at 33 MHz
+under the stated cycle/AES assumptions.
+
 Runtime: <1 min (QEMU ARM64 emulation)
 
 Resources: 1 CPU core, <100 MB RAM, <10 MB disk
