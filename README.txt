@@ -269,8 +269,4 @@ Environment and infrastructure constraints are documented under infrastructure.
 
 Each claim directory contains the claim description, execution script where applicable, and expected results.
 
-CODE_PAPER_AUDIT.md records the implementation-to-paper consistency audit.
-
-CHANGES_CAMERA_READY.md records the final camera-ready implementation changes.
-
 license.txt records the artifact license.
