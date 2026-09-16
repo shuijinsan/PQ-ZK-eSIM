@@ -26,3 +26,5 @@ Resources: 1 CPU core, <100 MB RAM, <1 MB disk
 Tolerance:
   - success_rate: deterministic (1.0 within window, 0.0 beyond window).
   - timing: faster passes; slower up to +100% (2x).
+
+Artifact commit: dc5ec9f8c70da6c5e240390908a96ce2b88c7d6f
