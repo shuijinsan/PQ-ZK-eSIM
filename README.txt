@@ -239,6 +239,17 @@ The trusted TEE-to-eUICC binding is a research co-design assumption and is not a
 
 The Android application is a reference integration prototype. It is not required for Claims 1 through 5.
 
+Operator switching is represented by a simplified integration path in this
+artifact. Algorithm 3 in the paper specifies DID-bound biometric re-anchoring,
+persistent per-MNO asset slots, and switch-back by reactivating previously
+stored state. The CLI switch prototype does not reproduce the full persistent
+per-MNO Merkle/state lifecycle, and operator switching is not part of Claims 1
+through 5.
+
+The evaluated artifact executes authentication sessions serially per EID.
+Concurrent outstanding authentication sessions for the same EID are not
+implemented or evaluated.
+
 The external network backend is not required for the reported artifact claims. Any deployment-specific backend or operator infrastructure is outside the reproducibility path described here.
 
 10. Public infrastructure and release

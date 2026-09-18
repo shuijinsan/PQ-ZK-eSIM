@@ -16,3 +16,8 @@ Build:
 bash build.sh
 ```
 The default build produces ARM64 benchmark binaries used by the claims. The demo builds the setup/authentication executables separately.
+
+The CLI switch path uses a simplified domain-root derivation and a single active Merkle state. Full per-MNO persistent slots and switch-back reactivation from Algorithm 3 are outside the evaluated artifact path.
+
+Authentication sessions are executed serially per EID; concurrent outstanding sessions for the same EID are not implemented.
+

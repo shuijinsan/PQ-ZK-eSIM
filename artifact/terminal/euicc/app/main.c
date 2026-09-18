@@ -116,10 +116,6 @@ static int mode_auth(const char *nvram_dir)
     printf("[Phase 5] Aggregation done\n");
 
     /* Phase 6 (full Algorithm 5 verification pipeline) */
-    nvram_read(nvram_dir, &nvram_st);
-    uint8_t ctr_le8[8];
-    write_le64(ctr_le8, nvram_st.ctr_local - 1);
-    secure_zero(&nvram_st, sizeof(nvram_st));
 
     /* Step 1: MAC pre-filter (sliding window) on (EID, W_sec, ctr) */
     server_state_t srv;
@@ -143,14 +139,17 @@ static int mode_auth(const char *nvram_dir)
         return -1;
     }
 
+    /* Step 3: the Server mask is derived from the epoch and key recovered by
+       the MAC window, not from a re-read of the eUICC counter. */
+    uint8_t ctr_le8[8];
+    write_le64(ctr_le8, ctr_sess);
+
     pqzk_iov_t ri[] = {{ R_bio, 32 }, { ctr_le8, 8 }, { NULL, 0 }};
     uint8_t R_dynamic_server[32];
     pqzk_sha3_256_iov(ri, R_dynamic_server);
 
     poly_vec_t M_mask;
-    uint64_t ctr_session;
-    memcpy(&ctr_session, ctr_le8, 8);
-    PQC_GenerateMask(k_sym, c_seed, ctr_session, R_dynamic_server, &M_mask);
+    PQC_GenerateMask(k_synced, c_seed, ctr_sess, R_dynamic_server, &M_mask);
 
     beta_params_t params = PQZK_DEFAULT_BETA_PARAMS;
     PQ_ZK_ErrorCode vrc = PQC_VerifyEngine(

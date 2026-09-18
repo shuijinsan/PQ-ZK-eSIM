@@ -1,5 +1,7 @@
 /*
- * mode_switch.c — PQ-ZK-eSIM v5.2 operator switching (Algorithm 3)
+ * mode_switch.c — simplified operator-switch integration prototype.
+ * The complete persistent-slot / switch-back lifecycle is specified by
+ * Algorithm 3 of the paper but is not part of Claims 1--5.
  */
 
 #include <stdio.h>

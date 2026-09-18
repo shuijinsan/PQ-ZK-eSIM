@@ -65,7 +65,8 @@ void pqzk_vec_sub(const poly_vec_t *a, const poly_vec_t *b, poly_vec_t *result, 
 #define NVRAM_DSEED_LEN 32
 #define NVRAM_YSEC_LEN PQ_ZK_POLYVEC_BYTES
 
-/* Backup slot for previous MNO state (Paper Algorithm 3: switch-back support) */
+/* Reserved state for the full Algorithm-3 switch-back lifecycle.
+ * The evaluated artifact uses a simplified operator-switch integration path. */
 typedef struct __attribute__((packed)) {
     uint8_t  sk_s[NVRAM_SKEY_LEN];
     uint8_t  k_sym[NVRAM_SYM_LEN];
