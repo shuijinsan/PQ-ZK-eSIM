@@ -205,7 +205,17 @@ The finite Monte Carlo run observed no honest false rejection. This finite obser
 
 After running the claims, validate the generated results with:
 
-bash validate.sh
+bash validate.sh --quick
+
+The quick path validates the claims that the core install.sh supports
+(Claim 1, 3, 4, 5) and is the one intended for the kick-the-tires stage.
+
+Full validation additionally covers the SageMath-based Claim 2 and requires
+its setup first:
+
+bash claims/claim2_security_estimation/setup.sh
+bash claims/claim2_security_estimation/run.sh
+bash validate.sh --full
 
 The expected directories under claims contain the final camera-ready baselines used for evaluation. They must correspond to the k = 3, m = 8 parameter set, the HNF-MSIS infinity-norm extraction bound gamma_ext = 71400, and the final rerun data summarized above.
 

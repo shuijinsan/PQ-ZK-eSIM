@@ -147,7 +147,7 @@ def compare_file(claim, name, spec):
     if spec.get("rowcount"):
         if len(exp_rows) != len(res_rows):
             print(f"  [{name}] row count mismatch: expected {len(exp_rows)}, got {len(res_rows)}")
-        return False
+            return False
 
         ok = True
         for col in spec.get("mean_timing", []):
