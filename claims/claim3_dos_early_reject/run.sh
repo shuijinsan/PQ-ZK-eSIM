@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claim 3: Figure 8 / Appendix E DoS early-reject speedup (QEMU ARM64).
-# Usage: bash claims/claim3_dos_early_reject/run.sh [--quick|--full]   (both equivalent; fast)
+# Usage: bash claims/claim3_dos_early_reject/run.sh
 set -e
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"

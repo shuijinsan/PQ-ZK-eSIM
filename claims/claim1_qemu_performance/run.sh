@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claim 1: Figure 5 / Section 7.2 per-phase timing (QEMU ARM64 emulation).
-# Usage: bash claims/claim1_qemu_performance/run.sh [--quick|--full]   (both equivalent)
+# Usage: bash claims/claim1_qemu_performance/run.sh
 set -e
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"

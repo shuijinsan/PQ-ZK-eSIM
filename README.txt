@@ -123,7 +123,7 @@ Claim 1 reproduces the QEMU ARM64 cryptographic-path timing reported in Figure 5
 
 Run:
 
-bash claims/claim1_qemu_performance/run.sh --quick
+bash claims/claim1_qemu_performance/run.sh
 
 The final paper dataset has a mean cryptographic-path latency of approximately 10.319 ms. The reported phase means are approximately 2.046 ms for LPA precomputation, 5.544 ms for eUICC commitment, 0.071 ms for challenge generation, 0.037 ms for TEE token handling, 1.421 ms for the eUICC response and mask phase, 0.011 ms for LPA aggregation, and 1.188 ms for Server verification.
 
@@ -192,7 +192,7 @@ Claim 4 reproduces the sliding-window resynchronization experiment reported in F
 
 Run:
 
-bash claims/claim4_sliding_window/run.sh --quick
+bash claims/claim4_sliding_window/run.sh
 
 The expected qualitative result is that synchronization succeeds when Delta is no greater than the configured window size W and fails when Delta exceeds W. For W = 32, the final paper dataset reports a worst-case in-window MAC search of approximately 2.96 ms at Delta = 32. The total successful path is approximately 6.8 ms. Delta = 64 is outside the window and terminates before lattice verification, giving a shorter failure-path latency of approximately 3.0 ms.
 
@@ -200,7 +200,7 @@ Claim 5 reproduces the sparse-noise experiment reported in Figure 7 and Appendix
 
 Run:
 
-bash claims/claim5_sparse_noise/run.sh --quick
+bash claims/claim5_sparse_noise/run.sh
 
 The final paper dataset reports 100 percent l1-bound rejection through rho = 75 percent, 66 percent rejection at rho = 90 percent, and 0 percent rejection for the honest rho = 100 percent case.
 
@@ -281,11 +281,11 @@ bash install.sh
 
 bash artifact/demo/run.sh
 
-bash claims/claim1_qemu_performance/run.sh --quick
+bash claims/claim1_qemu_performance/run.sh
 
-bash claims/claim4_sliding_window/run.sh --quick
+bash claims/claim4_sliding_window/run.sh
 
-bash claims/claim5_sparse_noise/run.sh --quick
+bash claims/claim5_sparse_noise/run.sh
 
 For the full evaluation, run the non-quick claim variants where provided, run the denial-of-service experiment, obtain or inspect the documented lattice-estimator evidence for Claim 2, and then execute:
 
