@@ -8,6 +8,11 @@ HERE="$ROOT/claims/claim2_security_estimation"
 ESTIMATOR_DIR="${LATTICE_ESTIMATOR:-$ROOT/.deps/lattice-estimator}"
 EXPECTED_COMMIT="6019056"
 
+# SageMath installed by setup.sh lives in a conda prefix under .deps/.
+if [ -x "$ROOT/.deps/sage-env/bin/sage" ]; then
+    export PATH="$ROOT/.deps/sage-env/bin:$PATH"
+fi
+
 cd "$HERE"
 mkdir -p results
 
@@ -32,8 +37,8 @@ fi
 
 export PYTHONPATH="$ESTIMATOR_DIR"
 
-# Sage installations differ in how the bundled Python is invoked: apt/source
-# builds accept `sage -python`, conda-forge builds do not.
+# Sage installations differ in how the bundled Python is invoked: distro builds
+# accept `sage -python`, conda-forge builds do not.
 run_sage_python() {
     if sage -python -c "pass" >/dev/null 2>&1; then
         sage -python "$@"

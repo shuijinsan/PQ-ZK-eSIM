@@ -46,7 +46,10 @@ The file use.txt states the intended use and limitations of the artifact.
 
 3. Canonical evaluation environment
 
-The recommended environment is Ubuntu 22.04 LTS on x86_64 with at least 4 CPU cores, 8 GB of RAM, and 20 GB of free disk space.
+The recommended environment is Ubuntu 22.04 or 24.04 LTS on x86_64 with at least 4 CPU cores, 8 GB of RAM, and 20 GB of free disk space.
+Claims 1, 3, 4, and 5 need only the dependencies installed by install.sh. Claim 2 additionally
+requires SageMath 10.x or newer, which is not provided by the distribution package on every
+release, so the Claim 2 setup script installs it from conda-forge (Section 6).
 
 The artifact uses an AArch64 cross compiler and QEMU user-mode emulation. No special hardware is required for the QEMU, denial-of-service, sliding-window, or sparse-noise claims.
 
@@ -54,7 +57,7 @@ The software dependencies include OpenSSL 3.0.13, liboqs 0.15.0, CMake, an AArch
 
 Network access is required during installation when dependencies must be downloaded. The artifact itself does not require access to a private backend for the claims listed in Section 6.
 
-A standard Ubuntu 22.04 x86_64 virtual machine on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper's reported performance and robustness figures.
+A standard Ubuntu x86_64 virtual machine (22.04 or 24.04) on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper's reported performance and robustness figures.
 
 The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance and is recorded by the experiment scripts.
 
@@ -139,8 +142,8 @@ Prepare Claim 2 once:
 
 bash claims/claim2_security_estimation/setup.sh
 
-This installs SageMath and clones the lattice-estimator at the exact commit
-used by the paper (6019056). SageMath 10.x or newer is required.
+This installs SageMath 10.x (from conda-forge into .deps/sage-env when no suitable SageMath is
+already on PATH) and clones the lattice-estimator at the exact commit used by the paper (6019056).
 
 Then run the sweep:
 
@@ -264,7 +267,7 @@ The external network backend is not required for the reported artifact claims. A
 
 10. Public infrastructure and release
 
-The evaluated C, QEMU, and Python components require no private hardware and can be exercised on a suitable Ubuntu 22.04 x86_64 public compute instance.
+The evaluated C, QEMU, and Python components require no private hardware and can be exercised on a suitable Ubuntu x86_64 public compute instance.
 
 If the artifact is submitted from a mutable Git repository during evaluation, the final evaluated version should also be archived in a permanent public repository according to the ACSAC artifact-availability requirements.
 
