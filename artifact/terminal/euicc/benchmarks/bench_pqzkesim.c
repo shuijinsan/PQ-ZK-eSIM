@@ -136,7 +136,7 @@ static PQ_ZK_ErrorCode run_one_trial(const char *nvram_dir,
 static void run_grid_search(void)
 {
     fprintf(stderr,
-        "Parameter grid search is disabled in the camera-ready build. "
+        "Parameter grid search is disabled in this artifact build. "
         "The implementation is locked to k=3, m=8, kappa=35, sigma_pub=5000; "
         "use the external lattice-estimator record in claim2 for MLWE/MSIS analysis.\n");
 }
