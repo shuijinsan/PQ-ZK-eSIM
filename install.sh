@@ -28,6 +28,11 @@ command -v qemu-aarch64-static    >/dev/null 2>&1 || PKGS="$PKGS qemu-user-stati
 command -v wget                   >/dev/null 2>&1 || PKGS="$PKGS wget"
 command -v curl                   >/dev/null 2>&1 || PKGS="$PKGS curl"
 [ -d /usr/include/openssl ]                       || PKGS="$PKGS libssl-dev"
+# numpy / pandas / matplotlib ship as distribution packages. System Python on
+# Ubuntu 22.04/24.04 is externally managed, so `pip install --user` is not a
+# reliable path there.
+python3 -c "import numpy, pandas, matplotlib" >/dev/null 2>&1 \
+  || PKGS="$PKGS python3-numpy python3-pandas python3-matplotlib"
 if [ -n "$PKGS" ]; then
   log "Install system packages:$PKGS"
   sudo apt-get update
@@ -36,10 +41,6 @@ fi
 
 # ------------------------------------------------------------------
 # ------------------------------------------------------------------
-log "Install Python dependencies (numpy / pandas / matplotlib)"
-# Distribution packages: system Python on Ubuntu 22.04/24.04 is
-# externally managed, so pip --user is not a reliable path there.
-sudo apt-get install -y python3-numpy python3-pandas python3-matplotlib
 
 # ------------------------------------------------------------------
 # ------------------------------------------------------------------

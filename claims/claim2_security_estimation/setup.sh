@@ -49,9 +49,13 @@ mkdir -p "$DEPS_DIR"
 SAGE_BIN=""
 
 # 1. Reuse a SageMath that is already on PATH.
-if command -v sage >/dev/null 2>&1 && usable_sage "$(command -v sage)"; then
-    SAGE_BIN="$(command -v sage)"
-    echo "Reusing the SageMath found on PATH: $SAGE_BIN"
+if command -v sage >/dev/null 2>&1; then
+    if usable_sage "$(command -v sage)"; then
+        SAGE_BIN="$(command -v sage)"
+        echo "Reusing the SageMath found on PATH: $SAGE_BIN"
+    else
+        echo "SageMath on PATH is older than ${MIN_SAGE_MAJOR}.x; installing a newer one below."
+    fi
 fi
 
 # 2. Reuse the environment a previous run of this script created.
@@ -89,10 +93,16 @@ if [ -z "$SAGE_BIN" ]; then
     echo "Using conda: $CONDA_EXE"
 
     if [ ! -x "$SAGE_ENV_DIR/bin/sage" ]; then
+        # An earlier run may have left a partially created prefix, and conda
+        # refuses to reuse one.
+        if [ -d "$SAGE_ENV_DIR" ]; then
+            echo "== Removing an incomplete environment at $SAGE_ENV_DIR =="
+            rm -rf "$SAGE_ENV_DIR"
+        fi
         echo "== Creating the SageMath environment (this is the slow step) =="
-        # conda-forge only. Consulting the defaults channel requires accepting
-        # its terms of service, which a non-interactive run cannot do.
-        "$CONDA_EXE" create -y \
+        # conda-forge only. Consulting the defaults channel pulls in the
+        # Anaconda terms of service, which a non-interactive run cannot accept.
+        CONDA_PLUGINS_AUTO_ACCEPT_TOS=yes "$CONDA_EXE" create -y \
             --override-channels -c "$CONDA_CHANNEL" \
             -p "$SAGE_ENV_DIR" \
             "$SAGE_REQUIREMENT" fpylll
@@ -104,6 +114,10 @@ if ! usable_sage "$SAGE_BIN"; then
     echo "ERROR: SageMath ${MIN_SAGE_MAJOR}.x or newer is required but is not usable: $SAGE_BIN" >&2
     exit 2
 fi
+
+# Sage resolves Singular and the rest of its stack from its own bin
+# directory, so expose it for every later step in this script.
+export PATH="$(dirname "$SAGE_BIN"):$PATH"
 
 # Record the chosen interpreter so run.sh finds it from a fresh shell.
 printf '%s\n' "$SAGE_BIN" > "$SAGE_BIN_FILE"
