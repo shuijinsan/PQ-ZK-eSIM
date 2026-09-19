@@ -24,7 +24,7 @@ MIN_SAGE_MAJOR=10
 MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh"
 
 sage_major() {
-    "$1" --version 2>/dev/null | sed -n 's/.*version \([0-9][0-9]*\)\..*/\1/p'
+    "$1" --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\..*/\1/p; s/.*version \([0-9][0-9]*\)\..*/\1/p'
 }
 
 usable_sage() {
