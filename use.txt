@@ -1,1 +1,0 @@
-PQ-ZK-eSIM is a research artifact for reproducing the paper's prototype and experiments. It is not a production GSMA deployment, not certified eUICC software, and not a substitute for on-card hardware evaluation. Security statements must follow the scope in the camera-ready paper and README.
