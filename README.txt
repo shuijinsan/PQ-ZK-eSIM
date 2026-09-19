@@ -194,8 +194,7 @@ The final paper dataset reports approximately 71.0 microseconds for one protocol
 
 These are the reference measurements recorded in this artifact. Absolute timings and the resulting
 speedup depend on the host and on QEMU emulation; the reproduction requirement is that the MAC
-pre-filter remains clearly faster than full lattice verification, so any speedup well above 1x
-(for example 8.6x on a busier host) is a valid reproduction.
+pre-filter remains clearly faster than full lattice verification, so any speedup well above 1x is a valid reproduction.
 
 Claim 4 reproduces the sliding-window resynchronization experiment reported in Figure 6 and Appendix E.
 
@@ -229,11 +228,11 @@ bash claims/claim2_security_estimation/setup.sh
 bash claims/claim2_security_estimation/run.sh
 bash validate.sh --full
 
-The expected directories under claims contain the final camera-ready baselines used for evaluation. They must correspond to the k = 3, m = 8 parameter set, the HNF-MSIS infinity-norm extraction bound gamma_ext = 71400, and the final rerun data summarized above.
+The expected directories under claims hold the reference outputs for evaluation. They correspond to the k = 3, m = 8 parameter set, the HNF-MSIS infinity-norm extraction bound gamma_ext = 71400, and the values summarized above.
 
 7. Security scope represented by the artifact
 
-The malicious-LPA evaluation scope covers biometric non-exposure, AuthToken-enforced liveness, freshness, and authentication soundness. Long-term secret-key privacy against malicious-LPA verifier feedback is outside this claim.
+The malicious-LPA evaluation scope covers biometric non-exposure, AuthToken-enforced freshness after a successful local match, and authentication soundness. Long-term secret-key privacy against malicious-LPA verifier feedback is outside this claim.
 
 The honest-but-curious Server privacy analysis assumes an honest LPA, honest Gaussian flooding, non-collusion, and the asymptotic negligible-distance condition stated in the paper.
 
@@ -321,7 +320,7 @@ If a command fails, preserve the complete terminal output, the current Git commi
 
 The artifact should be evaluated at the commit identified in the submitted metadata.toml file.
 
-The expected result files should match the final camera-ready parameter set and final rerun data. Legacy pre-camera-ready parameterizations and estimator baselines are obsolete and must not be used for evaluation.
+The expected result files correspond to the parameter set and reference values described above.
 
 The paper uses the following final HNF-MSIS values:
 

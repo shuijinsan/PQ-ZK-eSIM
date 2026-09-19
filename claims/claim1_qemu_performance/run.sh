@@ -8,4 +8,5 @@ mkdir -p claims/claim1_qemu_performance/results
 qemu-aarch64-static -L /usr/aarch64-linux-gnu \
     artifact/terminal/euicc/build/arm64/bench_pqzkesim_comprehensive --only phase
 cp phase_timing_results.csv claims/claim1_qemu_performance/results/
+rm -f phase_timing_results.csv
 echo "Done. See claims/claim1_qemu_performance/results/phase_timing_results.csv"

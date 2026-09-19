@@ -36,4 +36,4 @@ recorded in this artifact. Absolute wall-clock timings, and therefore the
 resulting speedup, depend on the host and on QEMU emulation and will differ on
 other machines. The reproduction requirement is that the MAC pre-filter stays
 clearly faster than full lattice verification, so any measured speedup well
-above 1x (for example 8.6x on a busier host) is a valid reproduction.
+above 1x is a valid reproduction.

@@ -7,4 +7,5 @@ cd "$ROOT"
 mkdir -p claims/claim3_dos_early_reject/results
 qemu-aarch64-static -L /usr/aarch64-linux-gnu artifact/terminal/euicc/build/arm64/bench_pqzkesim --dos
 cp dos_results.csv claims/claim3_dos_early_reject/results/
+rm -f dos_results.csv
 echo "Done. See claims/claim3_dos_early_reject/results/dos_results.csv"

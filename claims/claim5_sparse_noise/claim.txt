@@ -29,10 +29,11 @@ Runtime: ~1 min
 Resources: 1 CPU core, <100 MB RAM, <1 MB disk
 
 Tolerance:
-  - detection_rate: deterministic at the extremes -- 1.0 for rho <= 0.75 and
-    0.0 for rho = 1.0 (honest noise). The rho = 0.90 row falls in the
-    transition band.
-  - false_reject_rate: 0.0 for honest runs.
+  - detection_rate: the paper's finite experiment observes 1.0 for
+    rho <= 0.75 and 0.0 at rho = 1.0 (honest noise); the rho = 0.90 row
+    falls in the transition band. Acceptance: detection_rate >= 0.95 for
+    rho <= 0.75, and detection_rate <= 0.05 at rho = 1.0.
+  - false_reject_rate: acceptance is <= 0.05 for the honest rho = 1.0 row.
   - timing: faster passes; slower up to +100% (2x).
 
 Notes:

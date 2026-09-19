@@ -8,4 +8,5 @@ mkdir -p claims/claim4_sliding_window/results
 qemu-aarch64-static -L /usr/aarch64-linux-gnu \
     artifact/terminal/euicc/build/arm64/bench_pqzkesim_comprehensive --only sliding
 cp sliding_window_resync_results.csv claims/claim4_sliding_window/results/
+rm -f sliding_window_resync_results.csv
 echo "Done. See claims/claim4_sliding_window/results/sliding_window_resync_results.csv"

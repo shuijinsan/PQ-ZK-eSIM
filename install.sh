@@ -23,7 +23,6 @@ command -v gcc                    >/dev/null 2>&1 || PKGS="$PKGS build-essential
 command -v cmake                  >/dev/null 2>&1 || PKGS="$PKGS cmake"
 command -v git                    >/dev/null 2>&1 || PKGS="$PKGS git"
 command -v python3                >/dev/null 2>&1 || PKGS="$PKGS python3"
-command -v pip3                   >/dev/null 2>&1 || PKGS="$PKGS python3-pip"
 command -v aarch64-linux-gnu-gcc  >/dev/null 2>&1 || PKGS="$PKGS gcc-aarch64-linux-gnu"
 command -v qemu-aarch64-static    >/dev/null 2>&1 || PKGS="$PKGS qemu-user-static"
 command -v wget                   >/dev/null 2>&1 || PKGS="$PKGS wget"
@@ -38,7 +37,9 @@ fi
 # ------------------------------------------------------------------
 # ------------------------------------------------------------------
 log "Install Python dependencies (numpy / pandas / matplotlib)"
-python3 -m pip install --user numpy pandas matplotlib
+# Distribution packages: system Python on Ubuntu 22.04/24.04 is
+# externally managed, so pip --user is not a reliable path there.
+sudo apt-get install -y python3-numpy python3-pandas python3-matplotlib
 
 # ------------------------------------------------------------------
 # ------------------------------------------------------------------

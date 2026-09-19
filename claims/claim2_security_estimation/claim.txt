@@ -46,8 +46,6 @@ Notes:
   NIST FIPS 204 categories 2, 3, and 5 refer to the standardized ML-DSA
   parameter sets. PQ-ZK-eSIM uses the custom tuple (k,m,kappa)=(3,8,35) and
   reports its concrete lattice-attack estimates separately.
-  The estimator configuration and full stdout are retained alongside this
-  claim as evidence (estimator_stdout.txt).
 
 Tolerance:
   - Deterministic: for a fixed instance, cost model, and estimator commit the

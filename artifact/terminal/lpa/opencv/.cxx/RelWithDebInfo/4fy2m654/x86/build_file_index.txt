@@ -1,1 +1,0 @@
-D:\programa\opencv\libcxx_helper\CMakeLists.txt

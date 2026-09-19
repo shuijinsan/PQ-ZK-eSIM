@@ -69,3 +69,7 @@ venv/
 
 artifact/terminal/euicc/libs/aarch64/openssl/
 artifact/terminal/euicc/libs/aarch64/liboqs/
+
+# Run artifacts produced by the demo and the claim scripts
+.demo_work/
+claims/*/results/

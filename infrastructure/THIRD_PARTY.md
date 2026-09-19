@@ -1,6 +1,6 @@
 # Third-party dependencies
 
-PQ-ZK-eSIM is licensed under the **Apache License 2.0** (see `LICENSE` in the
+PQ-ZK-eSIM is licensed under the **Apache License 2.0** (see `license.txt` in the
 repository root). It links against the following third-party libraries. All
 are needed to build the benchmarks used by the claims.
 

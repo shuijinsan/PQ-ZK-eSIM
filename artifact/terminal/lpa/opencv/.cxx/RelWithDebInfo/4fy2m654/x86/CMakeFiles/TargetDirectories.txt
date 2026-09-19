@@ -1,3 +1,0 @@
-D:/programa/opencv/.cxx/RelWithDebInfo/4fy2m654/x86/CMakeFiles/opencv_jni_shared.dir
-D:/programa/opencv/.cxx/RelWithDebInfo/4fy2m654/x86/CMakeFiles/edit_cache.dir
-D:/programa/opencv/.cxx/RelWithDebInfo/4fy2m654/x86/CMakeFiles/rebuild_cache.dir

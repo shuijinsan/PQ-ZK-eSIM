@@ -24,7 +24,11 @@ MIN_SAGE_MAJOR=10
 MINIFORGE_URL="https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-Linux-x86_64.sh"
 
 sage_major() {
-    "$1" --version 2>/dev/null | sed -n 's/^\([0-9][0-9]*\)\..*/\1/p; s/.*version \([0-9][0-9]*\)\..*/\1/p'
+    # `sage` resolves Singular and the rest of the Sage stack from its own bin
+    # directory, so put that on PATH first. Distributions print the version
+    # either as "SageMath version 10.6, ..." or as a bare "10.6".
+    PATH="$(dirname "$1"):$PATH" "$1" --version 2>/dev/null \
+        | sed -n 's/^\([0-9][0-9]*\)\..*/\1/p; s/.*version \([0-9][0-9]*\)\..*/\1/p' | head -n 1
 }
 
 usable_sage() {
