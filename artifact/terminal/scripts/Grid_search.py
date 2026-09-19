@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """PQ-ZK-eSIM locked-parameter summary.
 
-The camera-ready parameter set is fixed.  This utility intentionally does not
+The evaluated parameter set is fixed. This utility intentionally does not
 infer lattice security from the challenge space or from a kappa/sigma sweep;
 MLWE/MSIS costs are obtained from the external lattice-estimator configuration
 documented in claim2_security_estimation.
@@ -23,7 +23,7 @@ GAMMA_EXT = max(2 * BETA_INF, 2)
 
 def main() -> None:
     challenge_bits = KAPPA + log2(comb(N, KAPPA))
-    print("PQ-ZK-eSIM camera-ready parameter set")
+    print("PQ-ZK-eSIM evaluated parameter set")
     print(f"N={N}, q={Q}, k={K}, m={M}, kappa={KAPPA}, sigma_pub={SIGMA_PUB:.0f}")
     print("secret/error distribution: coefficient-wise uniform ternary {-1,0,1}")
     print("public matrix: A=[Abar|I_3], Abar in R_q^(3x5)")
