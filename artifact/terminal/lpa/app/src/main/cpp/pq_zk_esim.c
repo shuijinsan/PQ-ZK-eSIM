@@ -730,7 +730,18 @@ PQ_ZK_ErrorCode PQC_Server_CommitSync(
     server_state_t *srv_state_out, uint64_t ctr_session, const uint8_t k_synced[32])
 {
     if (!srv_state_out || !k_synced) return PQ_ZK_ERR_INVALID_PARAM;
-    memcpy(srv_state_out->k_sym, k_synced, 32);
+
+    /* Algorithm 5: the Server advances its master key exactly as the eUICC
+       does, so the two never drift apart across sessions. */
+    uint8_t k_next[32];
+    if (pqzk_kdf(k_synced, srv_state_out->d_seed, srv_state_out->eid,
+                 NVRAM_EID_LEN, k_next) != 0) {
+        secure_zero(k_next, sizeof(k_next));
+        return PQ_ZK_ERR_INVALID_PARAM;
+    }
+
+    memcpy(srv_state_out->k_sym, k_next, 32);
     srv_state_out->ctr_server = ctr_session + 1;
+    secure_zero(k_next, sizeof(k_next));
     return PQ_ZK_SUCCESS;
 }
