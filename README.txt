@@ -42,8 +42,6 @@ The file validate.sh checks generated claim outputs against the expected paper-a
 
 The file license.txt states the artifact license.
 
-The file use.txt states the intended use and limitations of the artifact.
-
 3. Canonical evaluation environment
 
 The recommended environment is Ubuntu 22.04 or 24.04 LTS on x86_64 with at least 4 CPU cores, 8 GB of RAM, and 20 GB of free disk space.
@@ -335,7 +333,7 @@ The minimum estimator-reported quantum attack cost among the two instantiated la
 
 13. Additional documentation
 
-Detailed usage instructions are provided in use.txt.
+Usage instructions and artifact limitations are documented in this README.
 
 Environment and infrastructure constraints are documented under infrastructure.
 
