@@ -59,7 +59,7 @@ Network access is required during installation when dependencies must be downloa
 
 A standard Ubuntu x86_64 virtual machine (22.04 or 24.04) on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper's reported performance and robustness figures.
 
-The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance and is recorded by the experiment scripts.
+The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Section 11 lists the exact command sequence for both the quick and the full evaluation. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance and is recorded by the experiment scripts.
 
 4. Installation
 
@@ -142,8 +142,12 @@ Prepare Claim 2 once:
 
 bash claims/claim2_security_estimation/setup.sh
 
-This installs SageMath 10.x (from conda-forge into .deps/sage-env when no suitable SageMath is
-already on PATH) and clones the lattice-estimator at the exact commit used by the paper (6019056).
+This prepares the heavy dependencies and needs network access and several GB of free disk space
+on its first run. It reuses a SageMath that is already available when one is usable, and otherwise
+installs SageMath 10.x from conda-forge into .deps/sage-env, bootstrapping conda first if the
+machine has none. It then clones the lattice-estimator at the exact commit used by the paper
+(6019056). The evaluator does not need SageMath or conda installed beforehand, and no conda
+activation, PATH edit, or channel terms-of-service prompt is required.
 
 Then run the sweep:
 
@@ -187,6 +191,11 @@ Run:
 bash claims/claim3_dos_early_reject/run.sh
 
 The final paper dataset reports approximately 71.0 microseconds for one protocol MAC pre-filter operation and approximately 1.111 ms for full lattice verification, corresponding to approximately 15.6 times lower verification time for the pre-filter path.
+
+These are the reference measurements recorded in this artifact. Absolute timings and the resulting
+speedup depend on the host and on QEMU emulation; the reproduction requirement is that the MAC
+pre-filter remains clearly faster than full lattice verification, so any speedup well above 1x
+(for example 8.6x on a busier host) is a valid reproduction.
 
 Claim 4 reproduces the sliding-window resynchronization experiment reported in Figure 6 and Appendix E.
 
@@ -275,7 +284,10 @@ The final public release is intended to include the source code, experiment scri
 
 11. Evaluator workflow
 
-For the initial kick-the-tires check, use the following sequence from the repository root:
+All commands are run from the repository root.
+
+Quick evaluation (kick-the-tires). This uses only what install.sh provides.
+Claim 2 is excluded here and covered by the full evaluation below.
 
 bash install.sh
 
@@ -283,13 +295,25 @@ bash artifact/demo/run.sh
 
 bash claims/claim1_qemu_performance/run.sh
 
+bash claims/claim3_dos_early_reject/run.sh
+
 bash claims/claim4_sliding_window/run.sh
 
 bash claims/claim5_sparse_noise/run.sh
 
-For the full evaluation, run the non-quick claim variants where provided, run the denial-of-service experiment, obtain or inspect the documented lattice-estimator evidence for Claim 2, and then execute:
-
 bash validate.sh
+
+validate.sh with no arguments validates Claim 1, 3, 4, and 5, which is the same as bash validate.sh --quick.
+
+Full evaluation. Claim 2 is the lattice-estimator sweep behind Figure 4. It carries its own heavyweight dependency stack (SageMath plus the lattice-estimator source tree), which install.sh deliberately does not install because SageMath needs several GB of disk space. setup.sh prepares all of it; nothing has to be installed by hand first.
+
+bash claims/claim2_security_estimation/setup.sh
+
+bash claims/claim2_security_estimation/run.sh
+
+bash validate.sh --full
+
+bash validate.sh --full validates all five claims and should end with ALL CLAIMS PASSED.
 
 If a command fails, preserve the complete terminal output, the current Git commit hash, and the environment information before contacting the authors through the ACSAC artifact-evaluation channel.
 
