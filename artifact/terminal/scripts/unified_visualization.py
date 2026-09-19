@@ -47,7 +47,7 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 
 def find_csv(filename):
-    """Locate a result CSV: claim results/ dirs first, then legacy build dirs."""
+    """Locate a result CSV: claim results/ dirs first, then fallback build dirs."""
     matches = sorted(glob.glob(os.path.join(REPO_ROOT, "claims", "*", "results", filename)))
     if matches:
         return matches[0]
