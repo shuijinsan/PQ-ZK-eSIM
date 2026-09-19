@@ -383,7 +383,7 @@ int main(int argc,char*argv[]){
         if(!strcmp(argv[i],"--only") && i+1<argc){ only=argv[++i]; }
     }
     printf("============================================\n");
-    printf("  PQ-ZK-eSIM Experiments camera-ready k=3,m=8\n");
+    printf("  PQ-ZK-eSIM Experiments: k=3,m=8\n");
     printf("============================================\n");
     int run_all = (only == NULL);
     if(run_all || (only && !strcmp(only,"nvm")))     run_nvm_wear_experiment();
