@@ -279,7 +279,7 @@ The evaluated C, QEMU, and Python components require no private hardware and can
 
 If the artifact is submitted from a mutable Git repository during evaluation, the final evaluated version should also be archived in a permanent public repository according to the ACSAC artifact-availability requirements.
 
-The final public release is intended to include the source code, experiment scripts, expected outputs, documentation, and configuration files needed to exercise the claims described above.
+The public artifact includes the source code, experiment scripts, expected outputs, documentation, and configuration files needed to exercise the claims described above.
 
 11. Evaluator workflow
 
@@ -318,7 +318,7 @@ If a command fails, preserve the complete terminal output, the current Git commi
 
 12. Reproducibility notes
 
-The artifact should be evaluated at the commit identified in the submitted metadata.toml file.
+The artifact should be evaluated at the submitted release or commit.
 
 The expected result files correspond to the parameter set and reference values described above.
 
