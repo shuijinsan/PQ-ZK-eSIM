@@ -7,7 +7,7 @@ are needed to build the benchmarks used by the claims.
 | Dependency  | Version (tested) | License        | Used for                                   |
 |-------------|------------------|----------------|--------------------------------------------|
 | OpenSSL     | 3.0.13           | Apache-2.0     | AES-256-CTR / AES-256-CMAC, SHA-256, SHA3-256, SHAKE-128/256        |
-| liboqs      | 0.15.0           | MIT            | ML-KEM-768 (Kyber-768), ML-DSA-65          |
+| liboqs      | 0.15.0           | MIT            | Kyber-768, ML-DSA-65          |
 | CMake       | >= 3.22          | BSD-3-Clause   | build system                               |
 | C compiler  | C11 (gcc/clang)  | n/a            | build                                       |
 
