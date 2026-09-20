@@ -87,7 +87,7 @@
 // Actual z_unmasked norm: ||y_pub||_2 dominates, chi distribution
 #define PQZK_BETA_FINAL        260000
 
-// beta_min = 200000: 5.3-sigma lower tail, Pr[false reject] < 10^{-7}
+// beta_min = 200000: lower acceptance bound used in the paper's finite accounting
 #define PQZK_BETA_MIN           200000
 
 // beta_L1 = 7,400,000: L1 lower bound for sparse noise defense
