@@ -1,32 +1,30 @@
-name = "PQ-ZK-eSIM"
-version = "camera-ready-k3m8"
-artifact_type = "research prototype"
-badges = ["Available", "Functional"]
-
-[environment]
-os = "Ubuntu 22.04 LTS"
-arch = "x86_64 host / AArch64 emulation"
-qemu = "qemu-aarch64-static"
-
-[crypto]
-N = 256
-q = 8380417
-k = 3
-m = 8
-kappa = 35
-sigma_pub = 5000
-secret_distribution = "uniform ternary {-1,0,1}"
-public_matrix = "systematic [Abar|I_3], Abar in R_q^(3x5)"
-security_estimator = "lattice-estimator commit 6019056 + fpylll (external, not vendored)"
-
-[claims]
-claim1 = "QEMU ARM64 phase timing"
-claim2 = "MLWE/MSIS known-attack estimation"
-claim3 = "DoS early reject"
-claim4 = "sliding-window resynchronization"
-claim5 = "sparse-noise multi-norm detection"
-
-[backend]
-optional = true
-network = "TCP 8000; optional local MySQL 8.0 and Redis"
-runtime = "uvicorn main:app --host 0.0.0.0 --port 8000"
+badge = "r"
+artifact_url = "https://github.com/shuijinsan/PQ-ZK-eSIM"
+cd = "c"
+citation = "@inproceedings{pqzkesim2026,\n  author    = {Liang Zhao and Shimiao Huang and Qianyu Xu and Xinyan Xie and Yixuan Chen and Yaxuan Hao and Liqun Chen},\n  title     = {PQ-ZK-eSIM: Post-Quantum Zero-Knowledge Identity Authentication for eSIM},\n  booktitle = {Annual Computer Security Applications Conference (ACSAC)},\n  year      = {2026}\n}"
+license_url = "https://www.apache.org/licenses/LICENSE-2.0"
+infrastructure_constraints = "No special or private infrastructure is required. The artifact was validated on a standard Ubuntu 22.04 LTS x86_64 virtual machine and is designed to run on ordinary evaluator-provided Linux infrastructure. We attempted to use CloudLab, but project/account approval was not completed before the artifact deadline, so the validation did not rely on a named public research testbed."
+infrastructure_access = ""
+install_script = "https://raw.githubusercontent.com/shuijinsan/PQ-ZK-eSIM/main/install.sh"
+use = "Research artifact for reproducing Claims 1-5 of the accompanying ACSAC paper. It is not a production eSIM implementation. The artifact evaluates the protocol implementation and the reported QEMU AArch64, lattice-estimator, resynchronization, sparse-noise, and early-rejection experiments. Real biometric matching and measurements on commercial eUICC/TEE hardware are outside Claims 1-5. See README.txt and the per-claim claim.txt files for detailed scope and limitations."
+destructive = "install.sh uses sudo to install required Ubuntu packages and installs the native liboqs library under /usr/local. It also downloads and builds dependencies inside the artifact directory. Experiment scripts create result files under the repository. No user data is deleted and no destructive data operations are performed."
+claim1 = "The artifact reproduces Figure 5, \"QEMU cryptographic-path timing for (k,m)=(3,8),\" and confirms the asymmetric workload split in which the eUICC response path performs no NTT or discrete-Gaussian sampling."
+script1 = "https://raw.githubusercontent.com/shuijinsan/PQ-ZK-eSIM/main/claims/claim1_qemu_performance/run.sh"
+expected1 = "The run produces phase_timing_results.csv and reproduces Figure 5, \"QEMU cryptographic-path timing for (k,m)=(3,8).\" The paper reports a mean cryptographic-path latency of about 10.32 ms (10,319 us), with the corresponding per-phase timings reported in Section 7.2. Absolute timing is host- and QEMU-dependent; validation tolerances are specified in claim.txt."
+claim2 = "The artifact reproduces the HNF-MSIS lattice-estimator sweep used in Figure 4. At gamma_ext = 71,400, the pinned estimator reports approximately 142.6 classical bits and 135.1 quantum bits, with BKZ block size 394. The paper's MLWE inputs and reported values are documented for alignment but are not rerun by this claim."
+script2 = "https://raw.githubusercontent.com/shuijinsan/PQ-ZK-eSIM/main/claims/claim2_security_estimation/run.sh"
+expected2 = "The run produces msis_estimator_sweep.csv and fig_lattice_estimator.png and reproduces Figure 4, \"HNF-MSIS security estimation for the formal coefficient-l_infinity extraction bound gamma_ext = 71,400, using lattice-estimator commit 6019056.\" At gamma_ext = 71,400, the expected result is approximately 142.6 classical bits, 135.1 quantum bits, and BKZ block size 394. Claim 2 requires the one-time setup described in README.txt and claims/claim2_security_estimation/setup.sh. The MLWE estimates in Section 7.1 are documented but not rerun by this claim."
+claim3 = "The artifact reproduces Figure 8, \"DoS early rejection,\" showing that the protocol MAC pre-filter rejects invalid commitments substantially faster than full lattice verification."
+script3 = "https://raw.githubusercontent.com/shuijinsan/PQ-ZK-eSIM/main/claims/claim3_dos_early_reject/run.sh"
+expected3 = "The run produces dos_results.csv and reproduces Figure 8, \"DoS early rejection: one-epoch protocol MAC pre-filter versus full lattice verification.\" The paper reports about 71.0 us for the MAC pre-filter and 1.111 ms for full lattice verification, corresponding to a 15.6x speedup. Absolute timings are host-dependent; validation tolerances are specified in claim.txt."
+claim4 = "The artifact reproduces Figure 6, \"Sliding-window resynchronization,\" showing successful resynchronization when counter skew Delta is within the configured window W and rejection beyond the window."
+script4 = "https://raw.githubusercontent.com/shuijinsan/PQ-ZK-eSIM/main/claims/claim4_sliding_window/run.sh"
+expected4 = "The run produces sliding_window_resync_results.csv and reproduces Figure 6, \"Sliding-window resynchronization: success occurs for Delta <= W; measured search time includes per-epoch key evolution.\" For W = 32 and Delta = 32, the paper reports about 2.96 ms MAC-search time and about 6.8 ms total in-window latency. Timing variation is allowed as specified in claim.txt."
+claim5 = "The artifact reproduces Figure 7, \"Sparse-noise results,\" evaluating the multi-norm verifier under coefficient sparsification and measuring the finite-run honest false-rejection rate."
+script5 = "https://raw.githubusercontent.com/shuijinsan/PQ-ZK-eSIM/main/claims/claim5_sparse_noise/run.sh"
+expected5 = "The run produces sparse_noise_attack_results.csv and reproduces Figure 7, \"Sparse-noise results.\" The paper reports 100% detection through rho = 75%, about 66% at rho = 90%, and 0% detection for the honest rho = 100% case; the finite run observed no honest false rejection. Validation thresholds and timing tolerances are specified in claim.txt."
+hw = "No specialized hardware is required. A standard x86_64 Linux host is sufficient. Recommended resources are at least 4 CPU cores, 8 GB RAM, and 20 GB of free disk space. Claims 1, 3, 4, and 5 use AArch64 cross-compilation and QEMU user-mode emulation. No GPU, commercial eUICC, TEE device, or TrustZone hardware is required."
+sw = "Validated environment: Ubuntu 22.04 LTS on x86_64. Core dependencies are installed by install.sh and include GCC/G++, CMake, gcc-aarch64-linux-gnu, qemu-user-static, OpenSSL 3.0.13, liboqs 0.15.0, Python 3, NumPy, pandas, and matplotlib. Claim 2 additionally uses SageMath 10.x or newer, fpylll, and lattice-estimator commit 6019056; claims/claim2_security_estimation/setup.sh prepares this dependency stack. Network access is required during dependency installation and Claim 2 setup."
+api = ""
+gui = "n"
+readme = "https://raw.githubusercontent.com/shuijinsan/PQ-ZK-eSIM/main/README.txt"
