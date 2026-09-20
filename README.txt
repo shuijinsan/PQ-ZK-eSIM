@@ -24,13 +24,13 @@ The protocol proof itself is part of the paper and is not submitted as an execut
 
 2. Artifact contents
 
-The directory artifact contains the implementation, the command-line cryptographic-path demonstration, and the optional Android reference integration.
+The directory artifact contains the implementation and the protocol demonstration.
 
-The directory artifact/terminal/euicc contains the C implementation of the eUICC and verifier cryptographic path, including lattice arithmetic, challenge generation, Merkle processing, state evolution, liboqs Kyber-768 and ML-DSA-65 integration used by the prototype, and the NVRAM model.
+The directory artifact/terminal/euicc contains the C implementation of the eUICC and verifier cryptographic path, including lattice arithmetic, challenge generation, Merkle processing, state evolution, Kyber-768 and ML-DSA-65 integration used by the prototype, and the NVRAM model.
 
 The directory artifact/terminal/lpa contains the Android and LPA reference integration and the JNI bridge.
 
-The directory artifact/demo contains the command-line cryptographic-path smoke test. It uses a simulated successful biometric gate and does not exercise the Android frontend or the external network backend.
+The directory artifact/demo contains the protocol smoke test.
 
 The directory claims contains the scripts, descriptions, and expected outputs associated with the paper's reproducibility claims.
 
@@ -67,7 +67,7 @@ bash install.sh
 
 The installation script installs or prepares the required compiler, QEMU, cryptographic libraries, and Python dependencies.
 
-After installation, the evaluator should run the command-line cryptographic-path smoke test:
+After installation, the evaluator should run the protocol smoke test:
 
 bash artifact/demo/run.sh
 
