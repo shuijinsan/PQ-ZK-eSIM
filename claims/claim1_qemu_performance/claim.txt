@@ -27,10 +27,11 @@ Measured per-phase means (us):
   LPA Aggregate           11
   Server Verify         1188
   ---------------------------------
-  end-to-end total     10319
+ cryptographic-path total 10319
 
-Scope: QEMU ARM64 cryptographic-path timing; biometric capture/matching,
-network transit, and NVM commit are excluded.
+Scope: QEMU ARM64 cryptographic-path timing; biometric capture/matching and
+network transit are excluded. The software timing includes the prototype's
+file-backed atomic state updates; commercial-eUICC NVM latency is not modeled.
 
 Analytical eUICC projection (separate model, not a measurement): 4.17 ms
 (4.2 ms rounded) dominant-cost projection with W_sec precomputed at 33 MHz
