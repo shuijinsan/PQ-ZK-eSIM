@@ -34,7 +34,7 @@ Expected output:
 
 Runtime: ~1 min
 
-Resources: 1 CPU core, <1 GB RAM, <10 MB disk
+Resources: 1 CPU core and <1 GB RAM for the estimator run; several GB of disk are required for the one-time SageMath/lattice-estimator setup. 20 GB free disk is recommended for the full artifact environment.
 
 Dependency: lattice-estimator, commit 6019056
 (github.com/malb/lattice-estimator), Python 3, fpylll, SageMath.
