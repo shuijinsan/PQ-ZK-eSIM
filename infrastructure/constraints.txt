@@ -4,6 +4,5 @@
 - The analytical eUICC latency projection is not an on-card measurement.
 - Concrete lattice security estimates depend on the external lattice-estimator and are not a formal NIST-category assignment.
 - The Android frontend is reference software and is not required for the artifact claims.
-- The optional SM-DP+ backend requires external MySQL and Redis services.
 - The artifact does not empirically validate the biometric conditional-min-entropy assumption.
 - The fixed flooding parameter set is evaluated with finite Renyi accounting and is not claimed to instantiate the asymptotic negligible-distance UC condition.
