@@ -4,6 +4,9 @@ import csv
 import os
 
 from matplotlib import pyplot as plt
+
+plt.rcParams['pdf.fonttype'] = 42
+plt.rcParams['ps.fonttype'] = 42
 from matplotlib.ticker import FuncFormatter
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -58,5 +61,6 @@ for ax in (a, b):
     ax.xaxis.set_major_formatter(FuncFormatter(lambda v, p: "%dk" % round(v / 1000.0)))
 
 fig.tight_layout()
-fig.savefig(os.path.join(OUT, "fig_lattice_estimator.png"), dpi=160)
+for ext in ("png", "pdf", "svg"):
+    fig.savefig(os.path.join(OUT, "fig_lattice_estimator.%s" % ext), dpi=160)
 print("Wrote", os.path.join(OUT, "fig_lattice_estimator.png"))

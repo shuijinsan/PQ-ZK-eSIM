@@ -37,6 +37,10 @@ matplotlib.rcParams.update({
     'legend.fontsize': 28,
     'figure.dpi': 150,
     'savefig.dpi': 200,
+    # Type 42 (TrueType) keeps the PDF acceptable to IEEE/ACM typesetting,
+    # which rejects Type 3 fonts.
+    'pdf.fonttype': 42,
+    'ps.fonttype': 42,
     'savefig.bbox': 'tight',
 })
 
@@ -73,9 +77,13 @@ def load_csv(filename):
         return None
 
 def save_fig(fig, name):
-    path = os.path.join(OUTPUT_DIR, name)
-    fig.savefig(path, bbox_inches='tight')
-    print(f"  -> Saved: {path}")
+    # Emit PNG for quick viewing plus PDF and SVG for the paper. Vector output
+    # keeps the text and lines crisp at any inclusion size.
+    stem = os.path.splitext(name)[0]
+    for ext in ("png", "pdf", "svg"):
+        path = os.path.join(OUTPUT_DIR, f"{stem}.{ext}")
+        fig.savefig(path, bbox_inches='tight')
+        print(f"  -> Saved: {path}")
     plt.close(fig)
 
 # ================================================================
