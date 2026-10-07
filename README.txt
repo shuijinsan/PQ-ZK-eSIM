@@ -321,26 +321,24 @@ The public artifact includes the source code, experiment scripts, expected outpu
 
 All commands are run from the repository root.
 
-Runtime budget, measured on the verified machine (2 CPU cores, Ubuntu 24.04,
-QEMU ARM64 emulation):
+Expected runtime (2 CPU cores, Ubuntu 24.04, QEMU ARM64 emulation):
 
-  artifact/demo/run.sh, cold build        about 1 s
-  Claim 1 (phase timing, 500 trials)      about 10 s
-  Claim 3 (DoS benchmark)                 about 2 s
-  Claim 4 (sliding window)                about 1 min
-  Claim 5 (sparse noise, 200 trials/rho)  about 1 min
-  quick path total (Claims 1, 3, 4, 5 and validate.sh)   about 3 min
-
-  install.sh, first run     network and build bound: it installs packages and
-                            builds OpenSSL and liboqs (native and AArch64) from
-                            source. It was not timed in this revision because
-                            it requires sudo; on a host of this size the three
-                            builds dominate and take on the order of ten minutes.
-  Claim 2 setup.sh          network bound: it downloads Miniforge and a SageMath
-                            environment of several GB. Expect tens of minutes on
-                            first use; a later run reuses both and returns
-                            immediately.
-  Claim 2 run.sh + validate.sh --full     about 2 min
+  install.sh, first run                     about 10-20 min. It installs the
+                                            system packages and builds OpenSSL
+                                            and liboqs (x86_64 and AArch64) from
+                                            source; the downloads and the three
+                                            builds dominate.
+  artifact/demo/run.sh, including its build a few seconds
+  Claim 1 (phase timing, 500 trials)        about 10 s
+  Claim 3 (DoS benchmark)                   about 2 s
+  Claim 4 (sliding window)                  about 1 min
+  Claim 5 (sparse noise, 200 trials/rho)    about 1 min
+  quick path total (Claims 1, 3, 4, 5 and validate.sh)   about 5 min
+  Claim 2 setup.sh, first run               tens of minutes: it downloads
+                                            Miniforge and a SageMath environment
+                                            of several GB. A later run reuses
+                                            both and returns immediately.
+  Claim 2 run.sh + validate.sh --full       about 2 min
 
 Wall-clock figures depend on the host CPU, disk and network, and on QEMU
 emulation speed.
