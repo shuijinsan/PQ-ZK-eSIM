@@ -340,6 +340,12 @@ Expected runtime (2 CPU cores, Ubuntu 24.04, QEMU ARM64 emulation):
                                             both and returns immediately.
   Claim 2 run.sh + validate.sh --full       about 2 min
 
+Figure files. The figures are generated from the recorded CSVs by
+artifact/terminal/scripts/unified_visualization.py (Figures 5, 6, 7 and 8) and
+claims/claim2_security_estimation/plot_sweep.py (Figure 4). Both write PNG,
+PDF and SVG next to their input data, so the paper's figure files can be
+regenerated from the same data that the claims validate.
+
 Wall-clock figures depend on the host CPU, disk and network, and on QEMU
 emulation speed.
 
