@@ -18,7 +18,10 @@
   four checks (ell_2 lower bound, ell_2 upper bound, ell_infinity, ell_1 lower
   bound); Figure 7A plots the ell_1 lower-bound rate specifically, which is
   `l1_low_rate` in the breakdown file. Both the claim text and the README now
-  say so.
+  say so. The breakdown carries no stored reference value, because its
+  rho = 0.90 row is in the transition band and legitimately varies between
+  runs; it is judged against the acceptance rules stated in the claim's
+  Tolerance section.
 - **Claim 5 claim text.** `rho` was described as the fraction of zeroed
   coefficients; it is the fraction *retained*. Corrected in the claim text to
   match the code and the README.
