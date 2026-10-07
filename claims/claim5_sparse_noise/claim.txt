@@ -1,8 +1,9 @@
 Paper: Figure 7, Appendix E (Resistance to Real-World Attacks)
 
-Claim: structured degradation of y_pub (zeroing a fraction rho of its
-coefficients) is tested against the actual verifier while preserving the
-lattice relation. The experiment records which norm check rejects each trial.
+Claim: structured degradation of y_pub (retaining a fraction rho of its
+coefficients and zeroing the rest) is tested against the actual verifier
+while preserving the lattice relation. The experiment records which norm
+check rejects each trial.
 
 Experiment (QEMU ARM64 emulation):
   qemu-aarch64-static -L /usr/aarch64-linux-gnu \
@@ -14,6 +15,9 @@ Input: none
 Expected output:
   sparse_noise_attack_results.csv
     columns: rho, detection_rate, false_reject_rate, avg_total_us
+  sparse_noise_norm_breakdown.csv
+    columns: rho, l2_low_rate, l2_high_rate, linf_rate, l1_low_rate,
+             verify_reject_rate
 
 Measured:
   L1 rejection 100% through rho = 75%;
@@ -37,7 +41,13 @@ Tolerance:
   - timing: faster passes; slower up to +100% (2x).
 
 Notes:
+  detection_rate in sparse_noise_attack_results.csv is the union of the four
+  checks (ell_2 lower bound, ell_2 upper bound, ell_infinity, ell_1 lower
+  bound): it counts a trial as detected if any of them rejects. Figure 7A
+  plots the ell_1 lower-bound rate specifically, which is reported separately
+  as l1_low_rate in sparse_noise_norm_breakdown.csv. The rho = 0.90 row sits
+  in the transition band and varies between runs; only the threshold rule in
+  Tolerance is applied there.
   The rho = 0.78 value is the ell_2 geometric reference threshold for the
-  stated sparsification model; the verifier additionally applies the
-  ell_infinity and ell_1 checks. Honest false-rejection is reported
-  empirically and is not defined to be exactly zero.
+  stated sparsification model. Honest false-rejection is reported empirically
+  and is not defined to be exactly zero.

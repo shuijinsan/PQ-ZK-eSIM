@@ -210,6 +210,12 @@ bash claims/claim5_sparse_noise/run.sh
 
 The final paper dataset reports 100 percent l1-bound rejection through rho = 75 percent, 66 percent rejection at rho = 90 percent, and 0 percent rejection for the honest rho = 100 percent case.
 
+Here rho is the fraction of y_pub coefficients that are retained (the rest are zeroed). The reported
+figures are the ell_1 lower-bound rejection rate, which Figure 7A plots; the CSV column detection_rate
+is the union of the ell_2 lower-bound, ell_2 upper-bound, ell_infinity and ell_1 checks, and the ell_1
+rate on its own is recorded as l1_low_rate in sparse_noise_norm_breakdown.csv. The rho = 90 percent row
+lies in the transition band and varies between runs.
+
 The finite Monte Carlo run observed no honest false rejection. This finite observation is not interpreted as evidence of a 2^-128 false-rejection probability.
 
 After running the claims, validate the generated results with:
