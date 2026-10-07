@@ -119,5 +119,6 @@ mkdir -p claims/claim1_qemu_performance/results \
 
 log "Installation complete"
 echo "  Run demo : bash artifact/demo/run.sh"
-echo "  Run claims : bash claims/<claim>/run.sh [--quick|--full]"
-echo "  Validate results : bash validate.sh"
+echo "  Run claims : bash claims/<claim>/run.sh"
+echo "  Validate results : bash validate.sh            (Claim 1, 3, 4, 5)"
+echo "  Validate all     : bash validate.sh --full     (adds Claim 2)"

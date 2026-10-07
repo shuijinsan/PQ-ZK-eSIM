@@ -1,6 +1,8 @@
 # Access and execution
-Clone:            git clone <repo-url>
+Clone:            git clone https://github.com/shuijinsan/PQ-ZK-eSIM.git
+                  cd PQ-ZK-eSIM
 Install/build:    bash install.sh
 Smoke test:       bash artifact/demo/run.sh
-Run a claim:      bash claims/<claim>/run.sh [--quick|--full]
-Validate results: bash validate.sh
+Run a claim:      bash claims/<claim>/run.sh
+Validate results: bash validate.sh            (Claim 1, 3, 4, 5)
+Validate all:     bash validate.sh --full     (adds Claim 2; see its setup.sh)

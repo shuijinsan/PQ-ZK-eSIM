@@ -1,5 +1,37 @@
 PQ-ZK-eSIM Artifact
 
+Start here
+
+  Install (needs sudo and network):       bash install.sh
+  Smoke test (expect ACCEPT / ACCEPT / REJECT):  bash artifact/demo/run.sh
+  Quick evaluation:                       bash claims/claim1_qemu_performance/run.sh
+                                          bash claims/claim3_dos_early_reject/run.sh
+                                          bash claims/claim4_sliding_window/run.sh
+                                          bash claims/claim5_sparse_noise/run.sh
+                                          bash validate.sh
+  Full evaluation:                        bash claims/claim2_security_estimation/setup.sh
+                                          bash claims/claim2_security_estimation/run.sh
+                                          bash validate.sh --full
+
+install.sh needs sudo: it installs distribution packages and builds OpenSSL and
+liboqs, including an AArch64 cross build used by the QEMU claims. No GPU, GUI,
+paid API, proprietary backend, commercial eUICC, or commercial TEE is required.
+Network access is needed by install.sh and by the one-time Claim 2 setup; the
+remaining claims run offline.
+
+  License      Apache-2.0 (license.txt). Third-party components and their
+               licenses are listed in infrastructure/THIRD_PARTY.md.
+  Verified on  Ubuntu 24.04.4 LTS, 2 CPU cores, 3.8 GiB RAM, with gcc 9.5.0,
+               cmake 3.28.3, qemu-aarch64 8.2.2, python3 3.12.3,
+               OpenSSL 3.0.13, liboqs 0.15.0, SageMath 10.8 (conda-forge).
+
+  Badge evidence
+    Available   public repository at a fixed revision, archived for availability;
+    Functional  install.sh builds, and artifact/demo/run.sh prints
+                ACCEPT / ACCEPT / REJECT;
+    Reproduced  Claims 1-5 rerun and bash validate.sh --full ends with
+                ALL CLAIMS PASSED.
+
 1. Artifact purpose
 
 PQ-ZK-eSIM is the artifact accompanying the ACSAC paper "PQ-ZK-eSIM: Post-Quantum Zero-Knowledge Identity Authentication for eSIM."
@@ -57,7 +89,7 @@ Network access is required during installation when dependencies must be downloa
 
 A standard Ubuntu x86_64 virtual machine (22.04 or 24.04) on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper's reported performance and robustness figures.
 
-The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Section 11 lists the exact command sequence for both the quick and the full evaluation. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance and is recorded by the experiment scripts.
+The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Section 11 lists the exact command sequence for both the quick and the full evaluation. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance; the figures below were measured on the verified machine.
 
 4. Installation
 
@@ -288,6 +320,30 @@ The public artifact includes the source code, experiment scripts, expected outpu
 11. Evaluator workflow
 
 All commands are run from the repository root.
+
+Runtime budget, measured on the verified machine (2 CPU cores, Ubuntu 24.04,
+QEMU ARM64 emulation):
+
+  artifact/demo/run.sh, cold build        about 1 s
+  Claim 1 (phase timing, 500 trials)      about 10 s
+  Claim 3 (DoS benchmark)                 about 2 s
+  Claim 4 (sliding window)                about 1 min
+  Claim 5 (sparse noise, 200 trials/rho)  about 1 min
+  quick path total (Claims 1, 3, 4, 5 and validate.sh)   about 3 min
+
+  install.sh, first run     network and build bound: it installs packages and
+                            builds OpenSSL and liboqs (native and AArch64) from
+                            source. It was not timed in this revision because
+                            it requires sudo; on a host of this size the three
+                            builds dominate and take on the order of ten minutes.
+  Claim 2 setup.sh          network bound: it downloads Miniforge and a SageMath
+                            environment of several GB. Expect tens of minutes on
+                            first use; a later run reuses both and returns
+                            immediately.
+  Claim 2 run.sh + validate.sh --full     about 2 min
+
+Wall-clock figures depend on the host CPU, disk and network, and on QEMU
+emulation speed.
 
 Quick evaluation (kick-the-tires). This uses only what install.sh provides.
 Claim 2 is excluded here and covered by the full evaluation below.
