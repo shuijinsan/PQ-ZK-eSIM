@@ -76,7 +76,7 @@ The file license.txt states the artifact license.
 
 3. Canonical evaluation environment
 
-The validated and recommended environment is Ubuntu 22.04 LTS on x86_64 with at least 4 CPU cores, 8 GB of RAM, and 20 GB of free disk space.
+The supported environment is Ubuntu 22.04 or 24.04 LTS on x86_64 with at least 4 CPU cores, 8 GB of RAM, and 20 GB of free disk space. The measurements reported in this document were taken on Ubuntu 24.04.4 LTS.
 Claims 1, 3, 4, and 5 need only the dependencies installed by install.sh. Claim 2 additionally
 requires SageMath 10.x or newer, which is not provided by the distribution package on every
 release, so the Claim 2 setup script installs it from conda-forge (Section 6).
@@ -87,7 +87,7 @@ The software dependencies include OpenSSL 3.0.13, liboqs 0.15.0, CMake, an AArch
 
 Network access is required during installation when dependencies must be downloaded. The artifact itself does not require access to a private backend for the claims listed in Section 6.
 
-A standard Ubuntu x86_64 virtual machine (22.04 or 24.04) on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper's reported performance and robustness figures.
+A standard Ubuntu x86_64 virtual machine (22.04 or 24.04), including a chair-provided environment, on public research infrastructure such as CloudLab, Chameleon, or an equivalent service is suitable for the evaluated C and QEMU claims. The Android integration is not required for reproducing the paper's reported performance and robustness figures.
 
 The quick evaluation path is intended for the ACSAC kick-the-tires stage and should complete within a practical interactive session after dependencies are installed. Section 11 lists the exact command sequence for both the quick and the full evaluation. Full claim reruns are designed to complete within the ACSAC one-day evaluation limit. Exact wall-clock time depends on the host and QEMU performance; the figures below were measured on the verified machine.
 
