@@ -240,14 +240,14 @@ Run:
 
 bash claims/claim5_sparse_noise/run.sh
 
-The final paper dataset reports 100 percent multi-norm rejection through rho = 75 percent, 66 percent rejection at rho = 90 percent, and 0 percent rejection for the honest rho = 100 percent case.
+The final paper dataset reports 100 percent l1-bound rejection through rho = 75 percent, 66 percent rejection at rho = 90 percent, and 0 percent rejection for the honest rho = 100 percent case.
 
 Here rho is the nominal retention probability for y_pub coefficients, that is, the fraction the
 sampler is asked to retain, with the rest zeroed. The sampler quantizes it to (floor(255*rho)+1)/256,
-so the actual retained fraction is that quantized value, which is about 1/256 even at rho = 0. Figure
-7A plots the multi-norm rejection rate, which is the CSV column detection_rate: a trial counts as
-rejected if any of the ell_2 lower-bound, ell_2 upper-bound, ell_infinity or ell_1 checks fires. The
-per-check rates are recorded separately in sparse_noise_norm_breakdown.csv. The rho = 90 percent row
+so the actual retained fraction is that quantized value, which is about 1/256 even at rho = 0. The
+reported figures are the ell_1 lower-bound rejection rate, which Figure 7A plots; the CSV column detection_rate
+is the union of the ell_2 lower-bound, ell_2 upper-bound, ell_infinity and ell_1 checks, and the ell_1
+rate on its own is recorded as l1_low_rate in sparse_noise_norm_breakdown.csv. The rho = 90 percent row
 lies in the transition band and varies between runs.
 
 Figure 7C is timed after the eUICC response has been computed, so it measures LPA aggregation,

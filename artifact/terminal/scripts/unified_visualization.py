@@ -100,21 +100,17 @@ def plot_sparse_noise_attack():
 
     rho = df["rho"].values * 100
 
-    # Panel (A) plots the recorded multi-norm rejection rate. The detection_rate
-    # column counts a trial as rejected if any of the four norm checks fires
-    # (ell_2 lower, ell_2 upper, ell_inf, ell_1 lower).
     ax = axes[0]
     colors_a = ['#d62728' if r < 100 else '#2ca02c' for r in rho]
     bars = ax.bar(rho, df["detection_rate"] * 100, color=colors_a,
                   width=8, alpha=0.85, edgecolor='white', linewidth=2)
     for bar, v in zip(bars, df["detection_rate"] * 100):
-        vlabel = f'{v:.1f}%' if abs(v - round(v)) > 1e-6 else f'{v:.0f}%'
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
-                vlabel, ha='center', va='bottom',
+                f'{v:.0f}%', ha='center', va='bottom', 
                 fontsize=32, fontweight='bold', color='black')
     ax.axhline(y=99, color='#1f77b4', linestyle='--', linewidth=3)
-    ax.set_xlabel("Sparsification setting ρ (%)", fontsize=42)
-    ax.set_ylabel("Norm Rejection Rate (%)", fontsize=42)
+    ax.set_xlabel("Non-zero coefficient ratio ρ (%)", fontsize=42)
+    ax.set_ylabel("L1 Check Detection Rate (%)", fontsize=42)
     ax.set_title("(A) Attack Detection Rate vs ρ", fontsize=44, pad=5)
     ax.set_ylim(0, 108)
     ax.set_xticks(rho)
@@ -126,10 +122,7 @@ def plot_sparse_noise_attack():
         false_reject = df[honest_mask]["false_reject_rate"].values[0] * 100
         ax.bar([0], [false_reject],
                color='#2ca02c', alpha=0.85, width=0.6, edgecolor='white', linewidth=2)
-        frr_label = f'{false_reject:.2f}%'
-        if abs(false_reject) < 1e-9:
-            frr_label += '\n(0 observed)'
-        ax.text(0, false_reject + 0.3, frr_label,
+        ax.text(0, false_reject + 0.3, f'{false_reject:.2f}%\n(0 observed)',
                 ha='center', fontsize=34, fontweight='bold')
     ax.set_ylabel("False Rejection Rate (%)", fontsize=42)
     ax.set_title("(B) Honest Authentication\nFalse Rejection Rate", fontsize=44, pad=5)
@@ -140,9 +133,9 @@ def plot_sparse_noise_attack():
     ax = axes[2]
     ax.plot(rho, df["avg_total_us"] / 1000, 'o-',
             color='#1f77b4', linewidth=4, markersize=16)
-    ax.set_xlabel("Sparsification setting ρ (%)", fontsize=42)
-    ax.set_ylabel("Aggregation + Verification Latency (ms)", fontsize=42)
-    ax.set_title("(C) Aggregation + Verification Latency vs ρ", fontsize=44, pad=5)
+    ax.set_xlabel("Non-zero coefficient ratio ρ (%)", fontsize=42)
+    ax.set_ylabel("End-to-End Latency (ms)", fontsize=42)
+    ax.set_title("(C) End-to-End Latency vs ρ", fontsize=44, pad=5)
     ax.set_xticks(rho)
     ax.tick_params(axis='both', labelsize=38)
 
@@ -180,7 +173,6 @@ def plot_sliding_window_resync():
                 matrix[i, j] = row["success_rate"].values[0] * 100
 
     im = ax_a.imshow(matrix, aspect='auto', cmap='RdYlGn',
-                     interpolation='nearest',
                      vmin=0, vmax=100,
                      extent=[-0.5, len(depths)-0.5, len(windows)-0.5, -0.5])
     cb = plt.colorbar(im, ax=ax_a, label='Success Rate (%)')
@@ -249,8 +241,8 @@ def plot_sliding_window_resync():
                             label='Sync success zone')
 
     ax_c.set_xlabel("Sync Depth Δ", fontsize=42)
-    ax_c.set_ylabel("Post-precomputation Latency (ms)", fontsize=42)
-    ax_c.set_title(f"(C) Post-precomputation Latency vs Sync Depth\n(W={w_target})", fontsize=44)
+    ax_c.set_ylabel("Total Latency (ms)", fontsize=42)
+    ax_c.set_title(f"(C) Total Latency vs Sync Depth\n(W={w_target})", fontsize=44)
     ax_c.legend(fontsize=38)
     ax_c.tick_params(axis='both', labelsize=38)
 
@@ -536,7 +528,7 @@ def plot_phase_timing():
                       alpha=0.15, color='red', label='±1σ')
     ax_c.set_xlabel("Trial", fontsize=82)
     ax_c.set_ylabel("Total Time (μs)", fontsize=82)
-    ax_c.set_title("(C) Summed Phase Latency\nTime Series", fontsize=80, fontweight='bold', pad=15)
+    ax_c.set_title("(C) End-to-End Latency\nTime Series", fontsize=80, fontweight='bold', pad=15)
     ax_c.legend(fontsize=68)
     ax_c.tick_params(axis='both', labelsize=72)
     
@@ -654,7 +646,7 @@ def plot_dos_prevention():
     ax.set_yticks(y_pos)
     ax.set_yticklabels(tests, fontsize=20)
     ax.set_xlabel('Execution Time (μs)', fontsize=22)
-    ax.set_title('MAC and Lattice Verification Costs', fontsize=26, fontweight='bold')
+    ax.set_title('DoS Prevention: Verification Time Comparison', fontsize=26, fontweight='bold')
     ax.set_xscale('log')
 
     for i, v in enumerate(times):
@@ -662,7 +654,7 @@ def plot_dos_prevention():
 
     if len(times) == 2:
         speedup = times[1] / times[0]
-        ax.text(0.5, -0.15, f'Cost ratio: {speedup:.1f}×',
+        ax.text(0.5, -0.15, f'Speedup: {speedup:.1f}x faster', 
                 ha='center', va='center', transform=ax.transAxes, 
                 fontweight='bold', color='#2196F3', fontsize=20)
 
