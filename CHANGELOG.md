@@ -68,5 +68,4 @@
 ### Figures
 
 - The plotting scripts emit PNG, PDF and SVG. The PDF fonts are embedded as
-  TrueType (`fonttype 42`) rather than Type 3, which IEEE/ACM typesetting
-  rejects.
+  TrueType (`fonttype 42`).
