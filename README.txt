@@ -76,7 +76,7 @@ The file license.txt states the artifact license.
 
 3. Canonical evaluation environment
 
-The supported environment is Ubuntu 22.04 or 24.04 LTS on x86_64. A configuration with 4 CPU cores, 8 GB of RAM, and 20 GB of free disk space is recommended. The measurements reported in this document were taken on Ubuntu 24.04.4 LTS.
+The supported environment is Ubuntu 22.04 or 24.04 LTS on x86_64. A configuration with 4 CPU cores, 8 GB of RAM, and 25 GB of free disk space is recommended. The measurements reported in this document were taken on Ubuntu 24.04.4 LTS.
 Claims 1, 3, 4, and 5 need only the dependencies installed by install.sh. Claim 2 additionally
 requires SageMath 10.x or newer, which is not provided by the distribution package on every
 release, so the Claim 2 setup script installs it from conda-forge (Section 6).

@@ -1,7 +1,7 @@
 Canonical host: Ubuntu 22.04 LTS (x86_64)
 CPU: 4+ cores
 RAM: 8 GB or more
-Disk: 20 GB free
+Disk: 25 GB free
 AArch64 toolchain: gcc-aarch64-linux-gnu
 ARM64 execution: qemu-aarch64-static
 Build system: CMake >= 3.22
