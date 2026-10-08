@@ -232,7 +232,7 @@ Run:
 
 bash claims/claim4_sliding_window/run.sh
 
-The expected qualitative result is that synchronization succeeds when Delta is no greater than the configured window size W and fails when Delta exceeds W. For W = 32, the final paper dataset reports a worst-case in-window MAC search of approximately 2.96 ms at Delta = 32. The total successful path is approximately 6.8 ms. Delta = 64 is outside the window and terminates before lattice verification, giving a shorter failure-path latency of approximately 3.0 ms.
+The expected qualitative result is that synchronization succeeds when Delta is no greater than the configured window size W and fails when Delta exceeds W. For W = 32, the final paper dataset reports a worst-case in-window MAC search of approximately 2.96 ms at Delta = 32. The total successful path is approximately 6.8 ms. Delta = 64 is outside the window and terminates before lattice verification, giving a shorter failure-path latency of approximately 3.0 ms. The Figure 6 total is timed after commitment preparation is complete, so it covers the MAC search and the subsequent verification rather than the commitment or the earlier phases.
 
 Claim 5 reproduces the sparse-noise experiment reported in Figure 7 and Appendix E.
 
@@ -247,6 +247,10 @@ figures are the ell_1 lower-bound rejection rate, which Figure 7A plots; the CSV
 is the union of the ell_2 lower-bound, ell_2 upper-bound, ell_infinity and ell_1 checks, and the ell_1
 rate on its own is recorded as l1_low_rate in sparse_noise_norm_breakdown.csv. The rho = 90 percent row
 lies in the transition band and varies between runs.
+
+Figure 7C is timed after the eUICC response has been computed, so it measures LPA aggregation,
+mask reconstruction, the norm diagnostics, and verification rather than a full end-to-end
+authentication time.
 
 The finite Monte Carlo run observed no honest false rejection. This finite observation is not interpreted as evidence of a 2^-128 false-rejection probability.
 
