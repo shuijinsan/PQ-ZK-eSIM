@@ -248,8 +248,8 @@ def plot_sliding_window_resync():
                             label='Sync success zone')
 
     ax_c.set_xlabel("Sync Depth Δ", fontsize=42)
-    ax_c.set_ylabel("Total Latency (ms)", fontsize=42)
-    ax_c.set_title(f"(C) Total Latency vs Sync Depth\n(W={w_target})", fontsize=44)
+    ax_c.set_ylabel("Post-precomputation Latency (ms)", fontsize=42)
+    ax_c.set_title(f"(C) Post-precomputation Latency vs Sync Depth\n(W={w_target})", fontsize=44)
     ax_c.legend(fontsize=38)
     ax_c.tick_params(axis='both', labelsize=38)
 
@@ -535,7 +535,7 @@ def plot_phase_timing():
                       alpha=0.15, color='red', label='±1σ')
     ax_c.set_xlabel("Trial", fontsize=82)
     ax_c.set_ylabel("Total Time (μs)", fontsize=82)
-    ax_c.set_title("(C) End-to-End Latency\nTime Series", fontsize=80, fontweight='bold', pad=15)
+    ax_c.set_title("(C) Summed Phase Latency\nTime Series", fontsize=80, fontweight='bold', pad=15)
     ax_c.legend(fontsize=68)
     ax_c.tick_params(axis='both', labelsize=72)
     
@@ -653,7 +653,7 @@ def plot_dos_prevention():
     ax.set_yticks(y_pos)
     ax.set_yticklabels(tests, fontsize=20)
     ax.set_xlabel('Execution Time (μs)', fontsize=22)
-    ax.set_title('DoS Prevention: Verification Time Comparison', fontsize=26, fontweight='bold')
+    ax.set_title('MAC and Lattice Verification Costs', fontsize=26, fontweight='bold')
     ax.set_xscale('log')
 
     for i, v in enumerate(times):
@@ -661,7 +661,7 @@ def plot_dos_prevention():
 
     if len(times) == 2:
         speedup = times[1] / times[0]
-        ax.text(0.5, -0.15, f'Speedup: {speedup:.1f}x faster', 
+        ax.text(0.5, -0.15, f'Cost ratio: {speedup:.1f}×',
                 ha='center', va='center', transform=ax.transAxes, 
                 fontweight='bold', color='#2196F3', fontsize=20)
 
