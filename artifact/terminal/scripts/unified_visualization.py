@@ -108,8 +108,9 @@ def plot_sparse_noise_attack():
     bars = ax.bar(rho, df["detection_rate"] * 100, color=colors_a,
                   width=8, alpha=0.85, edgecolor='white', linewidth=2)
     for bar, v in zip(bars, df["detection_rate"] * 100):
+        vlabel = f'{v:.1f}%' if abs(v - round(v)) > 1e-6 else f'{v:.0f}%'
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
-                f'{v:.0f}%', ha='center', va='bottom', 
+                vlabel, ha='center', va='bottom',
                 fontsize=32, fontweight='bold', color='black')
     ax.axhline(y=99, color='#1f77b4', linestyle='--', linewidth=3)
     ax.set_xlabel("Sparsification setting ρ (%)", fontsize=42)
@@ -140,8 +141,8 @@ def plot_sparse_noise_attack():
     ax.plot(rho, df["avg_total_us"] / 1000, 'o-',
             color='#1f77b4', linewidth=4, markersize=16)
     ax.set_xlabel("Sparsification setting ρ (%)", fontsize=42)
-    ax.set_ylabel("Aggregation and Verification Latency (ms)", fontsize=42)
-    ax.set_title("(C) Aggregation and Verification Latency vs ρ", fontsize=44, pad=5)
+    ax.set_ylabel("Aggregation + Verification Latency (ms)", fontsize=42)
+    ax.set_title("(C) Aggregation + Verification Latency vs ρ", fontsize=44, pad=5)
     ax.set_xticks(rho)
     ax.tick_params(axis='both', labelsize=38)
 
