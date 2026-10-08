@@ -112,7 +112,7 @@ def plot_sparse_noise_attack():
                 f'{v:.0f}%', ha='center', va='bottom', 
                 fontsize=32, fontweight='bold', color='black')
     ax.axhline(y=99, color='#1f77b4', linestyle='--', linewidth=3)
-    ax.set_xlabel("Non-zero coefficient ratio ρ (%)", fontsize=42)
+    ax.set_xlabel("Sparsification setting ρ (%)", fontsize=42)
     ax.set_ylabel("Norm Rejection Rate (%)", fontsize=42)
     ax.set_title("(A) Attack Detection Rate vs ρ", fontsize=44, pad=5)
     ax.set_ylim(0, 108)
@@ -139,7 +139,7 @@ def plot_sparse_noise_attack():
     ax = axes[2]
     ax.plot(rho, df["avg_total_us"] / 1000, 'o-',
             color='#1f77b4', linewidth=4, markersize=16)
-    ax.set_xlabel("Non-zero coefficient ratio ρ (%)", fontsize=42)
+    ax.set_xlabel("Sparsification setting ρ (%)", fontsize=42)
     ax.set_ylabel("Aggregation and Verification Latency (ms)", fontsize=42)
     ax.set_title("(C) Aggregation and Verification Latency vs ρ", fontsize=44, pad=5)
     ax.set_xticks(rho)
