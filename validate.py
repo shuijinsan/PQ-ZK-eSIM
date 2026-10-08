@@ -88,9 +88,15 @@ CLAIMS = {
         "sparse_noise_attack_results.csv": {
             "key": "rho",
             "detection": "detection_rate",
-            "ratio": ["false_reject_rate"],
+            # false_reject_rate is not compared against the reference row: the
+            # honest reference value is 0.0, so a ratio comparison would reject
+            # any non-zero measurement. Every row is only range-checked to
+            # [0, 1], and the honest row is held to the declared <= 0.05 rule.
+            "range": ["false_reject_rate"],
             "honest_frr": {"rho": 1.0, "col": "false_reject_rate", "max": 0.05},
             "timing": ["avg_total_us"],
+            "grid": {"key": "rho",
+                     "values": [0.0, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 1.0]},
         },
         # Per-norm breakdown. Figure 7A plots the ell_1 lower-bound rate, which
         # is l1_low_rate; detection_rate in the file above is the union of the
@@ -100,6 +106,10 @@ CLAIMS = {
             "key": "rho",
             "rules_only": True,
             "detection": "l1_low_rate",
+            "required_cols": ["rho", "l2_low_rate", "l2_high_rate", "linf_rate",
+                              "l1_low_rate", "verify_reject_rate"],
+            "grid": {"key": "rho",
+                     "values": [0.0, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 1.0]},
             "range": ["l2_low_rate", "l2_high_rate", "linf_rate",
                       "l1_low_rate", "verify_reject_rate"],
         },
@@ -157,6 +167,42 @@ def range_ok(rows, spec, name, ok):
     return ok
 
 
+def grid_ok(fields, rows, spec, name, ok):
+    """Required columns must be present, and the key column must hold exactly
+    the declared grid values, once each. Rejects an empty table, a missing row
+    and a duplicate row before any numeric rule is applied."""
+    req = spec.get("required_cols")
+    if req:
+        missing = [c for c in req if c not in fields]
+        if missing:
+            print(f"  [{name}] missing required column(s): {missing}")
+            ok = False
+    grid = spec.get("grid")
+    if grid:
+        col = grid["key"]
+        want = grid["values"]
+        if col not in fields:
+            print(f"  [{name}] missing key column {col!r}")
+            return False
+        got = [num(r.get(col)) for r in rows]
+        if any(g is None for g in got):
+            print(f"  [{name}] {col} has a non-numeric entry")
+            return False
+        dups = sorted({g for g in got if got.count(g) > 1})
+        if dups:
+            print(f"  [{name}] duplicate {col} row(s): {dups}")
+            ok = False
+        missing = [v for v in want if not any(abs(g - v) < 1e-9 for g in got)]
+        extra = [g for g in got if not any(abs(g - v) < 1e-9 for v in want)]
+        if missing:
+            print(f"  [{name}] missing {col} row(s): {missing}")
+            ok = False
+        if extra:
+            print(f"  [{name}] unexpected {col} row(s): {extra}")
+            ok = False
+    return ok
+
+
 def rate_ok(x):
     """A ratio must be a finite number inside [0, 1]."""
     v = num(x)
@@ -207,9 +253,13 @@ def compare_file(claim, name, spec):
     if spec.get("rules_only"):
         # No stored reference: the file is judged only against the acceptance
         # rules stated in the claim's Tolerance section. Used for outputs whose
-        # non-extreme rows legitimately vary between runs.
-        _, res_rows = read_csv(res_path)
+        # non-extreme rows legitimately vary between runs. The declared header
+        # and full rho grid are still required.
+        res_fields, res_rows = read_csv(res_path)
         ok = True
+        ok = grid_ok(res_fields, res_rows, spec, name, ok)
+        if not ok:
+            return ok
         ok = detection_ok(res_rows, spec, name, ok)
         ok = range_ok(res_rows, spec, name, ok)
         if ok:
@@ -234,8 +284,18 @@ def compare_file(claim, name, spec):
 
         ok = True
         for col in spec.get("mean_timing", []):
-            exp_mean = sum(float(r[col]) for r in exp_rows) / len(exp_rows)
-            res_mean = sum(float(r[col]) for r in res_rows) / len(res_rows)
+            # Validate every cell, not just the mean: a single negative or
+            # non-numeric latency must fail even if the mean still looks normal.
+            bad = [r.get(col) for r in res_rows
+                   if num(r.get(col)) is None or num(r.get(col)) <= 0]
+            if bad:
+                print(f"  [{name}] {col} has {len(bad)} non-positive or "
+                      f"non-numeric value(s), e.g. {bad[0]!r}")
+                ok = False
+                continue
+
+            exp_mean = sum(num(r[col]) for r in exp_rows) / len(exp_rows)
+            res_mean = sum(num(r[col]) for r in res_rows) / len(res_rows)
 
             if not within_timing_tol(exp_mean, res_mean):
                 print(
@@ -327,6 +387,7 @@ def compare_file(claim, name, spec):
                       f"{by_row.get(sp['row'], {}).get(col)!r}, recomputed {ratio:.2f}")
                 ok = False
 
+    ok = grid_ok(res_fields, res_rows, spec, name, ok)
     ok = range_ok(res_rows, spec, name, ok)
 
     if ok:

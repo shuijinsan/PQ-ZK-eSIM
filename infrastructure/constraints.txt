@@ -1,5 +1,5 @@
 # Constraints and limitations
-- Validated on Ubuntu 22.04 LTS (x86_64); other host platforms are not part of the artifact claim.
+- Validated on Ubuntu 22.04 or 24.04 LTS (x86_64); other host platforms are not part of the artifact claim.
 - The eUICC path runs under QEMU ARM64 emulation, not on commercial eUICC hardware.
 - The analytical eUICC latency projection is not an on-card measurement.
 - Concrete lattice security estimates depend on the external lattice-estimator and are not a formal NIST-category assignment.

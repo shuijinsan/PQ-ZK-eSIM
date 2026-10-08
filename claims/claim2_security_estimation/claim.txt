@@ -25,7 +25,7 @@ Experiment: lattice-estimator sweep over the HNF-MSIS length_bound
 (40000 to 200000), reporting classical (MATZOV) and quantum (LaaMosPol14)
 bits for each point.
 
-Input: none (the instance is derived from src/internal/params.h)
+Input: none (the instance is derived from artifact/terminal/euicc/src/internal/params.h)
 
 Expected output:
   msis_estimator_sweep.csv

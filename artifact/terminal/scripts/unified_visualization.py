@@ -89,6 +89,34 @@ def save_fig(fig, name):
 # ================================================================
 # ================================================================
 
+def _aligned_l1_rate(df):
+    """ell_1 lower-bound rate from the per-norm breakdown, aligned to df by rho.
+
+    detection_rate in sparse_noise_attack_results.csv is the union of the four
+    norm checks, so it is not the ell_1 rate that panel (A) labels. Returns a
+    float array aligned to df's rho rows, or None (after printing why) when the
+    breakdown is missing, has duplicate rho rows, or lacks a rho present in df;
+    the caller then skips the panel rather than drawing the wrong column.
+    """
+    bd = load_csv("sparse_noise_norm_breakdown.csv")
+    if bd is None or "rho" not in bd.columns or "l1_low_rate" not in bd.columns:
+        print("  [Error] sparse_noise_norm_breakdown.csv missing or lacks rho/l1_low_rate")
+        return None
+    keys = [round(float(r), 6) for r in bd["rho"]]
+    if len(set(keys)) != len(keys):
+        print("  [Error] sparse_noise_norm_breakdown.csv has duplicate rho rows")
+        return None
+    by_rho = dict(zip(keys, bd["l1_low_rate"]))
+    out = []
+    for r in df["rho"]:
+        k = round(float(r), 6)
+        if k not in by_rho:
+            print(f"  [Error] sparse_noise_norm_breakdown.csv has no row for rho={r}")
+            return None
+        out.append(float(by_rho[k]))
+    return np.asarray(out, dtype=float)
+
+
 def plot_sparse_noise_attack():
     df = load_csv("sparse_noise_attack_results.csv")
     if df is None:
@@ -100,11 +128,17 @@ def plot_sparse_noise_attack():
 
     rho = df["rho"].values * 100
 
+    # Panel (A) plots the ell_1 lower-bound detection rate: l1_low_rate in the
+    # per-norm breakdown, not the union detection_rate in this file.
+    l1_rate = _aligned_l1_rate(df)
+    if l1_rate is None:
+        return
+
     ax = axes[0]
     colors_a = ['#d62728' if r < 100 else '#2ca02c' for r in rho]
-    bars = ax.bar(rho, df["detection_rate"] * 100, color=colors_a,
+    bars = ax.bar(rho, l1_rate * 100, color=colors_a,
                   width=8, alpha=0.85, edgecolor='white', linewidth=2)
-    for bar, v in zip(bars, df["detection_rate"] * 100):
+    for bar, v in zip(bars, l1_rate * 100):
         ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + 2,
                 f'{v:.0f}%', ha='center', va='bottom', 
                 fontsize=32, fontweight='bold', color='black')
@@ -122,7 +156,10 @@ def plot_sparse_noise_attack():
         false_reject = df[honest_mask]["false_reject_rate"].values[0] * 100
         ax.bar([0], [false_reject],
                color='#2ca02c', alpha=0.85, width=0.6, edgecolor='white', linewidth=2)
-        ax.text(0, false_reject + 0.3, f'{false_reject:.2f}%\n(0 observed)',
+        frr_label = f'{false_reject:.2f}%'
+        if abs(false_reject) < 1e-9:
+            frr_label += '\n(0 observed)'
+        ax.text(0, false_reject + 0.3, frr_label,
                 ha='center', fontsize=34, fontweight='bold')
     ax.set_ylabel("False Rejection Rate (%)", fontsize=42)
     ax.set_title("(B) Honest Authentication\nFalse Rejection Rate", fontsize=44, pad=5)
@@ -134,8 +171,8 @@ def plot_sparse_noise_attack():
     ax.plot(rho, df["avg_total_us"] / 1000, 'o-',
             color='#1f77b4', linewidth=4, markersize=16)
     ax.set_xlabel("Non-zero coefficient ratio ρ (%)", fontsize=42)
-    ax.set_ylabel("End-to-End Latency (ms)", fontsize=42)
-    ax.set_title("(C) End-to-End Latency vs ρ", fontsize=44, pad=5)
+    ax.set_ylabel("Aggregation and Verification Latency (ms)", fontsize=42)
+    ax.set_title("(C) Aggregation and Verification Latency vs ρ", fontsize=44, pad=5)
     ax.set_xticks(rho)
     ax.tick_params(axis='both', labelsize=38)
 
@@ -173,6 +210,7 @@ def plot_sliding_window_resync():
                 matrix[i, j] = row["success_rate"].values[0] * 100
 
     im = ax_a.imshow(matrix, aspect='auto', cmap='RdYlGn',
+                     interpolation='nearest',
                      vmin=0, vmax=100,
                      extent=[-0.5, len(depths)-0.5, len(windows)-0.5, -0.5])
     cb = plt.colorbar(im, ax=ax_a, label='Success Rate (%)')

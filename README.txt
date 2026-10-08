@@ -342,9 +342,13 @@ Expected runtime (2 CPU cores, Ubuntu 24.04, QEMU ARM64 emulation):
 
 Figure files. The figures are generated from the recorded CSVs by
 artifact/terminal/scripts/unified_visualization.py (Figures 5, 6, 7 and 8) and
-claims/claim2_security_estimation/plot_sweep.py (Figure 4). Both write PNG,
-PDF and SVG next to their input data, so the paper's figure files can be
-regenerated from the same data that the claims validate.
+claims/claim2_security_estimation/plot_sweep.py (Figure 4). After running
+Claims 1, 3, 4 and 5, run
+  python3 artifact/terminal/scripts/unified_visualization.py
+to write Figures 5, 6, 7 and 8 as PNG, PDF and SVG files to build/;
+plot_sweep.py writes Figure 4 as PNG, PDF and SVG next to its result CSV. The
+paper's figure files are thus regenerated from the same data that the claims
+validate.
 
 Wall-clock figures depend on the host CPU, disk and network, and on QEMU
 emulation speed.
